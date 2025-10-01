@@ -60,6 +60,9 @@ export function EnhancedMainInterface({
   const [currentContent, setCurrentContent] = useState('');
   const [translationFileUploaded, setTranslationFileUploaded] = useState(false);
   const [glossaryFileUploaded, setGlossaryFileUploaded] = useState(false);
+  const [textManuallyEntered, setTextManuallyEntered] = useState(false);
+  const [showUploadIconTransition, setShowUploadIconTransition] = useState(false);
+  const [noGlossaryWarningShown, setNoGlossaryWarningShown] = useState(false);
   
   // Undo/Redo history
   const [history, setHistory] = useState<HistoryState[]>([]);
@@ -67,8 +70,58 @@ export function EnhancedMainInterface({
   
   const translationInputRef = useRef<HTMLInputElement>(null);
   const glossaryInputRef = useRef<HTMLInputElement>(null);
+  const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const { analyzeTranslation, isAnalyzing: engineAnalyzing, progress: engineProgress } = useAnalysisEngine();
+
+  // Load saved state on mount
+  React.useEffect(() => {
+    const savedState = localStorage.getItem('lexiq-session');
+    if (savedState) {
+      try {
+        const parsed = JSON.parse(savedState);
+        if (parsed.currentContent) {
+          setCurrentContent(parsed.currentContent);
+          setTextManuallyEntered(parsed.textManuallyEntered || false);
+          if (parsed.analysisResults) {
+            setAnalysisResults(parsed.analysisResults);
+            setAnalysisComplete(true);
+          }
+          if (parsed.activeMainTab) {
+            setActiveMainTab(parsed.activeMainTab);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load saved state:', error);
+      }
+    }
+  }, []);
+
+  // Auto-save functionality
+  React.useEffect(() => {
+    if (autoSaveIntervalRef.current) {
+      clearInterval(autoSaveIntervalRef.current);
+    }
+
+    autoSaveIntervalRef.current = setInterval(() => {
+      if (currentContent || analysisResults) {
+        const stateToSave = {
+          currentContent,
+          analysisResults,
+          textManuallyEntered,
+          activeMainTab,
+          timestamp: new Date().toISOString()
+        };
+        localStorage.setItem('lexiq-session', JSON.stringify(stateToSave));
+      }
+    }, 5000); // Auto-save every 5 seconds
+
+    return () => {
+      if (autoSaveIntervalRef.current) {
+        clearInterval(autoSaveIntervalRef.current);
+      }
+    };
+  }, [currentContent, analysisResults, textManuallyEntered, activeMainTab]);
 
   const languages = [
     { value: 'en', label: 'English', flag: '🇺🇸' },
@@ -189,6 +242,7 @@ export function EnhancedMainInterface({
     } else {
       setGlossaryFile(file);
       setGlossaryFileUploaded(true);
+      setNoGlossaryWarningShown(false); // Reset warning when glossary is uploaded
       toast({
         title: "Glossary Uploaded",
         description: `${file.name} uploaded successfully`,
@@ -197,10 +251,15 @@ export function EnhancedMainInterface({
   };
 
   const runEnhancedAnalysis = async () => {
-    if (!translationFile || !glossaryFile) {
+    // Check if we have either a file or manually entered text
+    const hasTranslation = translationFile || (textManuallyEntered && currentContent.length > 0);
+    
+    if (!hasTranslation || !glossaryFile) {
       toast({
         title: "Missing Files",
-        description: "Please upload both translation and glossary files.",
+        description: !hasTranslation 
+          ? "Please upload a translation file or enter text in the editor."
+          : "Please upload a glossary file.",
         variant: "destructive",
       });
       return;
@@ -209,9 +268,12 @@ export function EnhancedMainInterface({
     setIsAnalyzing(true);
     setAnalysisProgress(0);
     setAnalysisComplete(false);
+    setTranslationFileUploaded(false);
+    setGlossaryFileUploaded(false);
 
     try {
-      const translationContent = await translationFile.text();
+      // Use either file content or manually entered content
+      const translationContent = translationFile ? await translationFile.text() : currentContent;
       const glossaryContent = await glossaryFile.text();
       
       const result = await analyzeTranslation(
@@ -249,11 +311,15 @@ export function EnhancedMainInterface({
 
   const handleReanalyze = async (content: string) => {
     if (!glossaryFile) {
-      toast({
-        title: "No Glossary",
-        description: "Please upload a glossary file for re-analysis",
-        variant: "destructive",
-      });
+      if (!noGlossaryWarningShown) {
+        toast({
+          title: "No Glossary",
+          description: "Please upload a glossary file for re-analysis",
+          variant: "destructive",
+          duration: Infinity, // Persist until dismissed
+        });
+        setNoGlossaryWarningShown(true);
+      }
       return;
     }
 
@@ -286,6 +352,20 @@ export function EnhancedMainInterface({
   const handleContentChange = (content: string) => {
     setCurrentContent(content);
     addToHistory(content);
+    
+    // Detect manual text entry
+    if (content.length > 0 && !textManuallyEntered) {
+      setTextManuallyEntered(true);
+      setShowUploadIconTransition(true);
+      
+      // After 2 seconds, transition icon
+      setTimeout(() => {
+        setShowUploadIconTransition(false);
+      }, 2000);
+    } else if (content.length === 0 && textManuallyEntered) {
+      setTextManuallyEntered(false);
+      setShowUploadIconTransition(false);
+    }
   };
 
   const handleExport = (format: string) => {
@@ -503,23 +583,43 @@ export function EnhancedMainInterface({
                   <Card>
                     <CardContent className="pt-4 space-y-3">
                       <div 
-                        onClick={() => translationInputRef.current?.click()}
-                        className={`flex items-center justify-between p-3 rounded-md border-2 border-dashed cursor-pointer transition-all hover:border-primary hover:bg-primary/5 ${translationFile ? 'border-success bg-success/5' : 'border-border'}`}
+                        onClick={() => !textManuallyEntered && translationInputRef.current?.click()}
+                        className={`flex items-center justify-between p-3 rounded-md border-2 border-dashed transition-all ${
+                          textManuallyEntered 
+                            ? 'border-success bg-success/5 cursor-not-allowed opacity-60' 
+                            : translationFile 
+                              ? 'border-success bg-success/5 cursor-pointer hover:border-primary hover:bg-primary/5' 
+                              : 'border-border cursor-pointer hover:border-primary hover:bg-primary/5'
+                        }`}
                       >
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <FileText className="h-4 w-4 flex-shrink-0" />
                           <span className="text-xs truncate">
-                            {translationFile ? translationFile.name : 'Translation File'}
+                            {textManuallyEntered 
+                              ? 'Text Inserted!' 
+                              : translationFile 
+                                ? translationFile.name 
+                                : 'Translation File'
+                            }
                           </span>
                         </div>
-                        {translationFileUploaded ? (
+                        {textManuallyEntered ? (
+                          showUploadIconTransition ? (
+                            <CheckCircle className="h-4 w-4 text-success flex-shrink-0 ml-2 animate-in fade-in" />
+                          ) : (
+                            <Upload className="h-4 w-4 text-success flex-shrink-0 ml-2 rotate-180 animate-in fade-in" />
+                          )
+                        ) : translationFileUploaded ? (
                           <CheckCircle className="h-4 w-4 text-success flex-shrink-0 ml-2" />
                         ) : (
                           <Upload className="h-4 w-4 flex-shrink-0 ml-2" />
                         )}
                       </div>
                       <p className="text-[10px] text-muted-foreground px-1">
-                        Max 15,000 characters · 20MB file size limit
+                        {textManuallyEntered 
+                          ? 'Paste or type in editor • Clear text to upload files' 
+                          : 'Max 15,000 characters · 20MB file size limit'
+                        }
                       </p>
                       <input
                         ref={translationInputRef}
@@ -558,7 +658,7 @@ export function EnhancedMainInterface({
 
                       <Button
                         onClick={runEnhancedAnalysis}
-                        disabled={!translationFile || !glossaryFile || isAnalyzing}
+                        disabled={(!translationFile && !textManuallyEntered) || !glossaryFile || isAnalyzing}
                         className="w-full"
                       >
                         <Play className="h-4 w-4 mr-2" />
