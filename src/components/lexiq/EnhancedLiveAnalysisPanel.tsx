@@ -390,7 +390,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
-              <span>Enhanced Translation Editor</span>
+              <span>Editor</span>
               <div className="flex items-center gap-2 text-xs">
                 <Badge variant="outline" className="text-blue-600 border-blue-500">
                   {selectedLanguage.toUpperCase()}
@@ -464,6 +464,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
             onInput={(e) => {
               if (!isEditing) return;
               saveCursorPosition();
+              // Better support for non-roman input (CJK, etc.)
               const newContent = e.currentTarget.textContent || '';
               onContentChange(newContent);
             }}
@@ -476,12 +477,19 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
             onKeyUp={saveCursorPosition}
             onClick={saveCursorPosition}
             onCompositionStart={() => {
+              // Handle composition start for non-roman scripts (CJK, etc.)
+              saveCursorPosition();
+            }}
+            onCompositionUpdate={() => {
+              // Continuously update during IME composition
               saveCursorPosition();
             }}
             onCompositionEnd={(e) => {
+              // Handle composition end for non-roman scripts
               if (isEditing) {
                 const newContent = e.currentTarget.textContent || '';
                 onContentChange(newContent);
+                saveCursorPosition();
               }
             }}
             dangerouslySetInnerHTML={{ 
@@ -620,7 +628,10 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                   {clickedTerm.suggestions && clickedTerm.suggestions.length > 0 && (
                     <div className="space-y-1">
                       <div className="text-xs text-muted-foreground">Replace with:</div>
-                      {clickedTerm.suggestions.slice(0, 3).map((suggestion, idx) => (
+                      {clickedTerm.suggestions
+                        .filter(suggestion => suggestion !== clickedTerm.text)
+                        .slice(0, 3)
+                        .map((suggestion, idx) => (
                         <Button
                           key={idx}
                           variant="ghost"

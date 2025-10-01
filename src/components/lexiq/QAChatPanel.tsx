@@ -72,54 +72,54 @@ export const QAChatPanel: React.FC<QAChatPanelProps> = ({ analysisContext }) => 
   };
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <MessageSquare className="h-5 w-5" />
-          QA Decision Support
+    <Card className="flex flex-col h-[400px]">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <MessageSquare className="h-4 w-4" />
+          QA Support
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col gap-3 p-4 overflow-hidden">
-        <ScrollArea className="flex-1 pr-4" ref={scrollRef}>
-          <div className="space-y-4">
+      <CardContent className="flex-1 flex flex-col gap-2 p-3 overflow-hidden">
+        <ScrollArea className="flex-1 pr-2" ref={scrollRef}>
+          <div className="space-y-3">
             {messages.length === 0 && (
-              <div className="text-center text-muted-foreground text-sm py-8">
-                Ask me anything about quality assurance decisions for your translation
+              <div className="text-center text-muted-foreground text-xs py-6">
+                Ask about quality assurance for your translation
               </div>
             )}
             {messages.map((msg, idx) => (
               <div
                 key={idx}
-                className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {msg.role === 'assistant' && (
-                  <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Bot className="h-4 w-4 text-primary" />
+                  <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Bot className="h-3 w-3 text-primary" />
                   </div>
                 )}
                 <div
-                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                  className={`max-w-[85%] rounded-lg px-3 py-1.5 ${
                     msg.role === 'user'
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted'
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  <p className="text-xs whitespace-pre-wrap">{msg.content}</p>
                 </div>
                 {msg.role === 'user' && (
-                  <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-                    <User className="h-4 w-4 text-primary-foreground" />
+                  <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary flex items-center justify-center">
+                    <User className="h-3 w-3 text-primary-foreground" />
                   </div>
                 )}
               </div>
             ))}
             {isLoading && (
-              <div className="flex gap-3 justify-start">
-                <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-primary" />
+              <div className="flex gap-2 justify-start">
+                <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Bot className="h-3 w-3 text-primary" />
                 </div>
-                <div className="bg-muted rounded-lg px-4 py-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                <div className="bg-muted rounded-lg px-3 py-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 </div>
               </div>
             )}
@@ -130,20 +130,20 @@ export const QAChatPanel: React.FC<QAChatPanelProps> = ({ analysisContext }) => 
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask about terminology decisions..."
-            className="min-h-[60px] max-h-[120px] resize-none"
+            placeholder="Ask about terminology..."
+            className="min-h-[50px] max-h-[80px] resize-none text-xs"
             disabled={isLoading}
           />
           <Button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
             size="icon"
-            className="h-[60px] w-[60px] flex-shrink-0"
+            className="h-[50px] w-[50px] flex-shrink-0"
           >
             {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Send className="h-5 w-5" />
+              <Send className="h-4 w-4" />
             )}
           </Button>
         </div>
