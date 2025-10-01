@@ -417,7 +417,7 @@ export function EnhancedMainInterface({
       <div className="max-w-[1800px] mx-auto px-6 py-6">
         <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="space-y-6">
           {/* Modern Tab Navigation */}
-          <div className="flex items-center gap-2 bg-card/50 p-1.5 rounded-lg border border-border/50 w-fit">
+          <TabsList className="bg-card/50 p-1.5 rounded-lg border border-border/50 w-fit h-auto">
             <TabsTrigger 
               value="edit" 
               className="data-[state=active]:bg-card data-[state=active]:shadow-sm px-6 py-2.5 rounded-md transition-all"
@@ -436,7 +436,7 @@ export function EnhancedMainInterface({
             >
               Data Management
             </TabsTrigger>
-          </div>
+          </TabsList>
 
           {/* Edit Tab */}
           <TabsContent value="edit" className="mt-0 space-y-6">
