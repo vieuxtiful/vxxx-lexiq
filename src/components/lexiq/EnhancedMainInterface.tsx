@@ -1,631 +1,794 @@
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, ArrowLeft, Download, FileText, Settings, Loader2, FileUp, Type, ChevronDown } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LiveAnalysisPanel } from './LiveAnalysisPanel';
-import { StatisticsPanel } from './StatisticsPanel';
-import { DataPanel } from './DataPanel';
-import { EnhancedStatisticsTab } from './EnhancedStatisticsTab';
-import { DataManagementTab } from './DataManagementTab';
-import { QAChatPanel } from './QAChatPanel';
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { useFileProcessor } from '@/hooks/useFileProcessor';
-import { useAnalysisEngine, AnalyzedTerm, AnalysisStatistics } from '@/hooks/useAnalysisEngine';
-import { useReportGenerator, ReportFormat } from '@/hooks/useReportGenerator';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  Upload, FileText, Play, TrendingUp, CheckCircle, 
+  AlertCircle, BarChart3, Activity, BookOpen, Zap, ArrowLeft,
+  Globe, Building, Settings, Palette
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { EnhancedLiveAnalysisPanel } from './EnhancedLiveAnalysisPanel';
 import lexiqLogo from '@/assets/lexiq-logo.png';
+import middleburyLogo from '@/assets/middlebury-logo.png';
 
 interface EnhancedMainInterfaceProps {
-  onReturn: () => void;
-  onReturnToWelcome: () => void;
-  selectedLanguage: string;
-  selectedDomain: string;
+  onReturn?: () => void;
+  onReturnToWelcome?: () => void;
+  selectedLanguage?: string;
+  selectedDomain?: string;
 }
 
-export const EnhancedMainInterface: React.FC<EnhancedMainInterfaceProps> = ({
-  onReturn,
+// Mock data for enhanced features demonstration
+const mockEnhancedAnalysisResults = {
+  terms: [
+    {
+      text: "cybersecurity",
+      startPosition: 4,
+      endPosition: 17,
+      classification: "valid",
+      score: 0.95,
+      frequency: 1,
+      context: "The cybersecurity framework implementation",
+      rationale: "High confidence term with semantic type: Entity",
+      suggestions: ["information security", "cyber defense", "digital security"],
+      semantic_type: {
+        semantic_type: "Entity",
+        ui_information: {
+          category: "noun",
+          color_code: "#4CAF50",
+          description: "Concrete or abstract objects, people, places, or concepts",
+          display_name: "Entity"
+        }
+      },
+      ui_metadata: {
+        confidence_level: "high",
+        has_grammar_issues: false,
+        grammar_severity: "none"
+      }
+    },
+    {
+      text: "implementation",
+      startPosition: 28,
+      endPosition: 42,
+      classification: "review",
+      score: 0.75,
+      frequency: 1,
+      context: "framework implementation requires comprehensive",
+      rationale: "Medium confidence term requiring review. Type: Event",
+      suggestions: ["deployment", "execution", "realization"],
+      semantic_type: {
+        semantic_type: "Event",
+        ui_information: {
+          category: "verb",
+          color_code: "#FF9800",
+          description: "Actions, processes, or states that occur over time",
+          display_name: "Event"
+        }
+      },
+      ui_metadata: {
+        confidence_level: "medium",
+        has_grammar_issues: false,
+        grammar_severity: "none"
+      }
+    },
+    {
+      text: "requires",
+      startPosition: 43,
+      endPosition: 51,
+      classification: "grammar",
+      score: 0.60,
+      frequency: 1,
+      context: "implementation requires comprehensive validation",
+      rationale: "Grammar issues detected: subject_verb_agreement",
+      suggestions: ["require", "necessitates", "demands"],
+      grammar_issues: [
+        {
+          rule: "subject_verb_agreement",
+          severity: "medium",
+          suggestion: "Check subject-verb agreement"
+        }
+      ],
+      ui_metadata: {
+        confidence_level: "medium",
+        has_grammar_issues: true,
+        grammar_severity: "medium"
+      }
+    },
+    {
+      text: "comprehensiv",
+      startPosition: 52,
+      endPosition: 64,
+      classification: "spelling",
+      score: 0.30,
+      frequency: 1,
+      context: "requires comprehensiv validation and testing",
+      rationale: "Very low confidence - possible spelling error or unknown term",
+      suggestions: ["comprehensive", "comprehensible", "complete"],
+      ui_metadata: {
+        confidence_level: "low",
+        has_grammar_issues: false,
+        grammar_severity: "none"
+      }
+    }
+  ],
+  statistics: {
+    totalTerms: 4,
+    validTerms: 1,
+    reviewTerms: 1,
+    criticalTerms: 0,
+    qualityScore: 65.0,
+    confidenceMin: 0.30,
+    confidenceMax: 0.95,
+    coverage: 25.0,
+    grammarScore: 85.0,
+    grammarIssues: 1,
+    spellingIssues: 1
+  },
+  grammar_analysis: {
+    text: "The cybersecurity framework implementation requires comprehensive validation and testing procedures.",
+    language: "en",
+    issues: [
+      {
+        rule: "subject_verb_agreement",
+        severity: "medium",
+        start_pos: 43,
+        end_pos: 51,
+        matched_text: "requires",
+        suggestion: "Check subject-verb agreement"
+      }
+    ],
+    grammar_score: 85.0,
+    total_issues: 1
+  }
+};
+
+export function EnhancedMainInterface({ 
+  onReturn, 
   onReturnToWelcome,
-  selectedLanguage,
-  selectedDomain,
-}) => {
-  const { toast } = useToast();
-  const { processFile, isProcessing } = useFileProcessor();
-  const { analyzeTranslation, isAnalyzing, progress } = useAnalysisEngine();
-  const { generateReport } = useReportGenerator();
-  
-  const [translationInputMethod, setTranslationInputMethod] = useState<'paste' | 'file'>('paste');
-  const [pastedTranslation, setPastedTranslation] = useState("");
+  selectedLanguage: initialLanguage = 'en',
+  selectedDomain: initialDomain = 'general'
+}: EnhancedMainInterfaceProps) {
   const [translationFile, setTranslationFile] = useState<File | null>(null);
   const [glossaryFile, setGlossaryFile] = useState<File | null>(null);
-  const [translationContent, setTranslationContent] = useState("");
-  const [glossaryContent, setGlossaryContent] = useState("");
-  const [content, setContent] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [analysisStep, setAnalysisStep] = useState('');
   const [analysisComplete, setAnalysisComplete] = useState(false);
-  
-  const [analyzedTerms, setAnalyzedTerms] = useState<AnalyzedTerm[]>([]);
-  const [statistics, setStatistics] = useState<AnalysisStatistics | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<'edit' | 'statistics' | 'data'>('edit');
+  const [engineReady, setEngineReady] = useState(true);
+  const [activeTab, setActiveTab] = useState('live');
+  const [grammarCheckingEnabled, setGrammarCheckingEnabled] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState(initialLanguage);
+  const [selectedDomain, setSelectedDomain] = useState(initialDomain);
+  const [analysisResults, setAnalysisResults] = useState<any>(null);
+  const [currentContent, setCurrentContent] = useState('The cybersecurity framework implementation requires comprehensiv validation and testing procedures.');
   
   const translationInputRef = useRef<HTMLInputElement>(null);
   const glossaryInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
-  // Language code to name mapping
-  const LANGUAGE_NAMES: Record<string, string> = {
-    'EN': 'English',
-    'ES': 'Spanish',
-    'FR': 'French',
-    'DE': 'German',
-    'IT': 'Italian',
-    'PT': 'Portuguese',
-    'RU': 'Russian',
-    'ZH': 'Chinese',
-    'JA': 'Japanese',
-    'KO': 'Korean',
+  const languages = [
+    { value: 'en', label: 'English', flag: '🇺🇸' },
+    { value: 'es', label: 'Spanish', flag: '🇪🇸' },
+    { value: 'fr', label: 'French', flag: '🇫🇷' },
+    { value: 'de', label: 'German', flag: '🇩🇪' },
+    { value: 'it', label: 'Italian', flag: '🇮🇹' },
+    { value: 'pt', label: 'Portuguese', flag: '🇵🇹' },
+    { value: 'ja', label: 'Japanese', flag: '🇯🇵' },
+    { value: 'zh', label: 'Chinese', flag: '🇨🇳' }
+  ];
+
+  const domains = [
+    { value: 'general', label: 'General', icon: '📝' },
+    { value: 'technology', label: 'Technology', icon: '💻' },
+    { value: 'medical', label: 'Medical', icon: '🏥' },
+    { value: 'legal', label: 'Legal', icon: '⚖️' },
+    { value: 'finance', label: 'Finance', icon: '💰' },
+    { value: 'academic', label: 'Academic', icon: '🎓' },
+    { value: 'marketing', label: 'Marketing', icon: '📈' },
+    { value: 'engineering', label: 'Engineering', icon: '🔧' }
+  ];
+
+  const validateFile = (file: File): boolean => {
+    const validExtensions = ['.txt', '.docx', '.json', '.csv', '.xml', '.po', '.tmx', '.xliff', '.xlf'];
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    return validExtensions.includes(fileExtension);
   };
 
-  // Enhanced language detection based on character scripts
-  const detectLanguage = (text: string): string | null => {
-    // Use a larger sample for better accuracy
-    const sampleText = text.slice(0, 1000);
-    const totalChars = sampleText.length;
-    
-    if (totalChars < 10) return null; // Too short to determine
-    
-    // Count characters by script - more comprehensive patterns
-    const japaneseChars = (sampleText.match(/[\u3040-\u309F\u30A0-\u30FF]/g) || []).length;
-    const hanChars = (sampleText.match(/[\u4E00-\u9FFF]/g) || []).length; // CJK Unified Ideographs
-    const koreanChars = (sampleText.match(/[\uAC00-\uD7AF\u1100-\u11FF]/g) || []).length;
-    const cyrillicChars = (sampleText.match(/[\u0400-\u04FF]/g) || []).length;
-    const arabicChars = (sampleText.match(/[\u0600-\u06FF]/g) || []).length;
-    const latinChars = (sampleText.match(/[A-Za-zÀ-ÿ]/g) || []).length;
-    
-    // Calculate percentages
-    const japanesePercent = (japaneseChars + hanChars) / totalChars;
-    const koreanPercent = koreanChars / totalChars;
-    const hanOnlyPercent = hanChars / totalChars;
-    const cyrillicPercent = cyrillicChars / totalChars;
-    const arabicPercent = arabicChars / totalChars;
-    const latinPercent = latinChars / totalChars;
-    
-    console.log('Language detection:', {
-      sample: sampleText.substring(0, 50),
-      japanesePercent,
-      koreanPercent,
-      hanOnlyPercent,
-      cyrillicPercent,
-      latinPercent
-    });
-    
-    // Require at least 30% of text to be in the detected script for confidence
-    const THRESHOLD = 0.3;
-    
-    // Japanese has hiragana/katakana which are unique
-    if (japaneseChars > 0 && japanesePercent > THRESHOLD) return 'JA';
-    
-    // Korean has unique hangul characters
-    if (koreanPercent > THRESHOLD) return 'KO';
-    
-    // Chinese uses only Han characters (no hiragana/katakana)
-    if (hanOnlyPercent > THRESHOLD && japaneseChars === 0) return 'ZH';
-    
-    // Russian uses Cyrillic
-    if (cyrillicPercent > THRESHOLD) return 'RU';
-    
-    // Arabic script
-    if (arabicPercent > THRESHOLD) return null; // We don't have specific language support yet
-    
-    // Latin-based languages (English, Spanish, German, French, etc.)
-    if (latinPercent > 0.5) {
-      // We can't distinguish between Latin-based languages without advanced NLP
-      // Return null to skip validation for Latin-based scripts
-      return null;
-    }
-    
-    return null; // Unable to determine with confidence
-  };
-
-  const validateLanguage = (text: string, type: 'translation' | 'glossary') => {
-    if (type === 'glossary') return true; // Skip validation for glossary
-    
-    const detectedLangCode = detectLanguage(text);
-    const expectedLangCode = selectedLanguage;
-    const expectedLangName = LANGUAGE_NAMES[expectedLangCode] || expectedLangCode;
-    
-    console.log('Validation:', { detectedLangCode, expectedLangCode, expectedLangName });
-    
-    // If we can't detect with confidence, allow it
-    if (!detectedLangCode) {
-      return true;
-    }
-    
-    // Check if detected language matches selected language
-    if (detectedLangCode !== expectedLangCode) {
-      const detectedLangName = LANGUAGE_NAMES[detectedLangCode] || detectedLangCode;
-      toast({
-        title: "Language mismatch detected",
-        description: `The provided text appears to be written in ${detectedLangName}, but you selected ${expectedLangName}.`,
-        variant: "destructive",
-      });
-      return false;
-    }
-    
-    return true;
-  };
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'translation' | 'glossary') => {
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, type: 'translation' | 'glossary') => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Check file size (limit to 50KB for translation files to avoid truncation)
-    if (type === 'translation' && file.size > 50000) {
+    if (!validateFile(file)) {
       toast({
-        title: "File too large",
-        description: "Translation files should be under 50KB to ensure accurate analysis. Please try a smaller file or use copy-paste for large texts.",
+        title: "Invalid File Type",
+        description: "Please upload a supported file format (TXT, DOCX, JSON, CSV, XML, PO, TMX, XLIFF).",
         variant: "destructive",
       });
-      return;
-    }
-
-    const result = await processFile(file, type);
-    if (!result) return;
-
-    // Validate language for translation files
-    if (type === 'translation' && !validateLanguage(result.content, type)) {
       return;
     }
 
     if (type === 'translation') {
       setTranslationFile(file);
-      setTranslationContent(result.content);
-      setContent(result.content);
+      // Load file content for demonstration
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        setCurrentContent(content);
+      };
+      reader.readAsText(file);
     } else {
       setGlossaryFile(file);
-      setGlossaryContent(result.content);
     }
+
+    toast({
+      title: "File Uploaded",
+      description: `${type} file "${file.name}" uploaded successfully.`,
+    });
   };
 
-  const handleStartAnalysis = async () => {
-    let transContent = "";
+  const runEnhancedAnalysis = async () => {
+    if (!translationFile || !glossaryFile) {
+      toast({
+        title: "Missing Files",
+        description: "Please upload both translation and glossary files.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalysisProgress(0);
+    setAnalysisComplete(false);
+
+    const steps = [
+      { message: "🔬 Analyzing semantic types and context...", duration: 3000 },
+      { message: "📝 Checking grammar and syntax...", duration: grammarCheckingEnabled ? 2500 : 1000 },
+      { message: "🎯 Validating terminology consistency...", duration: 3500 },
+      { message: "📊 Generating enhanced statistics...", duration: 2000 },
+      { message: "✨ Preparing recommendations...", duration: 1500 },
+      { message: "✅ Enhanced analysis complete", duration: 1000 }
+    ];
+
+    for (let i = 0; i < steps.length; i++) {
+      setAnalysisStep(steps[i].message);
+      setAnalysisProgress(((i + 1) / steps.length) * 100);
+      await new Promise(resolve => setTimeout(resolve, steps[i].duration));
+    }
+
+    // Set mock results for demonstration
+    setAnalysisResults(mockEnhancedAnalysisResults);
+    setIsAnalyzing(false);
+    setAnalysisComplete(true);
     
-    // Get translation content from either paste or file
-    if (translationInputMethod === 'paste') {
-      if (!pastedTranslation.trim()) {
-        toast({
-          title: "No translation text",
-          description: "Please paste your translation text",
-          variant: "destructive",
-        });
-        return;
-      }
-      transContent = pastedTranslation;
-      
-      // Check content size for paste method too
-      if (transContent.length > 15000) {
-        toast({
-          title: "Text too large",
-          description: "Please limit your translation to 15,000 characters for optimal analysis. Consider splitting it into smaller sections.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      setTranslationContent(transContent);
-      setContent(transContent);
-    } else {
-      if (!translationContent) {
-        toast({
-          title: "No translation file",
-          description: "Please upload a translation file",
-          variant: "destructive",
-        });
-        return;
-      }
-      transContent = translationContent;
-    }
-
-    // Check glossary
-    if (!glossaryContent) {
-      toast({
-        title: "No glossary",
-        description: "Please upload a glossary file",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    await startAnalysis(transContent, glossaryContent);
+    setTimeout(() => {
+      setActiveTab('results');
+    }, 1000);
+    
+    toast({
+      title: "Enhanced Analysis Complete",
+      description: `Analysis completed with ${grammarCheckingEnabled ? 'grammar checking' : 'standard checking'} for ${selectedLanguage} in ${selectedDomain} domain.`,
+    });
   };
 
-  const startAnalysis = async (transContent: string, glossContent: string) => {
-    const result = await analyzeTranslation(
-      transContent,
-      glossContent,
-      selectedLanguage,
-      selectedDomain
-    );
-
-    if (result) {
-      setAnalyzedTerms(result.terms);
-      setStatistics(result.statistics);
-      setAnalysisComplete(true);
-    }
+  const handleReanalyze = (content: string) => {
+    console.log('Re-analyzing content with enhanced engine:', content);
+    toast({
+      title: "Re-analysis Triggered",
+      description: "Content changes detected. Re-analyzing with enhanced engine...",
+    });
   };
 
-  const handleReanalyze = async (newContent: string) => {
-    console.log('Re-analyzing edited content...');
-    const result = await analyzeTranslation(
-      newContent,
-      glossaryContent,
-      selectedLanguage,
-      selectedDomain
-    );
-
-    if (result) {
-      setAnalyzedTerms(result.terms);
-      setStatistics(result.statistics);
-      setContent(newContent);
-    }
+  const getSelectedLanguageInfo = () => {
+    return languages.find(lang => lang.value === selectedLanguage);
   };
 
-  const handleExport = async (format: ReportFormat = 'json') => {
-    if (!statistics || analyzedTerms.length === 0) {
-      toast({
-        title: "No analysis data",
-        description: "Please complete an analysis first",
-        variant: "destructive",
-      });
-      return;
-    }
+  const getSelectedDomainInfo = () => {
+    return domains.find(domain => domain.value === selectedDomain);
+  };
 
-    await generateReport(analyzedTerms, statistics, format, selectedLanguage, selectedDomain);
+  const getClassificationColor = (classification: string): string => {
+    switch (classification) {
+      case 'valid':
+        return '#22c55e';
+      case 'review':
+        return '#eab308';
+      case 'critical':
+        return '#ef4444';
+      case 'spelling':
+        return '#f97316';
+      case 'grammar':
+        return '#8b5cf6';
+      default:
+        return '#6b7280';
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      {/* Header */}
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={onReturn}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-2">
+    <div className="min-h-screen bg-gradient-subtle">
+      {/* Enhanced Header */}
+      <div className="bg-card border-b border-border/40 shadow-lexiq">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-6">
+              <button
+                onClick={onReturn}
+                className="cursor-pointer transition-transform hover:scale-105"
+              >
+                <img 
+                  src={lexiqLogo} 
+                  alt="LexiQ Logo" 
+                  className="h-12 w-auto" 
+                />
+              </button>
               <img 
-                src={lexiqLogo} 
-                alt="LexiQ" 
-                className="h-8 cursor-pointer hover:opacity-80 transition-opacity" 
-                onClick={onReturnToWelcome}
-                title="Return to Welcome Screen"
+                src={middleburyLogo} 
+                alt="Middlebury Institute Logo" 
+                className="h-12 w-auto" 
               />
-              <div className="hidden sm:block">
-                <div className="text-xs text-muted-foreground">
-                  {selectedLanguage.toUpperCase()} • {selectedDomain}
-                </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              {/* Language and Domain Indicators */}
+              <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                  {getSelectedLanguageInfo()?.flag} {getSelectedLanguageInfo()?.label}
+                </Badge>
+                <Building className="h-4 w-4 text-muted-foreground" />
+                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                  {getSelectedDomainInfo()?.icon} {getSelectedDomainInfo()?.label}
+                </Badge>
               </div>
+              
+              <Badge 
+                variant="outline" 
+                className={`${engineReady ? 'bg-success/10 text-success border-success/20' : 'bg-destructive/10 text-destructive border-destructive/20'}`}
+              >
+                <Activity className="h-3 w-3 mr-1" />
+                {engineReady ? 'Enhanced Engine Ready' : 'Engine Not Ready'}
+              </Badge>
+              
+              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                Enhanced Demo
+              </Badge>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  disabled={!analysisComplete}
-                  className="gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  Download
-                  <ChevronDown className="w-3 h-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleExport('json')}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Export as JSON
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('csv')}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Export as CSV
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('html')}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Export as HTML
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
-      </header>
+      </div>
 
-      <div className="container mx-auto px-4 py-6">
-        {/* Processing Progress */}
-        {(isProcessing || isAnalyzing) && (
-          <Card className="mb-6">
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  <span className="font-medium">
-                    {isProcessing ? 'Processing files...' : 'Prepping for LQA'}
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Progress</span>
-                    <span className="text-muted-foreground">{progress}%</span>
-                  </div>
-                  <Progress value={progress} className="h-2" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Input Section */}
-        {!analysisComplete && (
-          <div className="grid lg:grid-cols-2 gap-6 mb-6">
-            {/* Translation Input */}
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Left Panel - Enhanced File Upload and Controls */}
+          <div className="lg:col-span-1 space-y-6">
+            
+            {/* Language and Domain Selection */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Type className="h-5 w-5" />
-                  Translation Input
+                <CardTitle className="flex items-center space-x-2">
+                  <Settings className="h-5 w-5 text-primary" />
+                  <span>Analysis Settings</span>
                 </CardTitle>
+                <CardDescription>
+                  Configure language and domain for enhanced analysis
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <Tabs value={translationInputMethod} onValueChange={(v) => setTranslationInputMethod(v as 'paste' | 'file')}>
-                  <TabsList className="grid w-full grid-cols-2 mb-4">
-                    <TabsTrigger value="paste" className="flex items-center gap-2">
-                      <Type className="h-4 w-4" />
-                      Paste Text
-                    </TabsTrigger>
-                    <TabsTrigger value="file" className="flex items-center gap-2">
-                      <FileUp className="h-4 w-4" />
-                      Upload File
-                    </TabsTrigger>
-                  </TabsList>
-                  
-                   <TabsContent value="paste" className="mt-0">
-                    <Textarea
-                      placeholder="Paste your translation text here..."
-                      value={pastedTranslation}
-                      onChange={(e) => setPastedTranslation(e.target.value)}
-                      onPaste={(e) => {
-                        // Validate language on paste
-                        const pastedText = e.clipboardData.getData('text');
-                        setTimeout(() => {
-                          if (pastedText && !validateLanguage(pastedText, 'translation')) {
-                            setPastedTranslation('');
-                          }
-                        }, 0);
-                      }}
-                      className="min-h-[300px] font-mono text-sm"
-                    />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {pastedTranslation.length} characters
-                    </p>
-                  </TabsContent>
-                  
-                  <TabsContent value="file" className="mt-0">
-                    <div
-                      className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all"
-                      onClick={() => translationInputRef.current?.click()}
-                    >
-                      {translationFile ? (
-                        <>
-                          <FileText className="h-12 w-12 mx-auto mb-4 text-primary" />
-                          <p className="font-medium mb-2">{translationFile.name}</p>
-                          <p className="text-xs text-success">File loaded successfully</p>
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                          <p className="font-medium mb-2">Upload Translation File</p>
-                          <p className="text-sm text-muted-foreground">
-                            Supports .txt, .docx, .pdf, .csv, .xlsx (max 50KB)
-                          </p>
-                        </>
-                      )}
-                    </div>
-                    <input
-                      ref={translationInputRef}
-                      type="file"
-                      accept=".txt,.doc,.docx,.pdf,.csv,.xlsx"
-                      className="hidden"
-                      onChange={(e) => handleFileUpload(e, 'translation')}
-                    />
-                  </TabsContent>
-                </Tabs>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="language-select">Language</Label>
+                  <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                    <SelectTrigger id="language-select">
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {languages.map((lang) => (
+                        <SelectItem key={lang.value} value={lang.value}>
+                          <div className="flex items-center gap-2">
+                            <span>{lang.flag}</span>
+                            <span>{lang.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="domain-select">Domain</Label>
+                  <Select value={selectedDomain} onValueChange={setSelectedDomain}>
+                    <SelectTrigger id="domain-select">
+                      <SelectValue placeholder="Select domain" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {domains.map((domain) => (
+                        <SelectItem key={domain.value} value={domain.value}>
+                          <div className="flex items-center gap-2">
+                            <span>{domain.icon}</span>
+                            <span>{domain.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex items-center space-x-2 pt-2">
+                  <Switch
+                    id="grammar-check"
+                    checked={grammarCheckingEnabled}
+                    onCheckedChange={setGrammarCheckingEnabled}
+                  />
+                  <Label htmlFor="grammar-check" className="flex items-center gap-2">
+                    <Zap className="h-4 w-4" />
+                    Enable Grammar Checking
+                  </Label>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Glossary Upload */}
+            {/* Translation File Upload */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Glossary File
+                <CardTitle className="flex items-center space-x-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <span>Translation File</span>
                 </CardTitle>
+                <CardDescription>
+                  Upload your translation document for enhanced analysis
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div
-                  className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all"
+                <div 
+                  className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                  onClick={() => translationInputRef.current?.click()}
+                >
+                  {translationFile ? (
+                    <>
+                      <CheckCircle className="h-8 w-8 mx-auto mb-2 text-success animate-[scale-in_0.5s_ease-out]" />
+                      <p className="text-xs text-success font-medium mb-2 animate-fade-in">File loaded successfully</p>
+                    </>
+                  ) : (
+                    <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
+                  )}
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {translationFile ? translationFile.name : 'Click to upload translation file'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Supported: TXT, DOCX, JSON, CSV, XML, PO, TMX, XLIFF
+                  </p>
+                </div>
+                <input
+                  ref={translationInputRef}
+                  type="file"
+                  accept=".txt,.docx,.json,.csv,.xml,.po,.tmx,.xliff,.xlf"
+                  className="hidden"
+                  onChange={(e) => handleFileUpload(e, 'translation')}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Glossary File Upload */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <BookOpen className="h-5 w-5 text-accent" />
+                  <span>Glossary File</span>
+                </CardTitle>
+                <CardDescription>
+                  Upload your reference glossary for validation
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div 
+                  className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-accent/50 transition-colors cursor-pointer"
                   onClick={() => glossaryInputRef.current?.click()}
                 >
                   {glossaryFile ? (
                     <>
-                      <FileText className="h-12 w-12 mx-auto mb-4 text-primary" />
-                      <p className="font-medium mb-2">{glossaryFile.name}</p>
-                      <p className="text-xs text-success">File loaded successfully</p>
+                      <CheckCircle className="h-8 w-8 mx-auto mb-2 text-success animate-[scale-in_0.5s_ease-out]" />
+                      <p className="text-xs text-success font-medium mb-2 animate-fade-in">File loaded successfully</p>
                     </>
                   ) : (
-                    <>
-                      <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <p className="font-medium mb-2">Upload Glossary</p>
-                      <p className="text-sm text-muted-foreground">
-                        Supports .txt, .csv, .xlsx, .docx, .pdf
-                      </p>
-                    </>
+                    <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
                   )}
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {glossaryFile ? glossaryFile.name : 'Click to upload glossary file'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Supported: TXT, DOCX, JSON, CSV, XML, XLSX
+                  </p>
                 </div>
                 <input
                   ref={glossaryInputRef}
                   type="file"
-                  accept=".txt,.csv,.xlsx,.doc,.docx,.pdf"
+                  accept=".txt,.docx,.json,.csv,.xml,.xlsx"
                   className="hidden"
                   onChange={(e) => handleFileUpload(e, 'glossary')}
                 />
+              </CardContent>
+            </Card>
 
-                {/* Start Analysis Button */}
-                <Button 
-                  onClick={handleStartAnalysis}
-                  disabled={isProcessing || isAnalyzing}
-                  className="w-full mt-4"
-                  size="lg"
+            {/* Enhanced Analysis Controls */}
+            <Card>
+              <CardContent className="pt-6">
+                <Button
+                  onClick={runEnhancedAnalysis}
+                  disabled={!translationFile || !glossaryFile || isAnalyzing}
+                  className="w-full bg-primary hover:bg-primary/80 text-primary-foreground font-bold py-3"
                 >
                   {isAnalyzing ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Analyzing...
+                      <Activity className="h-4 w-4 mr-2 animate-spin" />
+                      Enhanced Analysis...
                     </>
                   ) : (
-                    'Start Analysis'
+                    <>
+                      <Zap className="h-4 w-4 mr-2" />
+                      Start Enhanced QA
+                    </>
                   )}
                 </Button>
+                
+                {grammarCheckingEnabled && (
+                  <p className="text-xs text-muted-foreground mt-2 text-center">
+                    Grammar checking enabled
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
-        )}
 
-        {/* Main Analysis Interface with Tabs */}
-        {analysisComplete && (
-          <div className="space-y-4">
-            {/* Modern Tab Navigation */}
-            <div className="flex items-center gap-2 border-b">
-              <button
-                onClick={() => setActiveMainTab('edit')}
-                className={`px-6 py-3 font-medium text-sm transition-all relative ${
-                  activeMainTab === 'edit'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => setActiveMainTab('statistics')}
-                className={`px-6 py-3 font-medium text-sm transition-all relative ${
-                  activeMainTab === 'statistics'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Statistics
-              </button>
-              <button
-                onClick={() => setActiveMainTab('data')}
-                className={`px-6 py-3 font-medium text-sm transition-all relative ${
-                  activeMainTab === 'data'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Data Management
-              </button>
-            </div>
-
-            {/* Tab Content */}
-            <div className="h-[calc(100vh-250px)]">
-              {activeMainTab === 'edit' && (
-                <ResizablePanelGroup direction="horizontal" className="rounded-lg border h-full">
-                  <ResizablePanel defaultSize={50} minSize={30}>
-                    <div className="h-full p-4">
-                      <LiveAnalysisPanel
-                        content={content}
-                        flaggedTerms={analyzedTerms.map(term => ({
-                          text: term.text,
-                          start: term.startPosition,
-                          end: term.endPosition,
-                          score: term.score,
-                          hits: term.frequency,
-                          rationale: term.rationale,
-                          classification: term.classification,
-                        }))}
-                        onContentChange={setContent}
+          {/* Right Panel - Enhanced Results */}
+          <div className="lg:col-span-2">
+            <Card className="h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  <span>Enhanced Live Analysis & Insights</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                  <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="live">🔍 Enhanced Live</TabsTrigger>
+                    <TabsTrigger value="results">📊 Results</TabsTrigger>
+                    <TabsTrigger value="gatv">🛡️ GATV Analysis</TabsTrigger>
+                    <TabsTrigger value="statistics">📈 Statistics</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="live" className="mt-6">
+                    {isAnalyzing ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-center mb-6">
+                          <div className="relative">
+                            <div 
+                              className="w-16 h-16 rounded-full border-4"
+                              style={{ borderColor: 'hsl(var(--loading-circle))' }}
+                            ></div>
+                            <div 
+                              className="absolute inset-0 w-16 h-16 rounded-full border-4 border-transparent loading-flare"
+                              style={{ 
+                                borderTopColor: 'hsl(var(--loading-flare-start))',
+                                borderRightColor: 'hsl(var(--loading-flare-end))'
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Enhanced Analysis Progress</span>
+                          <span className="text-sm font-medium">{Math.round(analysisProgress)}%</span>
+                        </div>
+                        <Progress value={analysisProgress} className="h-2" />
+                        <div className="flex items-center justify-center">
+                          <span className="text-sm font-medium transition-opacity duration-300">{analysisStep}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <EnhancedLiveAnalysisPanel
+                        content={currentContent}
+                        flaggedTerms={analysisResults?.terms || []}
+                        onContentChange={setCurrentContent}
                         onReanalyze={handleReanalyze}
-                        glossaryContent={glossaryContent}
+                        grammarCheckingEnabled={grammarCheckingEnabled}
+                        onGrammarCheckingToggle={setGrammarCheckingEnabled}
+                        selectedLanguage={selectedLanguage}
+                        selectedDomain={selectedDomain}
                       />
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="results" className="mt-6">
+                    <div className="space-y-4">
+                      {analysisComplete && analysisResults ? (
+                        <>
+                          <Alert>
+                            <CheckCircle className="h-4 w-4" />
+                            <AlertDescription>
+                              Enhanced analysis completed successfully. Found {analysisResults.statistics.totalTerms} terms with {Math.round(analysisResults.statistics.qualityScore)}% quality score.
+                              {grammarCheckingEnabled && ` Grammar score: ${Math.round(analysisResults.statistics.grammarScore)}%.`}
+                            </AlertDescription>
+                          </Alert>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <Card>
+                              <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium">Valid Terms</span>
+                                  <Badge className="bg-success text-success-foreground">Valid</Badge>
+                                </div>
+                                <div className="text-2xl font-bold text-success mt-2">
+                                  {Math.round((analysisResults.statistics.validTerms / analysisResults.statistics.totalTerms) * 100)}%
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  {analysisResults.statistics.validTerms} of {analysisResults.statistics.totalTerms} terms
+                                </div>
+                              </CardContent>
+                            </Card>
+                            
+                            <Card>
+                              <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium">Review Needed</span>
+                                  <Badge variant="secondary">Review</Badge>
+                                </div>
+                                <div className="text-2xl font-bold text-yellow-600 mt-2">
+                                  {analysisResults.statistics.reviewTerms}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  Terms requiring attention
+                                </div>
+                              </CardContent>
+                            </Card>
+                            
+                            {grammarCheckingEnabled && (
+                              <Card>
+                                <CardContent className="p-4">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium">Grammar Score</span>
+                                    <Badge variant="outline" className="text-purple-600 border-purple-500">
+                                      <Zap className="h-3 w-3 mr-1" />
+                                      Grammar
+                                    </Badge>
+                                  </div>
+                                  <div className="text-2xl font-bold text-purple-600 mt-2">
+                                    {Math.round(analysisResults.statistics.grammarScore)}%
+                                  </div>
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    {analysisResults.statistics.grammarIssues} issues found
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            )}
+                          </div>
+                          
+                          {/* Enhanced Term Breakdown */}
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="text-lg">Enhanced Term Analysis</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-3">
+                                {analysisResults.terms.slice(0, 5).map((term: any, idx: number) => (
+                                  <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
+                                    <div className="flex items-center gap-3">
+                                      <Badge 
+                                        style={{ backgroundColor: getClassificationColor(term.classification) }}
+                                        className="text-white"
+                                      >
+                                        {term.classification}
+                                      </Badge>
+                                      <span className="font-medium">{term.text}</span>
+                                      {term.semantic_type?.ui_information && (
+                                        <div className="flex items-center gap-1">
+                                          <div 
+                                            className="w-3 h-3 rounded-full"
+                                            style={{ backgroundColor: term.semantic_type.ui_information.color_code }}
+                                          ></div>
+                                          <span className="text-xs text-muted-foreground">
+                                            {term.semantic_type.ui_information.display_name}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {Math.round(term.score * 100)}%
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </>
+                      ) : (
+                        <div className="text-center space-y-4 py-12">
+                          <Palette className="h-16 w-16 text-primary/50 mx-auto" />
+                          <h3 className="text-xl font-semibold text-muted-foreground">Enhanced LexiQ Analysis</h3>
+                          <p className="text-muted-foreground">
+                            Upload your files and run enhanced analysis to see detailed results with semantic types and grammar checking.
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  </ResizablePanel>
-
-                  <ResizableHandle withHandle />
-
-                  <ResizablePanel defaultSize={50} minSize={30}>
-                    <div className="h-full flex flex-col p-4 gap-4">
-                      {/* Statistics Panel - 30% */}
-                      <div className="h-[30%] overflow-hidden">
-                        {statistics && <StatisticsPanel stats={statistics} />}
-                      </div>
-
-                      {/* Term Analytics Panel - 35% with internal scroll */}
-                      <div className="h-[35%] overflow-hidden">
-                        <DataPanel
-                          data={analyzedTerms.map(term => ({
-                            id: `${term.startPosition}-${term.endPosition}`,
-                            currentTerm: term.text,
-                            targetTerm: term.suggestions?.[0] || term.text,
-                            classification: term.classification,
-                            score: term.score,
-                            frequency: term.frequency,
-                            context: term.context,
-                          }))}
-                        />
-                      </div>
-
-                      {/* QA Chat Panel - 35% */}
-                      <div className="h-[35%] overflow-hidden">
-                        <QAChatPanel 
-                          analysisContext={JSON.stringify({
-                            terms: analyzedTerms.slice(0, 10),
-                            statistics,
-                            language: selectedLanguage,
-                            domain: selectedDomain,
-                          })}
-                        />
-                      </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="gatv" className="mt-6">
+                    <div className="text-center space-y-4 py-12">
+                      <BarChart3 className="h-16 w-16 text-primary/50 mx-auto" />
+                      <h3 className="text-xl font-semibold text-muted-foreground">GATV Analysis</h3>
+                      <p className="text-muted-foreground">
+                        Advanced GATV (Grammar, Accuracy, Terminology, Validation) analysis will be displayed here after enhanced analysis completion.
+                      </p>
                     </div>
-                  </ResizablePanel>
-                </ResizablePanelGroup>
-              )}
-
-              {activeMainTab === 'statistics' && statistics && (
-                <div className="h-full overflow-auto">
-                  <EnhancedStatisticsTab statistics={statistics} />
-                </div>
-              )}
-
-              {activeMainTab === 'data' && (
-                <div className="h-full overflow-auto">
-                  <DataManagementTab terms={analyzedTerms} glossaryContent={glossaryContent} />
-                </div>
-              )}
-            </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="statistics" className="mt-6">
+                    <div className="space-y-4">
+                      {analysisResults ? (
+                        <>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <Card>
+                              <CardContent className="p-4 text-center">
+                                <div className="text-2xl font-bold text-primary">
+                                  {analysisResults.statistics.totalTerms}
+                                </div>
+                                <div className="text-sm text-muted-foreground">Total Terms</div>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-4 text-center">
+                                <div className="text-2xl font-bold text-success">
+                                  {Math.round(analysisResults.statistics.qualityScore)}%
+                                </div>
+                                <div className="text-sm text-muted-foreground">Quality Score</div>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-4 text-center">
+                                <div className="text-2xl font-bold text-blue-600">
+                                  {Math.round(analysisResults.statistics.coverage)}%
+                                </div>
+                                <div className="text-sm text-muted-foreground">Coverage</div>
+                              </CardContent>
+                            </Card>
+                            {grammarCheckingEnabled && (
+                              <Card>
+                                <CardContent className="p-4 text-center">
+                                  <div className="text-2xl font-bold text-purple-600">
+                                    {Math.round(analysisResults.statistics.grammarScore)}%
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">Grammar</div>
+                                </CardContent>
+                              </Card>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-center space-y-4 py-12">
+                          <TrendingUp className="h-16 w-16 text-primary/50 mx-auto" />
+                          <h3 className="text-xl font-semibold text-muted-foreground">Enhanced Statistics</h3>
+                          <p className="text-muted-foreground">
+                            Detailed statistics with grammar metrics and semantic type analysis will appear here after analysis.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
-};
+}
+
+export default EnhancedMainInterface;
