@@ -1,0 +1,275 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* LexiQ Brand Colors */
+    --background: 210 40% 98%;
+    --foreground: 222.2 84% 4.9%;
+    
+    /* LexiQ Primary - Cyan Blue */
+    --primary: 192 90% 50%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --primary-glow: 192 100% 70%;
+    
+    /* LexiQ Secondary - Deep Navy */
+    --secondary: 234 50% 15%;
+    --secondary-foreground: 210 40% 98%;
+    
+    /* LexiQ Accent - Bright Orange */
+    --accent: 14 90% 60%;
+    --accent-foreground: 210 40% 98%;
+    
+    /* LexiQ Chrome - Metallic */
+    --chrome: 60 8% 34%;
+    --chrome-foreground: 60 8% 92%;
+    
+    /* LexiQ Success - Green */
+    --success: 142 76% 36%;
+    --success-foreground: 210 40% 98%;
+    
+    /* LexiQ Warning - Amber */
+    --warning: 45 93% 47%;
+    --warning-foreground: 222.2 84% 4.9%;
+    
+    /* Welcome Screen Specific */
+    --welcome-bg-start: 0 0% 100%; /* #ffffff */
+    --welcome-bg-end: 0 0% 90%; /* #e6e6e6 */
+    --welcome-version-text: 0 0% 11%; /* #1c1c1c */
+    --loading-circle: 0 0% 90%; /* #e6e6e6 */
+    --loading-flare-start: 60 10% 35%; /* #757358 */
+    --loading-flare-end: 240 14% 93%; /* #edeef2 */
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-hero: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--primary)) 100%);
+    --gradient-welcome: radial-gradient(circle, hsl(var(--welcome-bg-start)) 32%, hsl(var(--welcome-bg-end)) 73%);
+    --gradient-loading-flare: radial-gradient(circle, hsl(var(--loading-flare-start)) 32%, hsl(var(--loading-flare-end)) 73%);
+    --gradient-accent: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--warning)));
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(210 40% 95%) 100%);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-float: all 2s ease-in-out infinite;
+    --transition-loading-flare: all 1s linear infinite;
+    
+    /* Shadows */
+    --shadow-lexiq: 0 10px 30px -10px hsl(var(--primary) / 0.3);
+    --shadow-glow: 0 0 40px hsl(var(--primary-glow) / 0.4);
+    --shadow-deep: 0 25px 50px -12px hsl(var(--secondary) / 0.25);
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  /* Disappearing scrollbar styles */
+  .hover-scrollbar {
+    scrollbar-width: none;
+  }
+  
+  .hover-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .hover-scrollbar:hover::-webkit-scrollbar {
+    opacity: 1;
+  }
+  
+  .hover-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .hover-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 4px;
+  }
+  
+  .hover-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+  
+  .hover-scrollbar:hover {
+    scrollbar-width: thin;
+  }
+
+  .dark {
+    /* Dark theme for LexiQ */
+    --background: 234 50% 8%;
+    --foreground: 210 40% 98%;
+
+    --card: 234 45% 12%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 234 45% 12%;
+    --popover-foreground: 210 40% 98%;
+
+    --muted: 234 40% 15%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    /* Dark gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(234 50% 8%) 0%, hsl(234 45% 12%) 100%);
+    --gradient-subtle: linear-gradient(180deg, hsl(234 50% 8%) 0%, hsl(234 45% 10%) 100%);
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Quicksand", "Skeena Indigenous", "Raavi", "CordiaUPC", "Inter", -apple-system, system-ui, sans-serif;
+  }
+
+  /* LexiQ Floating Text Animation */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    25% { transform: translateY(-10px) rotate(1deg); }
+    50% { transform: translateY(-20px) rotate(0deg); }
+    75% { transform: translateY(-10px) rotate(-1deg); }
+  }
+
+  @keyframes slideHorizontal {
+    0% { transform: translateX(-100px); }
+    100% { transform: translateX(calc(100vw + 100px)); }
+  }
+
+  @keyframes glow {
+    0%, 100% { box-shadow: 0 0 20px hsl(var(--primary) / 0.3); }
+    50% { box-shadow: 0 0 40px hsl(var(--primary) / 0.6); }
+  }
+
+  @keyframes loadingFlare {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  @keyframes typewriter {
+    0% { width: 0; }
+    100% { width: 100%; }
+  }
+
+  .floating-text {
+    animation: float var(--transition-float);
+    position: absolute;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .sliding-text {
+    animation: slideHorizontal 20s linear infinite;
+    position: absolute;
+    pointer-events: none;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  .lexiq-glow {
+    animation: glow 3s ease-in-out infinite;
+  }
+
+  .loading-flare {
+    animation: loadingFlare 1s linear infinite;
+  }
+
+  .typewriter {
+    overflow: hidden;
+    white-space: nowrap;
+    animation: typewriter 1.5s steps(40, end);
+  }
+
+  /* Custom scrollbars */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary));
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary-glow));
+  }
+  @keyframes draw-check {
+    0% {
+      stroke-dashoffset: 100;
+    }
+    100% {
+      stroke-dashoffset: 0;
+    }
+  }
+}
+
+@keyframes slide-left-to-right {
+  0% { transform: translateX(-100vw); }
+  100% { transform: translateX(100vw); }
+}
+
+@keyframes slide-right-to-left {
+  0% { transform: translateX(100vw); }
+  100% { transform: translateX(-100vw); }
+}
+
+.sliding-text {
+  animation: slide-left-to-right linear infinite;
+}
