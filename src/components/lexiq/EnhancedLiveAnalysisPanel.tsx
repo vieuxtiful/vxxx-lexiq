@@ -222,7 +222,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
     reanalyzeTimeoutRef.current = setTimeout(() => {
       console.log('Triggering enhanced re-analysis of edited content...');
       onReanalyze(content);
-    }, 2000);
+    }, 25000);
 
     return () => {
       if (reanalyzeTimeoutRef.current) {
