@@ -14,6 +14,8 @@ import {
   Globe, Building, Settings, Palette
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAnalysisEngine } from '@/hooks/useAnalysisEngine';
+import { transformAnalyzedTermsToFlagged } from '@/utils/analysisDataTransformer';
 import { EnhancedLiveAnalysisPanel } from './EnhancedLiveAnalysisPanel';
 import lexiqLogo from '@/assets/lexiq-logo.png';
 import middleburyLogo from '@/assets/middlebury-logo.png';
@@ -172,6 +174,7 @@ export function EnhancedMainInterface({
   const translationInputRef = useRef<HTMLInputElement>(null);
   const glossaryInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { analyzeTranslation, isAnalyzing: engineAnalyzing, progress: engineProgress } = useAnalysisEngine();
 
   const languages = [
     { value: 'en', label: 'English', flag: '🇺🇸' },
@@ -247,42 +250,86 @@ export function EnhancedMainInterface({
     setAnalysisProgress(0);
     setAnalysisComplete(false);
 
-    const steps = [
-      { message: "🔬 Analyzing semantic types and context...", duration: 3000 },
-      { message: "📝 Checking grammar and syntax...", duration: grammarCheckingEnabled ? 2500 : 1000 },
-      { message: "🎯 Validating terminology consistency...", duration: 3500 },
-      { message: "📊 Generating enhanced statistics...", duration: 2000 },
-      { message: "✨ Preparing recommendations...", duration: 1500 },
-      { message: "✅ Enhanced analysis complete", duration: 1000 }
-    ];
+    try {
+      // Read file contents
+      const translationContent = await translationFile.text();
+      const glossaryContent = await glossaryFile.text();
 
-    for (let i = 0; i < steps.length; i++) {
-      setAnalysisStep(steps[i].message);
-      setAnalysisProgress(((i + 1) / steps.length) * 100);
-      await new Promise(resolve => setTimeout(resolve, steps[i].duration));
+      // Show progress while analyzing
+      setAnalysisStep('🔬 Starting enhanced analysis...');
+      
+      // Call the actual analysis engine with grammar checking flag
+      const result = await analyzeTranslation(
+        translationContent,
+        glossaryContent,
+        selectedLanguage,
+        selectedDomain,
+        grammarCheckingEnabled
+      );
+
+      if (result) {
+        setAnalysisResults(result);
+        setAnalysisComplete(true);
+        setCurrentContent(translationContent);
+        setAnalysisProgress(100);
+        
+        setTimeout(() => {
+          setActiveTab('live');
+        }, 500);
+        
+        toast({
+          title: "Enhanced Analysis Complete",
+          description: `Analyzed ${result.statistics.totalTerms} terms with ${result.statistics.qualityScore.toFixed(1)}% quality score`,
+        });
+      }
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      toast({
+        title: "Analysis Failed",
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzing(false);
+      setAnalysisProgress(0);
     }
-
-    // Set mock results for demonstration
-    setAnalysisResults(mockEnhancedAnalysisResults);
-    setIsAnalyzing(false);
-    setAnalysisComplete(true);
-    
-    setTimeout(() => {
-      setActiveTab('results');
-    }, 1000);
-    
-    toast({
-      title: "Enhanced Analysis Complete",
-      description: `Analysis completed with ${grammarCheckingEnabled ? 'grammar checking' : 'standard checking'} for ${selectedLanguage} in ${selectedDomain} domain.`,
-    });
   };
 
-  const handleReanalyze = (content: string) => {
+  const handleReanalyze = async (content: string) => {
     console.log('Re-analyzing content with enhanced engine:', content);
-    toast({
-      title: "Re-analysis Triggered",
-      description: "Content changes detected. Re-analyzing with enhanced engine...",
-    });
+    
+    if (!glossaryFile) {
+      toast({
+        title: "No Glossary",
+        description: "Please upload a glossary file for re-analysis",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const glossaryContent = await glossaryFile.text();
+      
+      const result = await analyzeTranslation(
+        content,
+        glossaryContent,
+        selectedLanguage,
+        selectedDomain,
+        grammarCheckingEnabled
+      );
+
+      if (result) {
+        setAnalysisResults(result);
+        setCurrentContent(content);
+        
+        toast({
+          title: "Re-analysis Complete",
+          description: "Content re-analyzed with enhanced engine",
+        });
+      }
+    } catch (error) {
+      console.error('Re-analysis failed:', error);
+    }
   };
 
   const getSelectedLanguageInfo = () => {
@@ -584,9 +631,9 @@ export function EnhancedMainInterface({
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-muted-foreground">Enhanced Analysis Progress</span>
-                          <span className="text-sm font-medium">{Math.round(analysisProgress)}%</span>
+                          <span className="text-sm font-medium">{Math.round(engineProgress || analysisProgress)}%</span>
                         </div>
-                        <Progress value={analysisProgress} className="h-2" />
+                        <Progress value={engineProgress || analysisProgress} className="h-2" />
                         <div className="flex items-center justify-center">
                           <span className="text-sm font-medium transition-opacity duration-300">{analysisStep}</span>
                         </div>
@@ -594,7 +641,7 @@ export function EnhancedMainInterface({
                     ) : (
                       <EnhancedLiveAnalysisPanel
                         content={currentContent}
-                        flaggedTerms={analysisResults?.terms || []}
+                        flaggedTerms={analysisResults?.terms ? transformAnalyzedTermsToFlagged(analysisResults.terms) : []}
                         onContentChange={setCurrentContent}
                         onReanalyze={handleReanalyze}
                         grammarCheckingEnabled={grammarCheckingEnabled}

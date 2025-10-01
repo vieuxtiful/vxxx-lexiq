@@ -10,6 +10,7 @@ interface AnalysisRequest {
   glossaryContent: string;
   language: string;
   domain: string;
+  checkGrammar?: boolean;
 }
 
 serve(async (req) => {
@@ -18,9 +19,9 @@ serve(async (req) => {
   }
 
   try {
-    const { translationContent, glossaryContent, language, domain } = await req.json() as AnalysisRequest;
+    const { translationContent, glossaryContent, language, domain, checkGrammar = false } = await req.json() as AnalysisRequest;
 
-    console.log(`Starting analysis: language=${language}, domain=${domain}`);
+    console.log(`Starting analysis: language=${language}, domain=${domain}, checkGrammar=${checkGrammar}`);
     console.log(`Translation length: ${translationContent.length}, Glossary length: ${glossaryContent.length}`);
 
     // Validate input sizes to prevent truncation issues
@@ -37,10 +38,10 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Optimized concise prompt to reduce response size
+    // Enhanced prompt with optional grammar checking
     const prompt = `Analyze translation terminology against glossary. Return JSON only.
 
-Domain: ${domain} | Language: ${language}
+Domain: ${domain} | Language: ${language}${checkGrammar ? ' | Grammar Check: ENABLED' : ''}
 
 GLOSSARY (authoritative source):
 ${glossaryContent}
@@ -65,9 +66,20 @@ CRITICAL CLASSIFICATION RULES (MUST FOLLOW EXACTLY):
    - OR a significantly better "hot match" exists based on LLM analysis
    - These conditions are evaluated INDEPENDENTLY
 
-4. SPELLING: Obvious typos, misspellings
+4. SPELLING: Obvious typos, misspellings (dotted orange underline)
+
+${checkGrammar ? `5. GRAMMAR: Grammar issues like subject-verb agreement, tense errors, etc. (wavy purple underline)` : ''}
 
 IMPORTANT: Exact glossary matches are ALWAYS valid, regardless of potential improvements.
+
+SEMANTIC TYPE CLASSIFICATION (for ALL terms):
+Identify the semantic type of each term:
+- Entity: People, places, organizations, objects
+- Event: Actions, processes, states over time
+- Property: Attributes, qualities, characteristics
+- Concept: Abstract ideas, theories
+- Relation: Connections between entities
+- Unknown: Cannot determine
 
 JSON format - keep all fields short:
 {
@@ -75,12 +87,29 @@ JSON format - keep all fields short:
     {
       "text": "exact term text",
       "pos": [start_position, end_position],
-      "class": "valid|review|critical|spelling",
+      "class": "valid|review|critical|spelling${checkGrammar ? '|grammar' : ''}",
       "score": 0-100,
       "freq": occurrence_count,
       "ctx": "surrounding context max 50 chars",
       "note": "brief reason max 30 chars",
-      "sugg": ["glossary_term", "alternative1", "alternative2"]
+      "sugg": ["glossary_term", "alternative1", "alternative2"],
+      "sem_type": {
+        "type": "Entity|Event|Property|Concept|Relation|Unknown",
+        "conf": 0.0-1.0,
+        "ui": {
+          "cat": "entity|event|property|concept|relation|unknown",
+          "color": "#hex_color",
+          "desc": "brief description",
+          "name": "Display Name"
+        }
+      }${checkGrammar ? `,
+      "gram_issues": [
+        {
+          "rule": "rule_name",
+          "sev": "low|medium|high",
+          "sugg": "suggestion text"
+        }
+      ]` : ''}
     }
   ],
   "stats": {
@@ -89,10 +118,13 @@ JSON format - keep all fields short:
     "review": num,
     "critical": num,
     "quality": 0-100,
-    "coverage": 0-100
+    "coverage": 0-100${checkGrammar ? `,
+    "spelling": num,
+    "grammar": num` : ''}
   }
 }
 
+Color scheme: Entity=#2196F3, Event=#FF9800, Property=#4CAF50, Concept=#9C27B0, Relation=#F44336, Unknown=#757575
 For suggestions array: First item should ALWAYS be the correct glossary term if available, followed by alternatives.
 Focus on major technical terms only. Keep responses minimal.`;
 
@@ -231,18 +263,54 @@ Focus on major technical terms only. Keep responses minimal.`;
         };
       }
       
-      // Normalize term fields
-      analysisResult.terms = analysisResult.terms.map((term: any) => ({
-        text: term.text,
-        startPosition: Array.isArray(term.pos) ? term.pos[0] : term.startPosition,
-        endPosition: Array.isArray(term.pos) ? term.pos[1] : term.endPosition,
-        classification: term.class || term.classification,
-        score: term.score,
-        frequency: term.freq || term.frequency,
-        context: term.ctx || term.context,
-        rationale: term.note || term.rationale,
-        suggestions: term.sugg || term.suggestions || []
-      }));
+      // Normalize term fields with enhanced data
+      analysisResult.terms = analysisResult.terms.map((term: any) => {
+        const normalized: any = {
+          text: term.text,
+          startPosition: Array.isArray(term.pos) ? term.pos[0] : term.startPosition,
+          endPosition: Array.isArray(term.pos) ? term.pos[1] : term.endPosition,
+          classification: term.class || term.classification,
+          score: term.score,
+          frequency: term.freq || term.frequency,
+          context: term.ctx || term.context,
+          rationale: term.note || term.rationale,
+          suggestions: term.sugg || term.suggestions || []
+        };
+        
+        // Add semantic type if present
+        if (term.sem_type) {
+          normalized.semantic_type = {
+            semantic_type: term.sem_type.type,
+            confidence: term.sem_type.conf,
+            ui_information: term.sem_type.ui ? {
+              category: term.sem_type.ui.cat,
+              color_code: term.sem_type.ui.color,
+              description: term.sem_type.ui.desc,
+              display_name: term.sem_type.ui.name
+            } : undefined
+          };
+        }
+        
+        // Add grammar issues if present
+        if (term.gram_issues) {
+          normalized.grammar_issues = term.gram_issues.map((issue: any) => ({
+            rule: issue.rule,
+            severity: issue.sev,
+            suggestion: issue.sugg
+          }));
+        }
+        
+        // Add UI metadata
+        if (term.sem_type || term.gram_issues) {
+          normalized.ui_metadata = {
+            confidence_level: term.sem_type?.conf >= 0.8 ? 'high' : term.sem_type?.conf >= 0.5 ? 'medium' : 'low',
+            has_grammar_issues: !!term.gram_issues && term.gram_issues.length > 0,
+            grammar_severity: term.gram_issues?.[0]?.sev || 'none'
+          };
+        }
+        
+        return normalized;
+      });
       
     } catch (parseError) {
       console.error("Failed to parse cleaned content");

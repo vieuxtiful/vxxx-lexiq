@@ -6,12 +6,33 @@ export interface AnalyzedTerm {
   text: string;
   startPosition: number;
   endPosition: number;
-  classification: 'valid' | 'review' | 'critical' | 'spelling';
+  classification: 'valid' | 'review' | 'critical' | 'spelling' | 'grammar';
   score: number;
   frequency: number;
   context: string;
   rationale: string;
   suggestions?: string[];
+  semantic_type?: {
+    semantic_type: string;
+    confidence: number;
+    ui_information?: {
+      category: string;
+      color_code: string;
+      description: string;
+      display_name: string;
+    };
+  };
+  grammar_issues?: Array<{
+    rule: string;
+    severity: string;
+    suggestion: string;
+  }>;
+  ui_metadata?: {
+    semantic_type_info?: any;
+    confidence_level: string;
+    has_grammar_issues: boolean;
+    grammar_severity: string;
+  };
 }
 
 export interface AnalysisStatistics {
@@ -39,7 +60,8 @@ export const useAnalysisEngine = () => {
     translationContent: string,
     glossaryContent: string,
     language: string,
-    domain: string
+    domain: string,
+    checkGrammar: boolean = false
   ): Promise<AnalysisResult | null> => {
     setIsAnalyzing(true);
     setProgress(0);
@@ -63,6 +85,7 @@ export const useAnalysisEngine = () => {
           glossaryContent,
           language,
           domain,
+          checkGrammar,
         },
       });
 
