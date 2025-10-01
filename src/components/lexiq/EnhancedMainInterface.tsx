@@ -58,6 +58,8 @@ export function EnhancedMainInterface({
   const [selectedDomain] = useState(initialDomain);
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [currentContent, setCurrentContent] = useState('');
+  const [translationFileUploaded, setTranslationFileUploaded] = useState(false);
+  const [glossaryFileUploaded, setGlossaryFileUploaded] = useState(false);
   
   // Undo/Redo history
   const [history, setHistory] = useState<HistoryState[]>([]);
@@ -139,7 +141,7 @@ export function EnhancedMainInterface({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleUndo, handleRedo]);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, type: 'translation' | 'glossary') => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'translation' | 'glossary') => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -153,23 +155,45 @@ export function EnhancedMainInterface({
       return;
     }
 
+    // Additional check for translation file size (character limit)
     if (type === 'translation') {
-      setTranslationFile(file);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
+      try {
+        const content = await file.text();
+        if (content.length > 15000) {
+          toast({
+            title: "File Too Large",
+            description: `Translation text is ${content.length.toLocaleString()} characters. Please limit to 15,000 characters or split into smaller sections.`,
+            variant: "destructive",
+          });
+          return;
+        }
         setCurrentContent(content);
         addToHistory(content);
-      };
-      reader.readAsText(file);
-    } else {
-      setGlossaryFile(file);
+      } catch (error) {
+        toast({
+          title: "File Read Error",
+          description: "Could not read file content",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
-    toast({
-      title: "File Uploaded",
-      description: `${file.name} uploaded successfully.`,
-    });
+    if (type === 'translation') {
+      setTranslationFile(file);
+      setTranslationFileUploaded(true);
+      toast({
+        title: "Translation File Uploaded",
+        description: `${file.name} uploaded successfully`,
+      });
+    } else {
+      setGlossaryFile(file);
+      setGlossaryFileUploaded(true);
+      toast({
+        title: "Glossary Uploaded",
+        description: `${file.name} uploaded successfully`,
+      });
+    }
   };
 
   const runEnhancedAnalysis = async () => {
@@ -488,12 +512,15 @@ export function EnhancedMainInterface({
                             {translationFile ? translationFile.name : 'Translation File'}
                           </span>
                         </div>
-                        {translationFile ? (
+                        {translationFileUploaded ? (
                           <CheckCircle className="h-4 w-4 text-success flex-shrink-0 ml-2" />
                         ) : (
                           <Upload className="h-4 w-4 flex-shrink-0 ml-2" />
                         )}
                       </div>
+                      <p className="text-[10px] text-muted-foreground px-1">
+                        Max 15,000 characters · 20MB file size limit
+                      </p>
                       <input
                         ref={translationInputRef}
                         type="file"
@@ -512,12 +539,15 @@ export function EnhancedMainInterface({
                             {glossaryFile ? glossaryFile.name : 'Glossary File'}
                           </span>
                         </div>
-                        {glossaryFile ? (
+                        {glossaryFileUploaded ? (
                           <CheckCircle className="h-4 w-4 text-success flex-shrink-0 ml-2" />
                         ) : (
                           <Upload className="h-4 w-4 flex-shrink-0 ml-2" />
                         )}
                       </div>
+                      <p className="text-[10px] text-muted-foreground px-1">
+                        CSV or TXT format · 20MB file size limit
+                      </p>
                       <input
                         ref={glossaryInputRef}
                         type="file"

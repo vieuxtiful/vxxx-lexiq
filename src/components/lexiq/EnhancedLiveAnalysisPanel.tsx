@@ -74,6 +74,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   const [isTooltipHovered, setIsTooltipHovered] = useState(false);
   const reanalyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showSemanticTypes, setShowSemanticTypes] = useState(true);
+  const [isComposing, setIsComposing] = useState(false);
 
   // Save cursor position before any update
   const saveCursorPosition = () => {
@@ -390,7 +391,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
-              <span>Editor</span>
+              <span>Translation</span>
               <div className="flex items-center gap-2 text-xs">
                 <Badge variant="outline" className="text-blue-600 border-blue-500">
                   {selectedLanguage.toUpperCase()}
@@ -462,14 +463,14 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
             spellCheck={false}
             suppressContentEditableWarning
             onInput={(e) => {
-              if (!isEditing) return;
+              if (!isEditing || isComposing) return;
               saveCursorPosition();
-              // Better support for non-roman input (CJK, etc.)
               const newContent = e.currentTarget.textContent || '';
               onContentChange(newContent);
             }}
             onBlur={(e) => {
               setIsEditing(false);
+              setIsComposing(false);
               setTimeout(() => {
                 e.currentTarget.innerHTML = renderContentWithUnderlines();
               }, 100);
@@ -477,15 +478,17 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
             onKeyUp={saveCursorPosition}
             onClick={saveCursorPosition}
             onCompositionStart={() => {
-              // Handle composition start for non-roman scripts (CJK, etc.)
+              // Pause state updates while user composes non-roman characters
+              setIsComposing(true);
               saveCursorPosition();
             }}
             onCompositionUpdate={() => {
-              // Continuously update during IME composition
+              // Continue tracking cursor during IME composition
               saveCursorPosition();
             }}
             onCompositionEnd={(e) => {
-              // Handle composition end for non-roman scripts
+              // Commit the composed text when user selects character
+              setIsComposing(false);
               if (isEditing) {
                 const newContent = e.currentTarget.textContent || '';
                 onContentChange(newContent);
@@ -589,12 +592,16 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                     </div>
                   )}
                   
-                  {/* Suggestions */}
-                  {hoveredTerm.suggestions && hoveredTerm.suggestions.length > 0 && (
+                  {/* Suggestions - only show if different from current term */}
+                  {hoveredTerm.suggestions && hoveredTerm.suggestions.length > 0 && 
+                   hoveredTerm.suggestions.some(s => s !== hoveredTerm.text) && (
                     <div>
                       <div className="text-xs text-muted-foreground mb-1">Suggestions:</div>
                       <div className="flex flex-wrap gap-1">
-                        {hoveredTerm.suggestions.slice(0, 3).map((suggestion, idx) => (
+                        {hoveredTerm.suggestions
+                          .filter(suggestion => suggestion !== hoveredTerm.text)
+                          .slice(0, 3)
+                          .map((suggestion, idx) => (
                           <Badge key={idx} variant="secondary" className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground">
                             {suggestion}
                           </Badge>
