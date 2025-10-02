@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CheckCircle, AlertCircle, XCircle, Zap, BookOpen, Palette } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface FlaggedTerm {
   text: string;
@@ -63,6 +64,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   selectedLanguage = 'en',
   selectedDomain = 'general',
 }) => {
+  const { toast } = useToast();
   const [hoveredTerm, setHoveredTerm] = useState<(FlaggedTerm & { position: { start: number; end: number } }) | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
   const [clickedTerm, setClickedTerm] = useState<FlaggedTerm & { position: { start: number; end: number } } | null>(null);
@@ -75,6 +77,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   const reanalyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showSemanticTypes, setShowSemanticTypes] = useState(true);
   const [isComposing, setIsComposing] = useState(false);
+  const warningShownRef = useRef(false);
 
   // Save cursor position before any update
   const saveCursorPosition = () => {
@@ -162,6 +165,13 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
 
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
+      const editor = editorRef.current;
+      
+      // Enable editing mode when clicking inside the editor (not on highlights)
+      if (editor && editor.contains(target) && !target.classList.contains('term-highlight')) {
+        setIsEditing(true);
+      }
+      
       if (target.classList.contains('term-highlight') && !isEditing) {
         e.preventDefault();
         const start = parseInt(target.getAttribute('data-term-start') || '0', 10);
@@ -231,6 +241,24 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
     };
   }, [content, isEditing, onReanalyze]);
 
+  // Show warning when approaching character limit
+  useEffect(() => {
+    if (content.length >= 14000 && !warningShownRef.current) {
+      warningShownRef.current = true;
+      const remaining = 15000 - content.length;
+      toast({
+        title: "Approaching character limit",
+        description: `${remaining.toLocaleString()} characters remaining (${content.length.toLocaleString()} / 15,000)`,
+        variant: "destructive",
+      });
+    }
+    
+    // Reset warning if content goes back below threshold
+    if (content.length < 14000) {
+      warningShownRef.current = false;
+    }
+  }, [content.length, toast]);
+
   const getClassificationIcon = (classification: string) => {
     switch (classification) {
       case 'valid':
@@ -274,7 +302,11 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
 
   const renderContentWithUnderlines = () => {
     if (!content || flaggedTerms.length === 0) {
-      return content || 'Start typing or paste your text here...';
+      // Show placeholder with character limit when not editing and no content
+      if (!content && !isEditing) {
+        return '<span style="opacity: 0.5; color: #9ca3af; font-style: italic;">Start typing or paste your text here... (0 / 15,000 characters)</span>';
+      }
+      return content || '';
     }
 
     if (isEditing) {
@@ -499,6 +531,17 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
               __html: renderContentWithUnderlines()
             }}
           />
+
+          {/* Character Counter */}
+          <div className="text-xs mt-2 text-right">
+            <span className={`font-mono ${
+              content.length > 14000 ? 'text-red-600 dark:text-red-400' : 
+              content.length > 10000 ? 'text-yellow-600 dark:text-yellow-400' : 
+              'text-green-600 dark:text-green-400'
+            }`}>
+              {content.length.toLocaleString()} / 15,000 characters
+            </span>
+          </div>
 
           {/* Enhanced Hover Tooltip */}
           {hoveredTerm && tooltipPosition && !clickedTerm && (
