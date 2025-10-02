@@ -151,7 +151,7 @@ Focus on major technical terms only. Keep responses minimal.`;
             { role: "system", content: `Return only valid JSON. Be concise. No markdown. All suggestions and text content must be in the target language: ${language}.` },
             { role: "user", content: prompt }
           ],
-          max_tokens: 8000, // Limit response size to prevent truncation
+          max_tokens: 16000, // Increased limit for larger texts
         }),
       });
       clearTimeout(timeoutId);
@@ -169,13 +169,13 @@ Focus on major technical terms only. Keep responses minimal.`;
     if (!response.ok) {
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
+          JSON.stringify({ error: "Rate limit exceeded. Too many requests - please wait a moment and try again." }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: "AI credits depleted. Please add credits to continue." }),
+          JSON.stringify({ error: "AI credits depleted. Please add credits to your Lovable workspace to continue analysis." }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -234,7 +234,7 @@ Focus on major technical terms only. Keep responses minimal.`;
     // Check for truncated JSON (unterminated strings are common sign)
     if (cleanContent.length > 10000 && !cleanContent.endsWith('}')) {
       console.error("Response appears truncated - doesn't end with '}'");
-      throw new Error("AI response was truncated. Please try with smaller files or fewer terms.");
+      throw new Error(`AI response was truncated (${cleanContent.length} chars). The text may be too long. Try analyzing smaller sections (500-1000 words at a time) or simplify the glossary to reduce analysis complexity.`);
     }
     
     try {

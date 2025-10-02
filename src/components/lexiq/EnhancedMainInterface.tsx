@@ -15,7 +15,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import { 
   Upload, FileText, Play, TrendingUp, CheckCircle, 
   AlertCircle, BarChart3, Activity, BookOpen, Zap, ArrowLeft,
-  Globe, Building, Download, Undo2, Redo2, Database
+  Globe, Building, Download, Undo2, Redo2, Database, Save
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAnalysisEngine } from '@/hooks/useAnalysisEngine';
@@ -24,9 +24,9 @@ import { EnhancedLiveAnalysisPanel } from './EnhancedLiveAnalysisPanel';
 import { EnhancedStatisticsTab } from './EnhancedStatisticsTab';
 import { DataManagementTab } from './DataManagementTab';
 import { QAChatPanel } from './QAChatPanel';
+import { SaveVersionsDialog, type SavedVersion } from './SaveVersionsDialog';
 import { validateFile } from '@/utils/fileValidation';
 import lexiqLogo from '@/assets/lexiq-logo.png';
-import middleburyLogo from '@/assets/middlebury-logo.png';
 
 interface EnhancedMainInterfaceProps {
   onReturn?: () => void;
@@ -63,10 +63,15 @@ export function EnhancedMainInterface({
   const [textManuallyEntered, setTextManuallyEntered] = useState(false);
   const [showUploadIconTransition, setShowUploadIconTransition] = useState(false);
   const [noGlossaryWarningShown, setNoGlossaryWarningShown] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   // Undo/Redo history
   const [history, setHistory] = useState<HistoryState[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  
+  // Save versions
+  const [savedVersions, setSavedVersions] = useState<SavedVersion[]>([]);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
   
   const translationInputRef = useRef<HTMLInputElement>(null);
   const glossaryInputRef = useRef<HTMLInputElement>(null);
@@ -74,7 +79,7 @@ export function EnhancedMainInterface({
   const { toast } = useToast();
   const { analyzeTranslation, isAnalyzing: engineAnalyzing, progress: engineProgress } = useAnalysisEngine();
 
-  // Load saved state on mount
+  // Load saved state and versions on mount
   React.useEffect(() => {
     const savedState = localStorage.getItem('lexiq-session');
     if (savedState) {
@@ -93,6 +98,16 @@ export function EnhancedMainInterface({
         }
       } catch (error) {
         console.error('Failed to load saved state:', error);
+      }
+    }
+
+    // Load saved versions
+    const savedVersionsData = localStorage.getItem('lexiq-saved-versions');
+    if (savedVersionsData) {
+      try {
+        setSavedVersions(JSON.parse(savedVersionsData));
+      } catch (error) {
+        console.error('Failed to load saved versions:', error);
       }
     }
   }, []);
@@ -352,6 +367,7 @@ export function EnhancedMainInterface({
   const handleContentChange = (content: string) => {
     setCurrentContent(content);
     addToHistory(content);
+    setHasUnsavedChanges(true);
     
     // Detect manual text entry
     if (content.length > 0 && !textManuallyEntered) {
@@ -367,6 +383,83 @@ export function EnhancedMainInterface({
       setShowUploadIconTransition(false);
     }
   };
+
+  // Save version functionality
+  const handleSaveVersion = useCallback(() => {
+    if (!currentContent.trim()) {
+      toast({
+        title: "Cannot save",
+        description: "No content to save",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const wordCount = currentContent.trim().split(/\s+/).length;
+    const newVersion: SavedVersion = {
+      id: Date.now().toString(),
+      content: currentContent,
+      timestamp: Date.now(),
+      name: `Version ${savedVersions.length + 1}`,
+      wordCount,
+      hasAnalysis: analysisComplete,
+    };
+
+    const updatedVersions = [newVersion, ...savedVersions].slice(0, 20); // Keep max 20 versions
+    setSavedVersions(updatedVersions);
+    localStorage.setItem('lexiq-saved-versions', JSON.stringify(updatedVersions));
+    setHasUnsavedChanges(false);
+
+    toast({
+      title: "Version saved",
+      description: `Saved as "${newVersion.name}" with ${wordCount} words`,
+    });
+  }, [currentContent, savedVersions, analysisComplete, toast]);
+
+  const handleLoadVersion = useCallback((version: SavedVersion) => {
+    setCurrentContent(version.content);
+    setHasUnsavedChanges(false);
+    toast({
+      title: "Version loaded",
+      description: `Loaded "${version.name}"`,
+    });
+  }, [toast]);
+
+  const handleDeleteVersion = useCallback((id: string) => {
+    const updatedVersions = savedVersions.filter(v => v.id !== id);
+    setSavedVersions(updatedVersions);
+    localStorage.setItem('lexiq-saved-versions', JSON.stringify(updatedVersions));
+    toast({
+      title: "Version deleted",
+      description: "Version removed from history",
+    });
+  }, [savedVersions, toast]);
+
+  // Clear all data when returning to language select
+  const handleReturnToLanguageSelect = useCallback(() => {
+    if (hasUnsavedChanges && currentContent.trim()) {
+      const confirmed = window.confirm(
+        'You have unsaved changes. Are you sure you want to go back? All unsaved text and uploads will be cleared.'
+      );
+      if (!confirmed) return;
+    }
+
+    // Clear all state
+    setCurrentContent('');
+    setTranslationFile(null);
+    setGlossaryFile(null);
+    setAnalysisResults(null);
+    setAnalysisComplete(false);
+    setTranslationFileUploaded(false);
+    setGlossaryFileUploaded(false);
+    setTextManuallyEntered(false);
+    setHasUnsavedChanges(false);
+    localStorage.removeItem('lexiq-session');
+
+    if (onReturn) {
+      onReturn();
+    }
+  }, [hasUnsavedChanges, currentContent, onReturn]);
 
   const handleExport = (format: string) => {
     let content = '';
@@ -452,8 +545,9 @@ export function EnhancedMainInterface({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6">
               <button
-                onClick={onReturn}
+                onClick={onReturnToWelcome}
                 className="cursor-pointer transition-transform hover:scale-105"
+                title="Return to welcome screen"
               >
                 <img 
                   src={lexiqLogo} 
@@ -461,11 +555,6 @@ export function EnhancedMainInterface({
                   className="h-12 w-auto" 
                 />
               </button>
-              <img 
-                src={middleburyLogo} 
-                alt="Middlebury Institute Logo" 
-                className="h-12 w-auto" 
-              />
             </div>
             
             <div className="flex items-center space-x-4">
@@ -481,6 +570,27 @@ export function EnhancedMainInterface({
                 </Badge>
               </div>
               
+              {/* Save Button */}
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => setShowSaveDialog(true)}
+                disabled={!currentContent.trim()}
+              >
+                <Save className="h-4 w-4" />
+                {hasUnsavedChanges ? 'Save*' : 'Versions'}
+              </Button>
+
+              {/* Return Button */}
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={handleReturnToLanguageSelect}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Return
+              </Button>
+
               {/* Download Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -784,6 +894,20 @@ export function EnhancedMainInterface({
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Save Versions Dialog */}
+      <SaveVersionsDialog
+        open={showSaveDialog}
+        onOpenChange={setShowSaveDialog}
+        versions={savedVersions}
+        onLoadVersion={handleLoadVersion}
+        onDeleteVersion={handleDeleteVersion}
+        currentContent={currentContent}
+        onSaveNew={() => {
+          handleSaveVersion();
+          setShowSaveDialog(false);
+        }}
+      />
     </div>
   );
 }

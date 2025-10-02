@@ -76,7 +76,7 @@ export const useAnalysisEngine = () => {
 
       // Add timeout wrapper for the API call
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Analysis timeout - please try with a smaller file')), 120000); // 2 minute timeout
+        setTimeout(() => reject(new Error('Analysis timeout after 2 minutes. Please try with a smaller text (500-1000 words) or simplify your glossary.')), 120000);
       });
 
       const analysisPromise = supabase.functions.invoke('analyze-translation', {
