@@ -43,6 +43,8 @@ serve(async (req) => {
 
 Domain: ${domain} | Language: ${language}${checkGrammar ? ' | Grammar Check: ENABLED' : ''}
 
+LANGUAGE REQUIREMENT: All analysis output including suggestions, rationale, and context must be in ${language}. When providing alternatives or suggestions, ensure they are appropriate terms in ${language}, not English. Even if the glossary contains terms in multiple languages, all suggestions and recommendations must be provided in ${language}.
+
 GLOSSARY (authoritative source):
 ${glossaryContent}
 
@@ -125,7 +127,7 @@ JSON format - keep all fields short:
 }
 
 Color scheme: Entity=#2196F3, Event=#FF9800, Property=#4CAF50, Concept=#9C27B0, Relation=#F44336, Unknown=#757575
-For suggestions array: First item should ALWAYS be the correct glossary term if available, followed by alternatives.
+For suggestions array: First item should ALWAYS be the correct glossary term if available, followed by alternatives. ALL SUGGESTIONS MUST BE PROVIDED IN THE TARGET LANGUAGE (${language}).
 Focus on major technical terms only. Keep responses minimal.`;
 
     // Call Lovable AI with timeout
@@ -146,7 +148,7 @@ Focus on major technical terms only. Keep responses minimal.`;
         body: JSON.stringify({
           model: "google/gemini-2.5-flash",
           messages: [
-            { role: "system", content: "Return only valid JSON. Be concise. No markdown." },
+            { role: "system", content: `Return only valid JSON. Be concise. No markdown. All suggestions and text content must be in the target language: ${language}.` },
             { role: "user", content: prompt }
           ],
           max_tokens: 8000, // Limit response size to prevent truncation
