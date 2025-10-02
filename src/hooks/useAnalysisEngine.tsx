@@ -99,16 +99,24 @@ export const useAnalysisEngine = () => {
       if (response.error) {
         console.error('Supabase function error:', response.error);
         
-        // Try to get more detailed error information
+        // Try to extract detailed error from FunctionInvokeError
         let errorMessage = response.error.message || 'Analysis failed';
         
-        // If the error has context with more details, use that
-        if (response.error.context?.body) {
+        // Check for FunctionInvokeError context which contains the actual response
+        if (response.error.context) {
           try {
-            const errorBody = JSON.parse(response.error.context.body);
-            errorMessage = errorBody.error || errorMessage;
+            // The context contains the full error response
+            const context = response.error.context;
+            
+            // Try to parse the response body if it exists
+            if (typeof context.body === 'string') {
+              const errorBody = JSON.parse(context.body);
+              errorMessage = errorBody.error || errorMessage;
+            } else if (context.body?.error) {
+              errorMessage = context.body.error;
+            }
           } catch (e) {
-            // If we can't parse the body, use the original message
+            console.error('Failed to parse error context:', e);
           }
         }
         
