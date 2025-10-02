@@ -361,16 +361,16 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
       const color = getClassificationColor(termPos.term.classification);
       const semanticColor = showSemanticTypes ? getSemanticTypeColor(termPos.term.semantic_type) : color;
       
-      // Enhanced styling with semantic type information
+      // Enhanced styling with semantic type information (with text color)
       let underlineStyle = '';
       if (termPos.term.classification === 'grammar') {
-        underlineStyle = `border-bottom: 2px wavy ${color}; cursor: pointer; background: linear-gradient(90deg, ${color}20, ${semanticColor}20); padding: 0 2px; border-radius: 2px; display: inline;`;
+        underlineStyle = `color: ${color}; border-bottom: 2px wavy ${color}; cursor: pointer; background: linear-gradient(90deg, ${color}20, ${semanticColor}20); padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
       } else if (termPos.term.classification === 'spelling') {
-        underlineStyle = `border-bottom: 2px dotted ${color}; cursor: pointer; background-color: ${color}15; padding: 0 2px; border-radius: 2px; display: inline;`;
+        underlineStyle = `color: ${color}; border-bottom: 2px dotted ${color}; cursor: pointer; background-color: ${color}15; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
       } else if (termPos.term.classification === 'valid') {
-        underlineStyle = `border-bottom: 2px dashed ${showSemanticTypes ? semanticColor : color}; cursor: pointer; background-color: ${showSemanticTypes ? semanticColor : color}10; padding: 0 2px; border-radius: 2px; display: inline;`;
+        underlineStyle = `color: ${showSemanticTypes ? semanticColor : color}; border-bottom: 2px dashed ${showSemanticTypes ? semanticColor : color}; cursor: pointer; background-color: ${showSemanticTypes ? semanticColor : color}10; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
       } else {
-        underlineStyle = `border-bottom: 2px solid ${color}; cursor: pointer; background-color: ${color}10; padding: 0 2px; border-radius: 2px; display: inline;`;
+        underlineStyle = `color: ${color}; border-bottom: 2px solid ${color}; cursor: pointer; background-color: ${color}10; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
       }
       
       const escapedText = escapeHtml(termPos.actualText);
@@ -635,7 +635,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                     </div>
                   )}
                   
-                  {/* Suggestions - only show if different from current term */}
+                  {/* Suggestions - clickable to trigger Quick Actions */}
                   {hoveredTerm.suggestions && hoveredTerm.suggestions.length > 0 && 
                    hoveredTerm.suggestions.some(s => s !== hoveredTerm.text) && (
                     <div>
@@ -645,7 +645,21 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                           .filter(suggestion => suggestion !== hoveredTerm.text)
                           .slice(0, 3)
                           .map((suggestion, idx) => (
-                          <Badge key={idx} variant="secondary" className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground">
+                          <Badge 
+                            key={idx} 
+                            variant="secondary" 
+                            className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Auto-replace with the clicked suggestion
+                              const newContent = content.slice(0, hoveredTerm.position.start) + 
+                                               suggestion + 
+                                               content.slice(hoveredTerm.position.end);
+                              onContentChange(newContent);
+                              setHoveredTerm(null);
+                              setTooltipPosition(null);
+                            }}
+                          >
                             {suggestion}
                           </Badge>
                         ))}
