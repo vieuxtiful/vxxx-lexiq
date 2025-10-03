@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { CheckCircle, AlertCircle, XCircle, Zap, BookOpen, Palette } from 'lucide-react';
+import { CheckCircle, AlertCircle, XCircle, Zap, BookOpen, Palette, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface FlaggedTerm {
@@ -51,6 +51,7 @@ interface EnhancedLiveAnalysisPanelProps {
   onGrammarCheckingToggle?: (enabled: boolean) => void;
   selectedLanguage?: string;
   selectedDomain?: string;
+  onValidateTerm?: (term: FlaggedTerm) => void;
 }
 
 export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps> = ({
@@ -63,6 +64,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   onGrammarCheckingToggle,
   selectedLanguage = 'en',
   selectedDomain = 'general',
+  onValidateTerm,
 }) => {
   const { toast } = useToast();
   const [hoveredTerm, setHoveredTerm] = useState<(FlaggedTerm & { position: { start: number; end: number } }) | null>(null);
@@ -485,31 +487,33 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
             </div>
           </div>
           
-          {/* Enhanced Category Badges */}
-          <div className="flex gap-2 text-xs mt-2">
-            <Badge variant="outline" className="text-green-600 border-green-500 flex items-center gap-1">
-              <CheckCircle className="h-3 w-3" />
-              Valid ({categoryStats.valid})
-            </Badge>
-            <Badge variant="outline" className="text-yellow-600 border-yellow-500 flex items-center gap-1">
-              <AlertCircle className="h-3 w-3" />
-              Review ({categoryStats.review})
-            </Badge>
-            <Badge variant="outline" className="text-red-600 border-red-500 flex items-center gap-1">
-              <XCircle className="h-3 w-3" />
-              Critical ({categoryStats.critical})
-            </Badge>
-            <Badge variant="outline" className="text-orange-600 border-orange-500 flex items-center gap-1">
-              <BookOpen className="h-3 w-3" />
-              Spelling ({categoryStats.spelling})
-            </Badge>
-            {grammarCheckingEnabled && (
-              <Badge variant="outline" className="text-purple-600 border-purple-500 flex items-center gap-1">
-                <Zap className="h-3 w-3" />
-                Grammar ({categoryStats.grammar})
+          {/* Enhanced Category Badges - Hidden when Types toggle is off */}
+          {showSemanticTypes && (
+            <div className="flex gap-2 text-xs mt-2">
+              <Badge variant="outline" className="text-green-600 border-green-500 flex items-center gap-1">
+                <CheckCircle className="h-3 w-3" />
+                Valid ({categoryStats.valid})
               </Badge>
-            )}
-          </div>
+              <Badge variant="outline" className="text-yellow-600 border-yellow-500 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                Review ({categoryStats.review})
+              </Badge>
+              <Badge variant="outline" className="text-red-600 border-red-500 flex items-center gap-1">
+                <XCircle className="h-3 w-3" />
+                Critical ({categoryStats.critical})
+              </Badge>
+              <Badge variant="outline" className="text-orange-600 border-orange-500 flex items-center gap-1">
+                <BookOpen className="h-3 w-3" />
+                Spelling ({categoryStats.spelling})
+              </Badge>
+              {grammarCheckingEnabled && (
+                <Badge variant="outline" className="text-purple-600 border-purple-500 flex items-center gap-1">
+                  <Zap className="h-3 w-3" />
+                  Grammar ({categoryStats.grammar})
+                </Badge>
+              )}
+            </div>
+          )}
         </CardHeader>
         
         <CardContent className="flex-1 overflow-auto relative">
@@ -820,6 +824,29 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                           {issue.suggestion}
                         </Button>
                       ))}
+                    </div>
+                  )}
+                  
+                  {/* Validate action - only for Review terms */}
+                  {clickedTerm.classification === 'review' && onValidateTerm && (
+                    <div className="pt-2 border-t">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start text-xs h-7 text-green-600 hover:text-green-700 hover:bg-green-50"
+                        onClick={() => {
+                          onValidateTerm(clickedTerm);
+                          setClickedTerm(null);
+                          setClickPosition(null);
+                          toast({
+                            title: "Term Validated",
+                            description: `"${clickedTerm.text}" has been marked as valid.`,
+                          });
+                        }}
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        Validate
+                      </Button>
                     </div>
                   )}
                   

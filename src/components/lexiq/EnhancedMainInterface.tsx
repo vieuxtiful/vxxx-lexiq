@@ -385,6 +385,32 @@ export function EnhancedMainInterface({
     }
   };
 
+  const handleValidateTerm = (term: any) => {
+    if (!analysisResults || term.classification !== 'review') return;
+
+    // Update the term's classification from 'review' to 'valid'
+    const updatedTerms = analysisResults.terms.map((t: any) => 
+      t.text === term.text && t.classification === 'review'
+        ? { ...t, classification: 'valid' as const }
+        : t
+    );
+
+    // Update statistics
+    const updatedStats = {
+      ...analysisResults.statistics,
+      review: Math.max(0, analysisResults.statistics.review - 1),
+      valid: analysisResults.statistics.valid + 1,
+    };
+
+    setAnalysisResults({
+      ...analysisResults,
+      terms: updatedTerms,
+      statistics: updatedStats,
+    });
+
+    setHasUnsavedChanges(true);
+  };
+
   // Save version functionality
   const handleSaveVersion = useCallback(() => {
     if (!currentContent.trim()) {
@@ -827,6 +853,7 @@ export function EnhancedMainInterface({
                           onGrammarCheckingToggle={setGrammarCheckingEnabled}
                           selectedLanguage={selectedLanguage}
                           selectedDomain={selectedDomain}
+                          onValidateTerm={handleValidateTerm}
                         />
                       </div>
                     </ResizablePanel>
