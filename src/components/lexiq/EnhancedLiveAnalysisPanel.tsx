@@ -570,24 +570,30 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                   const term = flaggedTerms.find(t => t.semantic_type?.semantic_type === type);
                   const color = getSemanticTypeColor(term?.semantic_type);
                   
-                  // More robust display name logic with multiple fallbacks
-                  let displayName = type; // Default to the semantic_type itself
-
-                  if (term?.semantic_type?.ui_information?.display_name) {
+                  // Priority: 1) Classification, 2) Semantic Type, 3) Display Name
+                  let displayName = '';
+                  
+                  // First priority: Classification (Entity, Event, etc.)
+                  if (term?.semantic_type?.ui_information?.category) {
+                    displayName = term.semantic_type.ui_information.category;
+                  }
+                  // First fallback: AI's semantic type
+                  else if (type) {
+                    displayName = type;
+                  }
+                  // Second fallback: Display name
+                  else if (term?.semantic_type?.ui_information?.display_name) {
                     const rawDisplayName = term.semantic_type.ui_information.display_name;
-                    // Only use if it's a valid string and not an error message
                     if (
                       typeof rawDisplayName === 'string' && 
                       rawDisplayName.length > 0 &&
-                      !rawDisplayName.includes('[Max depth') &&
-                      !rawDisplayName.includes('_type') &&
-                      rawDisplayName !== type
+                      !rawDisplayName.includes('[Max depth')
                     ) {
                       displayName = rawDisplayName;
                     }
                   }
 
-                  // Capitalize first letter if using the fallback
+                  // Capitalize first letter
                   displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
                   
                   return (
