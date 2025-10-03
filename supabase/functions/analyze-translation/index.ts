@@ -197,9 +197,10 @@ CRITICAL FORMATTING REQUIREMENTS:
         body: JSON.stringify({
           model: "google/gemini-2.5-flash",
           messages: [
-            { role: "system", content: `Return only valid JSON. Be concise. No markdown. All suggestions and text content must be in the target language: ${language}.` },
+            { role: "system", content: `You are a JSON-only response system. OUTPUT FORMAT: Return ONLY valid, minified JSON with no extra whitespace, newlines between elements, or trailing commas. Validate that all brackets and quotes are properly closed. Do not wrap in markdown code blocks. All suggestions and text content must be in the target language: ${language}.` },
             { role: "user", content: prompt }
           ],
+          response_format: { type: "json_object" },
           max_tokens: 16000, // Increased limit for larger texts
         }),
       });
@@ -277,6 +278,18 @@ CRITICAL FORMATTING REQUIREMENTS:
       
       cleanContent = cleanContent.trim();
     }
+    
+    // SOLUTION 1: Enhanced JSON sanitization to handle malformed AI responses
+    console.log("Applying comprehensive JSON sanitization...");
+    
+    // Remove trailing commas before closing brackets/braces
+    cleanContent = cleanContent.replace(/,(\s*[}\]])/g, '$1');
+    
+    // Remove extra newlines between JSON elements
+    cleanContent = cleanContent.replace(/\n\s*\n/g, '\n');
+    
+    // Normalize whitespace around colons and commas (but preserve strings)
+    cleanContent = cleanContent.replace(/:\s+/g, ':').replace(/,\s+/g, ',');
     
     console.log(`Attempting to parse cleaned content (${cleanContent.length} chars)...`);
     
@@ -368,16 +381,94 @@ CRITICAL FORMATTING REQUIREMENTS:
       });
       
     } catch (parseError) {
-      console.error("Failed to parse cleaned content");
+      console.error("Initial parse failed, attempting aggressive cleanup...");
+      console.error("Parse error:", parseError);
       console.error("First 1000 chars:", cleanContent.substring(0, 1000));
       console.error("Last 500 chars:", cleanContent.substring(Math.max(0, cleanContent.length - 500)));
-      console.error("Parse error:", parseError);
       
-      // Provide specific guidance based on error type
-      if (parseError instanceof Error && parseError.message.includes('Unterminated')) {
-        throw new Error("Response was truncated due to size. Please use smaller files or analyze in sections.");
+      // SOLUTION 1: Fallback parsing - strip ALL newlines as last resort
+      try {
+        const aggressiveClean = cleanContent.replace(/\n/g, '').replace(/\s+/g, ' ');
+        console.log("Trying aggressive cleanup (no newlines)...");
+        analysisResult = JSON.parse(aggressiveClean);
+        console.log("Aggressive cleanup succeeded!");
+        
+        // Same normalization as above
+        if (!analysisResult.terms || !Array.isArray(analysisResult.terms)) {
+          throw new Error("Invalid response structure: missing or invalid 'terms' array");
+        }
+        
+        if (!analysisResult.stats && !analysisResult.statistics) {
+          throw new Error("Invalid response structure: missing statistics");
+        }
+        if (analysisResult.stats && !analysisResult.statistics) {
+          analysisResult.statistics = {
+            totalTerms: analysisResult.stats.total,
+            validTerms: analysisResult.stats.valid,
+            reviewTerms: analysisResult.stats.review,
+            criticalTerms: analysisResult.stats.critical,
+            qualityScore: analysisResult.stats.quality,
+            confidenceMin: 0,
+            confidenceMax: 100,
+            coverage: analysisResult.stats.coverage
+          };
+        }
+        
+        analysisResult.terms = analysisResult.terms.map((term: any) => {
+          const normalized: any = {
+            text: term.text,
+            startPosition: Array.isArray(term.pos) ? term.pos[0] : term.startPosition,
+            endPosition: Array.isArray(term.pos) ? term.pos[1] : term.endPosition,
+            classification: term.class || term.classification,
+            score: term.score,
+            frequency: term.freq || term.frequency,
+            context: term.ctx || term.context,
+            rationale: term.note || term.rationale,
+            suggestions: term.sugg || term.suggestions || []
+          };
+          
+          if (term.sem_type) {
+            normalized.semantic_type = {
+              semantic_type: String(term.sem_type.type || ''),
+              confidence: Number(term.sem_type.conf || 0),
+              ui_information: term.sem_type.ui ? {
+                category: String(term.sem_type.ui.cat || '').toLowerCase(),
+                color_code: String(term.sem_type.ui.color || '#757575'),
+                description: String(term.sem_type.ui.desc || '').substring(0, 200),
+                display_name: String(term.sem_type.ui.name || term.sem_type.type || '')
+              } : undefined
+            };
+          }
+          
+          if (term.gram_issues) {
+            normalized.grammar_issues = term.gram_issues.map((issue: any) => ({
+              rule: issue.rule,
+              severity: issue.sev,
+              suggestion: issue.sugg
+            }));
+          }
+          
+          if (term.sem_type || term.gram_issues) {
+            normalized.ui_metadata = {
+              confidence_level: term.sem_type?.conf >= 0.8 ? 'high' : term.sem_type?.conf >= 0.5 ? 'medium' : 'low',
+              has_grammar_issues: !!term.gram_issues && term.gram_issues.length > 0,
+              grammar_severity: term.gram_issues?.[0]?.sev || 'none'
+            };
+          }
+          
+          return normalized;
+        });
+        
+      } catch (secondError) {
+        // Both parsing attempts failed
+        console.error("Aggressive cleanup also failed:", secondError);
+        
+        // Provide specific guidance based on error type
+        if (parseError instanceof Error && parseError.message.includes('Unterminated')) {
+          throw new Error("Response was truncated due to size. Please use smaller files or analyze in sections.");
+        }
+        throw new Error(`JSON parse failed: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
       }
-      throw new Error(`JSON parse failed: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
     }
 
     console.log(`Analysis complete: ${analysisResult.terms.length} terms, quality score: ${analysisResult.statistics.qualityScore}`);
