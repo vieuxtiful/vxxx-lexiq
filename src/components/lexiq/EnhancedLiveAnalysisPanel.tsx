@@ -79,13 +79,17 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   const [showLegend, setShowLegend] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
   const warningShownRef = useRef(false);
+  const semanticTypesJustEnabledRef = useRef(false);
 
-  // Auto-enable legend when semantic types are enabled
+  // Auto-enable legend ONLY when semantic types are first enabled
   useEffect(() => {
-    if (showSemanticTypes && !showLegend) {
+    if (showSemanticTypes && !semanticTypesJustEnabledRef.current) {
       setShowLegend(true);
+      semanticTypesJustEnabledRef.current = true;
+    } else if (!showSemanticTypes) {
+      semanticTypesJustEnabledRef.current = false;
     }
-  }, [showSemanticTypes, showLegend]);
+  }, [showSemanticTypes]);
 
   // Save cursor position before any update
   const saveCursorPosition = () => {
@@ -565,11 +569,26 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                 )).map(type => {
                   const term = flaggedTerms.find(t => t.semantic_type?.semantic_type === type);
                   const color = getSemanticTypeColor(term?.semantic_type);
-                  const displayName = (
-                    term?.semantic_type?.ui_information?.display_name?.includes?.('[Max depth') 
-                      ? null 
-                      : term?.semantic_type?.ui_information?.display_name
-                  ) || type;
+                  
+                  // More robust display name logic with multiple fallbacks
+                  let displayName = type; // Default to the semantic_type itself
+
+                  if (term?.semantic_type?.ui_information?.display_name) {
+                    const rawDisplayName = term.semantic_type.ui_information.display_name;
+                    // Only use if it's a valid string and not an error message
+                    if (
+                      typeof rawDisplayName === 'string' && 
+                      rawDisplayName.length > 0 &&
+                      !rawDisplayName.includes('[Max depth') &&
+                      !rawDisplayName.includes('_type') &&
+                      rawDisplayName !== type
+                    ) {
+                      displayName = rawDisplayName;
+                    }
+                  }
+
+                  // Capitalize first letter if using the fallback
+                  displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
                   
                   return (
                     <div key={type} className="flex items-center gap-1">

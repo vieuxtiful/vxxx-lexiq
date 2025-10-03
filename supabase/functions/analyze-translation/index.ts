@@ -281,6 +281,8 @@ Focus on major technical terms only. Keep responses minimal.`;
         
         // Add semantic type if present
         if (term.sem_type) {
+          console.log('Raw sem_type structure:', JSON.stringify(term.sem_type, null, 2));
+          
           normalized.semantic_type = {
             semantic_type: String(term.sem_type.type || ''),
             confidence: Number(term.sem_type.conf || 0),
@@ -291,6 +293,8 @@ Focus on major technical terms only. Keep responses minimal.`;
               display_name: String(term.sem_type.ui.name || term.sem_type.type || '')
             } : undefined
           };
+          
+          console.log('Normalized semantic_type:', JSON.stringify(normalized.semantic_type, null, 2));
         }
         
         // Add grammar issues if present
