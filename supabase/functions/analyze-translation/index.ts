@@ -51,6 +51,40 @@ ${glossaryContent}
 TRANSLATION TO ANALYZE:
 ${translationContent}
 
+🔍 SPELLING DETECTION PRIORITY (FIRST PASS - HIGHEST PRIORITY):
+Before any glossary matching, scan for obvious spelling errors:
+- Check words against standard ${language} dictionaries
+- Look for common spelling patterns:
+  • Transposed letters: "recieve" → "receive", "teh" → "the"
+  • Doubled letters: "occurence" → "occurrence", "accomodate" → "accommodate"
+  • Missing letters: "enviroment" → "environment", "goverment" → "government"
+  • Extra letters: "untill" → "until", "realy" → "really"
+- Flag words that don't match glossary AND aren't valid ${language} words
+- Examples for ${language}: Common misspellings in technical/domain-specific terms
+- CRITICAL: Spelling errors take precedence over all other classifications
+
+🔄 MORPHOLOGICAL VARIANT DETECTION (SECOND PASS):
+For each glossary term, automatically check these variations:
+- CASE VARIATIONS: If glossary has "aluminum", accept "Aluminum", "ALUMINUM", "AlUmInUm" (all case forms)
+- PLURALS (English): 
+  • Regular: add -s ("aluminum" → "aluminums")
+  • -es endings: ("process" → "processes")  
+  • -ies endings: change -y to -ies ("quality" → "qualities")
+  • Irregular: ("analysis" → "analyses", "datum" → "data")
+- VERB FORMS (English):
+  • -ing form: ("anneal" → "annealing")
+  • -ed form: ("anneal" → "annealed")
+  • -s form: ("anneal" → "anneals")
+- ADJECTIVE FORMS:
+  • Comparative: -er ("hard" → "harder")
+  • Superlative: -est ("hard" → "hardest")
+
+VARIANT CLASSIFICATION RULES:
+- If glossary contains "aluminum" and translation has "aluminums" → Mark as REVIEW (not CRITICAL)
+- If glossary contains "anneal" and translation has "annealing" → Mark as REVIEW
+- Case-only variations (Aluminum vs aluminum) → Mark as VALID (exact match)
+- Flag these as "morphological variant" in the rationale
+
 CRITICAL CLASSIFICATION RULES (MUST FOLLOW EXACTLY):
 
 1. VALID (green): 
@@ -119,9 +153,12 @@ JSON format - keep all fields short:
     "valid": num,
     "review": num,
     "critical": num,
+    "spelling_errors": num,
+    "variant_matches": num,
+    "exact_matches": num,
+    "fuzzy_matches": num,
     "quality": 0-100,
     "coverage": 0-100${checkGrammar ? `,
-    "spelling": num,
     "grammar": num` : ''}
   }
 }
