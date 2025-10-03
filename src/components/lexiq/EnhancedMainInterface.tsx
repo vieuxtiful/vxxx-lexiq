@@ -38,6 +38,7 @@ interface EnhancedMainInterfaceProps {
 
 interface HistoryState {
   content: string;
+  analysisResults: any;
   timestamp: number;
 }
 
@@ -164,10 +165,11 @@ export function EnhancedMainInterface({
     { value: 'engineering', label: 'Engineering', icon: '🔧' }
   ];
 
-  // Add to history when content changes
-  const addToHistory = useCallback((content: string) => {
+  // Add to history when content or analysis changes
+  const addToHistory = useCallback((content: string, analysisResults: any = null) => {
     const newState: HistoryState = {
       content,
+      analysisResults,
       timestamp: Date.now()
     };
     
@@ -181,16 +183,20 @@ export function EnhancedMainInterface({
   // Undo function
   const handleUndo = useCallback(() => {
     if (historyIndex > 0) {
+      const previousState = history[historyIndex - 1];
       setHistoryIndex(prev => prev - 1);
-      setCurrentContent(history[historyIndex - 1].content);
+      setCurrentContent(previousState.content);
+      setAnalysisResults(previousState.analysisResults);
     }
   }, [historyIndex, history]);
 
   // Redo function
   const handleRedo = useCallback(() => {
     if (historyIndex < history.length - 1) {
+      const nextState = history[historyIndex + 1];
       setHistoryIndex(prev => prev + 1);
-      setCurrentContent(history[historyIndex + 1].content);
+      setCurrentContent(nextState.content);
+      setAnalysisResults(nextState.analysisResults);
     }
   }, [historyIndex, history]);
 
@@ -237,7 +243,7 @@ export function EnhancedMainInterface({
           return;
         }
         setCurrentContent(content);
-        addToHistory(content);
+        addToHistory(content, null);
       } catch (error) {
         toast({
           title: "File Read Error",
@@ -305,7 +311,7 @@ export function EnhancedMainInterface({
         setAnalysisComplete(true);
         setCurrentContent(translationContent);
         setAnalysisProgress(100);
-        addToHistory(translationContent);
+        addToHistory(translationContent, result);
         
         toast({
           title: "Analysis Complete",
@@ -353,7 +359,7 @@ export function EnhancedMainInterface({
       if (result) {
         setAnalysisResults(result);
         setCurrentContent(content);
-        addToHistory(content);
+        addToHistory(content, result);
         
         toast({
           title: "Re-analysis Complete",
@@ -367,7 +373,7 @@ export function EnhancedMainInterface({
 
   const handleContentChange = (content: string) => {
     setCurrentContent(content);
-    addToHistory(content);
+    addToHistory(content, analysisResults);
     setHasUnsavedChanges(true);
     
     // Detect manual text entry
@@ -402,13 +408,20 @@ export function EnhancedMainInterface({
       valid: analysisResults.statistics.valid + 1,
     };
 
-    setAnalysisResults({
+    const updatedAnalysisResults = {
       ...analysisResults,
       terms: updatedTerms,
       statistics: updatedStats,
-    });
+    };
 
+    setAnalysisResults(updatedAnalysisResults);
+    addToHistory(currentContent, updatedAnalysisResults);
     setHasUnsavedChanges(true);
+
+    toast({
+      title: "Term Validated",
+      description: "Term moved from Review to Valid",
+    });
   };
 
   // Save version functionality
