@@ -17,11 +17,44 @@ interface DataManagementTabProps {
 export const DataManagementTab: React.FC<DataManagementTabProps> = ({ terms, glossaryContent }) => {
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editedTerms, setEditedTerms] = useState<AnalyzedTerm[]>(terms);
+  
+  // Deduplicate terms by text and extract full sentence context
+  const deduplicatedTerms = React.useMemo(() => {
+    const termMap = new Map<string, AnalyzedTerm>();
+    
+    terms.forEach(term => {
+      const normalizedText = term.text.toLowerCase().trim();
+      
+      if (!termMap.has(normalizedText)) {
+        // Extract full sentence for context
+        const context = term.context || '';
+        const sentenceMatch = context.match(/[^.!?]*[.!?]/);
+        const fullSentence = sentenceMatch ? sentenceMatch[0].trim() : context;
+        
+        termMap.set(normalizedText, {
+          ...term,
+          context: fullSentence,
+          frequency: 1
+        });
+      } else {
+        // Increment frequency for duplicate terms
+        const existingTerm = termMap.get(normalizedText)!;
+        existingTerm.frequency += 1;
+      }
+    });
+    
+    return Array.from(termMap.values());
+  }, [terms]);
+  
+  const [editedTerms, setEditedTerms] = useState<AnalyzedTerm[]>(deduplicatedTerms);
   const [editValues, setEditValues] = useState<Partial<AnalyzedTerm>>({});
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
 
-  const getTermId = (term: AnalyzedTerm) => `${term.startPosition}-${term.endPosition}`;
+  React.useEffect(() => {
+    setEditedTerms(deduplicatedTerms);
+  }, [deduplicatedTerms]);
+
+  const getTermId = (term: AnalyzedTerm) => term.text.toLowerCase();
 
   const handleEditStart = (term: AnalyzedTerm) => {
     setEditingId(getTermId(term));
@@ -103,7 +136,7 @@ export const DataManagementTab: React.FC<DataManagementTabProps> = ({ terms, glo
       term.classification,
       term.score.toString(),
       term.frequency.toString(),
-      term.rationale,
+      term.context,
       term.suggestions?.join('; ') || ''
     ]);
 
