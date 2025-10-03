@@ -80,6 +80,13 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   const [isComposing, setIsComposing] = useState(false);
   const warningShownRef = useRef(false);
 
+  // Auto-enable legend when semantic types are enabled
+  useEffect(() => {
+    if (showSemanticTypes && !showLegend) {
+      setShowLegend(true);
+    }
+  }, [showSemanticTypes, showLegend]);
+
   // Save cursor position before any update
   const saveCursorPosition = () => {
     const selection = window.getSelection();
@@ -306,7 +313,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
       // Show placeholder with brush fade animation when not editing and no content
       if (!content && !isEditing) {
         const placeholderText = 'Start typing or paste your text here... (0 / 15,000 characters)';
-        return `<span class="placeholder-brush-fade" style="opacity: 0.5; color: #9ca3af; font-style: italic;">${placeholderText}</span>`;
+        return `<span class="placeholder-light-sweep" style="opacity: 0.5; color: #9ca3af;">${placeholderText}</span>`;
       }
       return content || '';
     }
@@ -447,16 +454,6 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                 <Label htmlFor="grammar-check" className="text-sm">Grammar Check</Label>
               </div>
               
-              {/* Legend Toggle */}
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="legend"
-                  checked={showLegend}
-                  onCheckedChange={setShowLegend}
-                />
-                <Label htmlFor="legend" className="text-sm">Legend</Label>
-              </div>
-              
               {/* Semantic Types Toggle */}
               <div className="flex items-center space-x-2">
                 <Switch
@@ -469,6 +466,18 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                   Types
                 </Label>
               </div>
+
+              {/* Show/Hide Legend Button - appears when Types is enabled */}
+              {showSemanticTypes && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowLegend(!showLegend)}
+                  className="h-8 text-xs"
+                >
+                  {showLegend ? 'Hide Legend' : 'Show Legend'}
+                </Button>
+              )}
             </div>
           </div>
           
@@ -548,22 +557,26 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
           <div className="text-xs mt-2 flex items-center justify-between">
             {showLegend && showSemanticTypes && (
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#3b82f6' }}></span>
-                  <span className="text-muted-foreground">Subject</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#8b5cf6' }}></span>
-                  <span className="text-muted-foreground">Verb</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#ec4899' }}></span>
-                  <span className="text-muted-foreground">Object</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#f59e0b' }}></span>
-                  <span className="text-muted-foreground">Modifier</span>
-                </div>
+                {/* Dynamically generate legend from actual flagged terms */}
+                {Array.from(new Set(
+                  flaggedTerms
+                    .filter(t => t.semantic_type?.semantic_type)
+                    .map(t => t.semantic_type!.semantic_type)
+                )).map(type => {
+                  const term = flaggedTerms.find(t => t.semantic_type?.semantic_type === type);
+                  const color = getSemanticTypeColor(term?.semantic_type);
+                  const displayName = term?.semantic_type?.ui_information?.display_name || type;
+                  
+                  return (
+                    <div key={type} className="flex items-center gap-1">
+                      <span 
+                        className="w-2 h-2 rounded-full" 
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="text-muted-foreground">{displayName}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
             <span className={`font-mono ml-auto ${

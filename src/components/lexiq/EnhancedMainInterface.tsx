@@ -815,7 +815,7 @@ export function EnhancedMainInterface({
 
                   <ResizablePanelGroup direction="vertical" className="flex-1">
                     {/* Editor Panel */}
-                    <ResizablePanel defaultSize={60} minSize={30}>
+                    <ResizablePanel defaultSize={50} minSize={30}>
                       <div className="h-full overflow-auto p-4">
                         <EnhancedLiveAnalysisPanel
                           content={currentContent}
@@ -833,7 +833,7 @@ export function EnhancedMainInterface({
                     <ResizableHandle withHandle />
 
                     {/* QA Analysis Panel */}
-                    <ResizablePanel defaultSize={50} minSize={30}>
+                    <ResizablePanel defaultSize={40} minSize={20}>
                       <div className="h-full overflow-auto p-4">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="text-lg font-semibold">QA Analysis</h3>

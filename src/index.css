@@ -175,27 +175,36 @@ All colors MUST be HSL.
     font-family: "Quicksand", "Skeena Indigenous", "Raavi", "CordiaUPC", "Inter", -apple-system, system-ui, sans-serif;
   }
 
-  /* Brush fade animation for placeholder */
-  @keyframes brush-fade {
+  /* Light sweep animation for placeholder */
+  @keyframes light-sweep {
     0% {
-      background-position: -100% 0;
+      background-position: -200% center;
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
     }
     100% {
-      background-position: 200% 0;
+      background-position: 200% center;
+      opacity: 1;
     }
   }
 
-  .placeholder-brush-fade {
-    background: linear-gradient(90deg, 
-      transparent 0%, 
-      transparent 30%,
-      rgba(255, 255, 255, 0.6) 50%,
-      transparent 70%,
-      transparent 100%
+  .placeholder-light-sweep {
+    background: linear-gradient(
+      90deg,
+      rgba(156, 163, 175, 0.5) 0%,
+      rgba(156, 163, 175, 0.5) 35%,
+      rgba(255, 255, 255, 0.9) 50%,
+      rgba(156, 163, 175, 0.5) 65%,
+      rgba(156, 163, 175, 0.5) 100%
     );
-    background-size: 200% 100%;
-    animation: brush-fade 2s ease-in-out;
-    animation-fill-mode: forwards;
+    background-size: 200% auto;
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    font-style: italic;
+    animation: light-sweep 2.5s ease-out forwards;
   }
 
   /* LexiQ Floating Text Animation */
