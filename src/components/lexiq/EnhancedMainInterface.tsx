@@ -22,6 +22,7 @@ import { useAnalysisEngine } from '@/hooks/useAnalysisEngine';
 import { transformAnalyzedTermsToFlagged } from '@/utils/analysisDataTransformer';
 import { EnhancedLiveAnalysisPanel } from './EnhancedLiveAnalysisPanel';
 import { EnhancedStatisticsTab } from './EnhancedStatisticsTab';
+import { SimplifiedStatisticsPanel } from './SimplifiedStatisticsPanel';
 import { DataManagementTab } from './DataManagementTab';
 import { QAChatPanel } from './QAChatPanel';
 import { SaveVersionsDialog, type SavedVersion } from './SaveVersionsDialog';
@@ -842,7 +843,7 @@ export function EnhancedMainInterface({
                         {analysisComplete && analysisResults ? (
                           <div className="space-y-4">
                             {/* Analysis insights and visualizations */}
-                            <EnhancedStatisticsTab statistics={analysisResults.statistics} />
+                            <SimplifiedStatisticsPanel statistics={analysisResults.statistics} />
                           </div>
                         ) : (
                           <div className="flex items-center justify-center h-full text-muted-foreground">

@@ -282,13 +282,13 @@ Focus on major technical terms only. Keep responses minimal.`;
         // Add semantic type if present
         if (term.sem_type) {
           normalized.semantic_type = {
-            semantic_type: term.sem_type.type,
-            confidence: term.sem_type.conf,
+            semantic_type: String(term.sem_type.type || ''),
+            confidence: Number(term.sem_type.conf || 0),
             ui_information: term.sem_type.ui ? {
-              category: term.sem_type.ui.cat,
-              color_code: term.sem_type.ui.color,
-              description: term.sem_type.ui.desc,
-              display_name: term.sem_type.ui.name
+              category: String(term.sem_type.ui.cat || '').toLowerCase(),
+              color_code: String(term.sem_type.ui.color || '#757575'),
+              description: String(term.sem_type.ui.desc || '').substring(0, 200),
+              display_name: String(term.sem_type.ui.name || term.sem_type.type || '')
             } : undefined
           };
         }

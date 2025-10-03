@@ -565,7 +565,11 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                 )).map(type => {
                   const term = flaggedTerms.find(t => t.semantic_type?.semantic_type === type);
                   const color = getSemanticTypeColor(term?.semantic_type);
-                  const displayName = term?.semantic_type?.ui_information?.display_name || type;
+                  const displayName = (
+                    term?.semantic_type?.ui_information?.display_name?.includes?.('[Max depth') 
+                      ? null 
+                      : term?.semantic_type?.ui_information?.display_name
+                  ) || type;
                   
                   return (
                     <div key={type} className="flex items-center gap-1">
