@@ -22,6 +22,11 @@ export const DataManagementTab: React.FC<DataManagementTabProps> = ({ terms, glo
   const deduplicatedTerms = React.useMemo(() => {
     const termMap = new Map<string, AnalyzedTerm>();
     
+    // Helper function to normalize spacing after punctuation
+    const normalizeSpacing = (text: string) => {
+      return text.replace(/([.,;:!?])(\S)/g, '$1 $2');
+    };
+    
     terms.forEach(term => {
       const normalizedText = term.text.toLowerCase().trim();
       
@@ -30,10 +35,11 @@ export const DataManagementTab: React.FC<DataManagementTabProps> = ({ terms, glo
         const context = term.context || '';
         const sentenceMatch = context.match(/[^.!?]*[.!?]/);
         const fullSentence = sentenceMatch ? sentenceMatch[0].trim() : context;
+        const normalizedContext = normalizeSpacing(fullSentence);
         
         termMap.set(normalizedText, {
           ...term,
-          context: fullSentence,
+          context: normalizedContext,
           frequency: 1
         });
       } else {
