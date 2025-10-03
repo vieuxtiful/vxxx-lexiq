@@ -677,7 +677,12 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                           style={{ backgroundColor: hoveredTerm.semantic_type.ui_information.color_code }}
                         ></div>
                         <span className="text-sm font-medium">
-                          {hoveredTerm.semantic_type.ui_information.display_name}
+                          {/* Priority: 1) Classification, 2) Semantic Type, 3) Display Name */}
+                          {hoveredTerm.semantic_type.ui_information.category 
+                            ? hoveredTerm.semantic_type.ui_information.category.charAt(0).toUpperCase() + hoveredTerm.semantic_type.ui_information.category.slice(1).toLowerCase()
+                            : hoveredTerm.semantic_type.semantic_type 
+                              ? hoveredTerm.semantic_type.semantic_type.charAt(0).toUpperCase() + hoveredTerm.semantic_type.semantic_type.slice(1).toLowerCase()
+                              : hoveredTerm.semantic_type.ui_information.display_name}
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
