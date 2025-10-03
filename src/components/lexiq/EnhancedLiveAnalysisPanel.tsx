@@ -79,6 +79,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   const reanalyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showSemanticTypes, setShowSemanticTypes] = useState(true);
   const [showLegend, setShowLegend] = useState(false);
+  const [showTermStatus, setShowTermStatus] = useState(true);
   const [isComposing, setIsComposing] = useState(false);
   const warningShownRef = useRef(false);
   const semanticTypesJustEnabledRef = useRef(false);
@@ -437,17 +438,28 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
       <Card className="h-full flex flex-col">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <span>Translation</span>
-              <div className="flex items-center gap-2 text-xs">
-                <Badge variant="outline" className="text-blue-600 border-blue-500">
-                  {selectedLanguage.toUpperCase()}
-                </Badge>
-                <Badge variant="outline" className="text-purple-600 border-purple-500">
-                  {selectedDomain}
-                </Badge>
-              </div>
-            </CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <span>Translation</span>
+                <div className="flex items-center gap-2 text-xs">
+                  <Badge variant="outline" className="text-blue-600 border-blue-500">
+                    {selectedLanguage.toUpperCase()}
+                  </Badge>
+                  <Badge variant="outline" className="text-purple-600 border-purple-500">
+                    {selectedDomain}
+                  </Badge>
+                </div>
+              </CardTitle>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowTermStatus(!showTermStatus)}
+                className="h-6 text-xs text-muted-foreground hover:text-foreground px-2"
+              >
+                {showTermStatus ? 'Hide Term Status' : 'Show Term Status'}
+              </Button>
+            </div>
             
             <div className="flex items-center gap-4">
               {/* Grammar Checking Toggle */}
@@ -487,8 +499,8 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
             </div>
           </div>
           
-          {/* Enhanced Category Badges - Hidden when Types toggle is off */}
-          {showSemanticTypes && (
+          {/* Enhanced Category Badges - Shown/hidden via Term Status toggle */}
+          {showTermStatus && (
             <div className="flex gap-2 text-xs mt-2">
               <Badge variant="outline" className="text-green-600 border-green-500 flex items-center gap-1">
                 <CheckCircle className="h-3 w-3" />
