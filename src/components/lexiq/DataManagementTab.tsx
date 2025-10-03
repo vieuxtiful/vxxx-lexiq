@@ -342,8 +342,16 @@ export const DataManagementTab: React.FC<DataManagementTabProps> = ({ terms, glo
                           )}
                         </TableCell>
                         <TableCell className="text-right font-mono">{term.frequency}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground truncate max-w-[250px]">
-                          {term.context}
+                        <TableCell className="text-sm max-w-[250px]">
+                          {editingId === termId ? (
+                            <Input
+                              value={editValues.context || ''}
+                              onChange={(e) => setEditValues(prev => ({ ...prev, context: e.target.value }))}
+                              className="h-8 w-full"
+                            />
+                          ) : (
+                            <span className="text-muted-foreground truncate block">{term.context}</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           {editingId === termId ? (
