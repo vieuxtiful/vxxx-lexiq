@@ -356,8 +356,15 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
       }
     });
 
-    // Sort by start position and remove overlapping terms
-    const sortedTerms = [...foundTermPositions].sort((a, b) => a.start - b.start);
+    // Sort by start position, then by length (longest first) to prioritize longer matches
+    const sortedTerms = [...foundTermPositions].sort((a, b) => {
+      if (a.start === b.start) {
+        return (b.end - b.start) - (a.end - a.start); // Longer terms first when starting at same position
+      }
+      return a.start - b.start;
+    });
+    
+    // Remove overlapping terms, keeping the longest at each position
     const nonOverlappingTerms = sortedTerms.filter((termPos, index) => {
       if (index === 0) return true;
       const prevTermPos = sortedTerms[index - 1];
