@@ -815,7 +815,7 @@ export function EnhancedMainInterface({
 
                   <ResizablePanelGroup direction="vertical" className="flex-1">
                     {/* Editor Panel */}
-                    <ResizablePanel defaultSize={50} minSize={30}>
+                    <ResizablePanel defaultSize={60} minSize={30}>
                       <div className="h-full overflow-auto p-4">
                         <EnhancedLiveAnalysisPanel
                           content={currentContent}

@@ -175,6 +175,29 @@ All colors MUST be HSL.
     font-family: "Quicksand", "Skeena Indigenous", "Raavi", "CordiaUPC", "Inter", -apple-system, system-ui, sans-serif;
   }
 
+  /* Brush fade animation for placeholder */
+  @keyframes brush-fade {
+    0% {
+      background-position: -100% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .placeholder-brush-fade {
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      transparent 30%,
+      rgba(255, 255, 255, 0.6) 50%,
+      transparent 70%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: brush-fade 2s ease-in-out;
+    animation-fill-mode: forwards;
+  }
+
   /* LexiQ Floating Text Animation */
   @keyframes float {
     0%, 100% { transform: translateY(0px) rotate(0deg); }

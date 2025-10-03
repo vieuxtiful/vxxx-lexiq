@@ -76,6 +76,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   const [isTooltipHovered, setIsTooltipHovered] = useState(false);
   const reanalyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showSemanticTypes, setShowSemanticTypes] = useState(true);
+  const [showLegend, setShowLegend] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
   const warningShownRef = useRef(false);
 
@@ -302,9 +303,10 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
 
   const renderContentWithUnderlines = () => {
     if (!content || flaggedTerms.length === 0) {
-      // Show placeholder with character limit when not editing and no content
+      // Show placeholder with brush fade animation when not editing and no content
       if (!content && !isEditing) {
-        return '<span style="opacity: 0.5; color: #9ca3af; font-style: italic;">Start typing or paste your text here... (0 / 15,000 characters)</span>';
+        const placeholderText = 'Start typing or paste your text here... (0 / 15,000 characters)';
+        return `<span class="placeholder-brush-fade" style="opacity: 0.5; color: #9ca3af; font-style: italic;">${placeholderText}</span>`;
       }
       return content || '';
     }
@@ -445,6 +447,16 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                 <Label htmlFor="grammar-check" className="text-sm">Grammar Check</Label>
               </div>
               
+              {/* Legend Toggle */}
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="legend"
+                  checked={showLegend}
+                  onCheckedChange={setShowLegend}
+                />
+                <Label htmlFor="legend" className="text-sm">Legend</Label>
+              </div>
+              
               {/* Semantic Types Toggle */}
               <div className="flex items-center space-x-2">
                 <Switch
@@ -532,9 +544,29 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
             }}
           />
 
-          {/* Character Counter */}
-          <div className="text-xs mt-2 text-right">
-            <span className={`font-mono ${
+          {/* Character Counter and Legend */}
+          <div className="text-xs mt-2 flex items-center justify-between">
+            {showLegend && showSemanticTypes && (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#3b82f6' }}></span>
+                  <span className="text-muted-foreground">Subject</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#8b5cf6' }}></span>
+                  <span className="text-muted-foreground">Verb</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#ec4899' }}></span>
+                  <span className="text-muted-foreground">Object</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#f59e0b' }}></span>
+                  <span className="text-muted-foreground">Modifier</span>
+                </div>
+              </div>
+            )}
+            <span className={`font-mono ml-auto ${
               content.length > 14000 ? 'text-red-600 dark:text-red-400' : 
               content.length > 10000 ? 'text-yellow-600 dark:text-yellow-400' : 
               'text-green-600 dark:text-green-400'
