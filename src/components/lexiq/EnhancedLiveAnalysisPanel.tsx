@@ -308,18 +308,11 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
     }
   };
 
-  const SEMANTIC_TYPE_COLORS: Record<string, string> = {
-    'Entity': '#2196F3',
-    'Event': '#FF9800',
-    'Property': '#4CAF50',
-    'Concept': '#9C27B0',
-    'Relation': '#F44336',
-    'Unknown': '#757575'
-  };
-
   const getSemanticTypeColor = (semanticType?: any) => {
-    const typeName = semanticType?.semantic_type || semanticType?.category?.name;
-    return SEMANTIC_TYPE_COLORS[typeName] || '#6b7280';
+    if (!semanticType?.ui_information?.color_code) {
+      return '#6b7280';
+    }
+    return semanticType.ui_information.color_code;
   };
 
   const renderContentWithUnderlines = () => {

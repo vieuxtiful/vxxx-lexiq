@@ -142,9 +142,9 @@ JSON format - keep all fields short:
         "conf": 0.0-1.0,
         "ui": {
           "cat": "entity|event|property|concept|relation|unknown",
-          "color": "#hex_color",
+          "color": "MUST BE SIMPLE STRING: #2196F3 for Entity, #FF9800 for Event, #4CAF50 for Property, #9C27B0 for Concept, #F44336 for Relation, #757575 for Unknown",
           "desc": "brief description",
-          "name": "Display Name"
+          "name": "MUST BE SIMPLE STRING: Entity|Event|Property|Concept|Relation|Unknown"
         }
       }${checkGrammar ? `,
       "gram_issues": [
@@ -171,9 +171,13 @@ JSON format - keep all fields short:
   }
 }
 
-Color scheme: Entity=#2196F3, Event=#FF9800, Property=#4CAF50, Concept=#9C27B0, Relation=#F44336, Unknown=#757575
-For suggestions array: First item should ALWAYS be the correct glossary term if available, followed by alternatives. ALL SUGGESTIONS MUST BE PROVIDED IN THE TARGET LANGUAGE (${language}).
-CRITICAL: Analyze ALL terms that match or are similar to glossary entries. Do not skip terms even if they appear correct in context. Return minimal JSON structure but comprehensive term coverage.`;
+CRITICAL FORMATTING REQUIREMENTS:
+1. Keep JSON FLAT - do not create deeply nested objects
+2. For "color" field: Use ONLY the hex color string directly (e.g., "#2196F3"), NOT an object
+3. For "name" field: Use ONLY the semantic type name as a string (e.g., "Entity"), NOT an object
+4. Color scheme mapping: Entity=#2196F3, Event=#FF9800, Property=#4CAF50, Concept=#9C27B0, Relation=#F44336, Unknown=#757575
+5. For suggestions array: First item should ALWAYS be the correct glossary term if available, followed by alternatives. ALL SUGGESTIONS MUST BE PROVIDED IN THE TARGET LANGUAGE (${language}).
+6. CRITICAL: Analyze ALL terms that match or are similar to glossary entries. Do not skip terms even if they appear correct in context. Return minimal JSON structure but comprehensive term coverage.`;
 
     // Call Lovable AI with timeout
     const controller = new AbortController();
