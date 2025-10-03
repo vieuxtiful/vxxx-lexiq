@@ -204,6 +204,7 @@ All colors MUST be HSL.
     -webkit-background-clip: text;
     background-clip: text;
     font-style: italic;
+    font-style: italic;
     animation: light-sweep 2.5s ease-out forwards;
   }
 

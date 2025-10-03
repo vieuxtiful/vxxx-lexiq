@@ -467,8 +467,8 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                 </Label>
               </div>
 
-              {/* Show/Hide Legend Button - appears when Types is enabled */}
-              {showSemanticTypes && (
+              {/* Show/Hide Legend Button - appears when Types is enabled AND analysis has been performed */}
+              {showSemanticTypes && flaggedTerms.length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
