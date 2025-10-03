@@ -48,6 +48,14 @@ LANGUAGE REQUIREMENT: All analysis output including suggestions, rationale, and 
 GLOSSARY (authoritative source):
 ${glossaryContent}
 
+DETECTION REQUIREMENT: For EVERY term in the glossary above, scan the translation and identify ALL occurrences, including:
+- Exact matches (mark as VALID)
+- Morphological variants (mark as REVIEW)
+- Similar but incorrect terms (mark as CRITICAL)
+- Terms with spelling errors (mark as SPELLING)
+
+Do not skip any glossary term even if it appears correctly used in context. Provide comprehensive coverage of all glossary terms present in the translation.
+
 TRANSLATION TO ANALYZE:
 ${translationContent}
 
@@ -165,7 +173,7 @@ JSON format - keep all fields short:
 
 Color scheme: Entity=#2196F3, Event=#FF9800, Property=#4CAF50, Concept=#9C27B0, Relation=#F44336, Unknown=#757575
 For suggestions array: First item should ALWAYS be the correct glossary term if available, followed by alternatives. ALL SUGGESTIONS MUST BE PROVIDED IN THE TARGET LANGUAGE (${language}).
-Focus on major technical terms only. Keep responses minimal.`;
+CRITICAL: Analyze ALL terms that match or are similar to glossary entries. Do not skip terms even if they appear correct in context. Return minimal JSON structure but comprehensive term coverage.`;
 
     // Call Lovable AI with timeout
     const controller = new AbortController();
