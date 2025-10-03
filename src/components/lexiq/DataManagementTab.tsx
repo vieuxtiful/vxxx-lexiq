@@ -4,10 +4,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Database, Download, Edit2, Save, X, Plus, Trash2 } from 'lucide-react';
+import { Database, Download, Edit2, Save as SaveIcon, X, Plus, Trash2 } from 'lucide-react';
 import { AnalyzedTerm } from '@/hooks/useAnalysisEngine';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useEditedTerms } from '@/hooks/useEditedTerms';
 
 interface DataManagementTabProps {
   terms: AnalyzedTerm[];
@@ -17,48 +18,9 @@ interface DataManagementTabProps {
 export const DataManagementTab: React.FC<DataManagementTabProps> = ({ terms, glossaryContent }) => {
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
-  
-  // Deduplicate terms by text and extract full sentence context
-  const deduplicatedTerms = React.useMemo(() => {
-    const termMap = new Map<string, AnalyzedTerm>();
-    
-    // Helper function to normalize spacing after punctuation
-    const normalizeSpacing = (text: string) => {
-      return text.replace(/([.,;:!?])(\S)/g, '$1 $2');
-    };
-    
-    terms.forEach(term => {
-      const normalizedText = term.text.toLowerCase().trim();
-      
-      if (!termMap.has(normalizedText)) {
-        // Extract full sentence for context
-        const context = term.context || '';
-        const sentenceMatch = context.match(/[^.!?]*[.!?]/);
-        const fullSentence = sentenceMatch ? sentenceMatch[0].trim() : context;
-        const normalizedContext = normalizeSpacing(fullSentence);
-        
-        termMap.set(normalizedText, {
-          ...term,
-          context: normalizedContext,
-          frequency: 1
-        });
-      } else {
-        // Increment frequency for duplicate terms
-        const existingTerm = termMap.get(normalizedText)!;
-        existingTerm.frequency += 1;
-      }
-    });
-    
-    return Array.from(termMap.values());
-  }, [terms]);
-  
-  const [editedTerms, setEditedTerms] = useState<AnalyzedTerm[]>(deduplicatedTerms);
+  const { editedTerms, setEditedTerms } = useEditedTerms(terms);
   const [editValues, setEditValues] = useState<Partial<AnalyzedTerm>>({});
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-
-  React.useEffect(() => {
-    setEditedTerms(deduplicatedTerms);
-  }, [deduplicatedTerms]);
 
   const getTermId = (term: AnalyzedTerm) => term.text.toLowerCase();
 
@@ -363,7 +325,7 @@ export const DataManagementTab: React.FC<DataManagementTabProps> = ({ terms, glo
                           {editingId === termId ? (
                             <div className="flex items-center justify-end gap-1">
                               <Button size="sm" variant="ghost" onClick={handleEditSave} className="h-8 w-8 p-0">
-                                <Save className="h-4 w-4" />
+                                <SaveIcon className="h-4 w-4" />
                               </Button>
                               <Button size="sm" variant="ghost" onClick={handleEditCancel} className="h-8 w-8 p-0">
                                 <X className="h-4 w-4" />
