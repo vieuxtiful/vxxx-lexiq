@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FloatingBackground } from '@/components/lexiq/FloatingBackground';
 import lexiqLogo from '@/assets/lexiq-logo.png';
 
 const Auth = () => {
@@ -52,14 +53,24 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <img src={lexiqLogo} alt="LexiQ Logo" className="h-16" />
+    <div className="min-h-screen relative overflow-hidden" style={{ background: 'var(--gradient-welcome)' }}>
+      {/* Animated floating background */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <FloatingBackground />
+      </div>
+      
+      {/* Auth content */}
+      <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
+        <div className="animate-fade-in">
+          <Card className="w-full max-w-md shadow-lexiq border-border/40 backdrop-blur-sm bg-card/95">
+        <CardHeader className="text-center space-y-4">
+          <div className="flex justify-center mb-2">
+            <img src={lexiqLogo} alt="LexiQ Logo" className="h-16 hover-scale" />
           </div>
-          <CardTitle className="text-2xl">Welcome to LexiQ</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
+            Welcome to LexiQ
+          </CardTitle>
+          <CardDescription className="text-base">
             Enterprise Translation Quality Assurance Platform
           </CardDescription>
         </CardHeader>
@@ -143,6 +154,8 @@ const Auth = () => {
           </Tabs>
         </CardContent>
       </Card>
+        </div>
+      </div>
     </div>
   );
 };
