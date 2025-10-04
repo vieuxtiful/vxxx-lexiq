@@ -25,10 +25,10 @@ serve(async (req) => {
     console.log(`Translation length: ${translationContent.length}, Glossary length: ${glossaryContent.length}`);
 
     // Validate input sizes to prevent truncation issues
-    if (translationContent.length > 8000) {
+    if (translationContent.length > 5000) {
       console.error(`Translation too large: ${translationContent.length} characters`);
       return new Response(
-        JSON.stringify({ error: "Translation text is too large. Please limit to 8,000 characters or use chunking for larger files." }),
+        JSON.stringify({ error: "Translation text is too large. Please use chunking for files over 5,000 characters." }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -125,35 +125,29 @@ Identify the semantic type of each term:
 - Relation: Connections between entities
 - Unknown: Cannot determine
 
-JSON format - keep all fields short:
+JSON format - keep all fields short and minimal:
 {
   "terms": [
     {
-      "text": "exact term text",
-      "pos": [start_position, end_position],
+      "text": "exact term",
+      "pos": [start, end],
       "class": "valid|review|critical|spelling${checkGrammar ? '|grammar' : ''}",
       "score": 0-100,
-      "freq": occurrence_count,
-      "ctx": "surrounding context max 50 chars",
-      "note": "brief reason max 30 chars",
-      "sugg": ["glossary_term", "alternative1", "alternative2"],
+      "freq": count,
+      "ctx": "context (max 40 chars)",
+      "note": "reason (max 25 chars)",
+      "sugg": ["term1", "term2"],
       "sem_type": {
         "type": "Entity|Event|Property|Concept|Relation|Unknown",
         "conf": 0.0-1.0,
         "ui": {
           "cat": "entity|event|property|concept|relation|unknown",
-          "color": "MUST BE SIMPLE STRING: #2196F3 for Entity, #FF9800 for Event, #4CAF50 for Property, #9C27B0 for Concept, #F44336 for Relation, #757575 for Unknown",
-          "desc": "brief description",
-          "name": "MUST BE SIMPLE STRING: Entity|Event|Property|Concept|Relation|Unknown"
+          "color": "#2196F3|#FF9800|#4CAF50|#9C27B0|#F44336|#757575",
+          "desc": "brief desc",
+          "name": "Entity|Event|Property|Concept|Relation|Unknown"
         }
       }${checkGrammar ? `,
-      "gram_issues": [
-        {
-          "rule": "rule_name",
-          "sev": "low|medium|high",
-          "sugg": "suggestion text"
-        }
-      ]` : ''}
+      "gram_issues": [{"rule": "name", "sev": "low|medium|high", "sugg": "fix"}]` : ''}
     }
   ],
   "stats": {
@@ -162,22 +156,13 @@ JSON format - keep all fields short:
     "review": num,
     "critical": num,
     "spelling_errors": num,
-    "variant_matches": num,
-    "exact_matches": num,
-    "fuzzy_matches": num,
     "quality": 0-100,
     "coverage": 0-100${checkGrammar ? `,
     "grammar": num` : ''}
   }
 }
 
-CRITICAL FORMATTING REQUIREMENTS:
-1. Keep JSON FLAT - do not create deeply nested objects
-2. For "color" field: Use ONLY the hex color string directly (e.g., "#2196F3"), NOT an object
-3. For "name" field: Use ONLY the semantic type name as a string (e.g., "Entity"), NOT an object
-4. Color scheme mapping: Entity=#2196F3, Event=#FF9800, Property=#4CAF50, Concept=#9C27B0, Relation=#F44336, Unknown=#757575
-5. For suggestions array: First item should ALWAYS be the correct glossary term if available, followed by alternatives. ALL SUGGESTIONS MUST BE PROVIDED IN THE TARGET LANGUAGE (${language}).
-6. CRITICAL: Analyze ALL terms that match or are similar to glossary entries. Do not skip terms even if they appear correct in context. Return minimal JSON structure but comprehensive term coverage.`;
+CRITICAL: Keep response COMPACT. Focus on IMPORTANT terms only. Limit rationale/context strings. ALL text in ${language}.`;
 
     // Call Lovable AI with timeout
     const controller = new AbortController();
@@ -197,11 +182,11 @@ CRITICAL FORMATTING REQUIREMENTS:
         body: JSON.stringify({
           model: "google/gemini-2.5-flash",
           messages: [
-            { role: "system", content: `You are a JSON-only response system. OUTPUT FORMAT: Return ONLY valid, minified JSON with no extra whitespace, newlines between elements, or trailing commas. Validate that all brackets and quotes are properly closed. Do not wrap in markdown code blocks. All suggestions and text content must be in the target language: ${language}.` },
+            { role: "system", content: `You are a JSON-only system. Return ONLY compact, minified JSON. No markdown, no extra whitespace. Keep all text fields brief. All content in ${language}.` },
             { role: "user", content: prompt }
           ],
           response_format: { type: "json_object" },
-          max_tokens: 32000, // Increased for detailed analysis
+          max_tokens: 50000,
         }),
       });
       clearTimeout(timeoutId);

@@ -19,8 +19,8 @@ export interface TextChunk {
  */
 export const chunkText = (
   text: string,
-  maxChunkSize: number = 6000,
-  overlapSize: number = 200
+  maxChunkSize: number = 4000,
+  overlapSize: number = 150
 ): TextChunk[] => {
   if (text.length <= maxChunkSize) {
     return [{

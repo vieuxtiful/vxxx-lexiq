@@ -19,7 +19,7 @@ export const useChunkedAnalysis = () => {
     checkGrammar: boolean
   ): Promise<AnalysisResult | null> => {
     // If content is within normal limits, use standard analysis
-    if (content.length <= 8000) {
+    if (content.length <= 5000) {
       return analyzeTranslation(content, glossary, language, domain, checkGrammar);
     }
 
@@ -28,7 +28,7 @@ export const useChunkedAnalysis = () => {
     setProgress(0);
 
     try {
-      const chunks = chunkText(content, 6000, 200);
+      const chunks = chunkText(content, 4000, 150);
       setTotalChunks(chunks.length);
 
       toast({
