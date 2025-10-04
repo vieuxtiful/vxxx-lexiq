@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { AuthGuard } from "./components/lexiq/AuthGuard";
+import { ProjectProvider } from "./contexts/ProjectContext";
 
 const queryClient = new QueryClient();
 
@@ -20,7 +21,9 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/" element={
             <AuthGuard>
-              <Index />
+              <ProjectProvider>
+                <Index />
+              </ProjectProvider>
             </AuthGuard>
           } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

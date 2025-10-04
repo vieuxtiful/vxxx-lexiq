@@ -20,6 +20,9 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAnalysisEngine } from '@/hooks/useAnalysisEngine';
 import { useAuth } from '@/hooks/useAuth';
+import { useProject } from '@/contexts/ProjectContext';
+import { useAnalysisSession, AnalysisSession } from '@/hooks/useAnalysisSession';
+import { useFileProcessor } from '@/hooks/useFileProcessor';
 import { transformAnalyzedTermsToFlagged } from '@/utils/analysisDataTransformer';
 import { EnhancedLiveAnalysisPanel } from './EnhancedLiveAnalysisPanel';
 import { EnhancedStatisticsTab } from './EnhancedStatisticsTab';
@@ -27,6 +30,8 @@ import { SimplifiedStatisticsPanel } from './SimplifiedStatisticsPanel';
 import { DataManagementTab } from './DataManagementTab';
 import { QAChatPanel } from './QAChatPanel';
 import { SaveVersionsDialog, type SavedVersion } from './SaveVersionsDialog';
+import { ProjectSelector } from './ProjectSelector';
+import { HistoryPanel } from './HistoryPanel';
 import { validateFile } from '@/utils/fileValidation';
 import lexiqLogo from '@/assets/lexiq-logo.png';
 
@@ -79,9 +84,15 @@ export function EnhancedMainInterface({
   const translationInputRef = useRef<HTMLInputElement>(null);
   const glossaryInputRef = useRef<HTMLInputElement>(null);
   const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const startTimeRef = useRef<number | null>(null);
   const { toast } = useToast();
   const { analyzeTranslation, isAnalyzing: engineAnalyzing, progress: engineProgress } = useAnalysisEngine();
   const { user, signOut } = useAuth();
+  const { currentProject } = useProject();
+  const { saveAnalysisSession } = useAnalysisSession();
+  const { processFile } = useFileProcessor();
+  const [translationFileId, setTranslationFileId] = useState<string | null>(null);
+  const [glossaryFileId, setGlossaryFileId] = useState<string | null>(null);
 
   // Load saved state and versions on mount
   React.useEffect(() => {
@@ -256,6 +267,23 @@ export function EnhancedMainInterface({
       }
     }
 
+    // Upload file to storage if user and project exist
+    if (user && currentProject) {
+      try {
+        const processedFile = await processFile(file, type, currentProject.id, user.id);
+        if (processedFile?.fileId) {
+          if (type === 'translation') {
+            setTranslationFileId(processedFile.fileId);
+          } else {
+            setGlossaryFileId(processedFile.fileId);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to upload file to storage:', error);
+        // Continue even if upload fails - file content is already loaded
+      }
+    }
+
     if (type === 'translation') {
       setTranslationFile(file);
       setTranslationFileUploaded(true);
@@ -294,6 +322,9 @@ export function EnhancedMainInterface({
     setAnalysisComplete(false);
     setTranslationFileUploaded(false);
     setGlossaryFileUploaded(false);
+    
+    // Track processing time
+    startTimeRef.current = Date.now();
 
     try {
       // Use either file content or manually entered content
@@ -309,11 +340,33 @@ export function EnhancedMainInterface({
       );
 
       if (result) {
+        const processingTime = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : undefined;
+        
         setAnalysisResults(result);
         setAnalysisComplete(true);
         setCurrentContent(translationContent);
         setAnalysisProgress(100);
         addToHistory(translationContent, result);
+        
+        // Auto-save to database if user and project exist
+        if (user && currentProject) {
+          try {
+            await saveAnalysisSession(
+              currentProject.id,
+              user.id,
+              selectedLanguage,
+              selectedDomain,
+              result,
+              translationFileId || undefined,
+              glossaryFileId || undefined,
+              processingTime
+            );
+            console.log('Analysis session auto-saved to database');
+          } catch (error) {
+            console.error('Failed to auto-save analysis session:', error);
+            // Don't block user on save failure
+          }
+        }
         
         toast({
           title: "Analysis Complete",
@@ -330,6 +383,7 @@ export function EnhancedMainInterface({
     } finally {
       setIsAnalyzing(false);
       setAnalysisProgress(0);
+      startTimeRef.current = null;
     }
   };
 
@@ -477,6 +531,22 @@ export function EnhancedMainInterface({
     });
   }, [savedVersions, toast]);
 
+  // Handle session restoration from history
+  const handleRestoreSession = useCallback((session: AnalysisSession) => {
+    setAnalysisResults({
+      terms: session.analyzed_terms,
+      statistics: session.statistics,
+    });
+    setAnalysisComplete(true);
+    setActiveMainTab('edit');
+    
+    // Extract first term's text as preview content if available
+    if (session.analyzed_terms && Array.isArray(session.analyzed_terms) && session.analyzed_terms.length > 0) {
+      const fullText = session.analyzed_terms.map((t: any) => t.text).join(' ');
+      setCurrentContent(fullText);
+    }
+  }, []);
+
   // Clear all data when returning to language select
   const handleReturnToLanguageSelect = useCallback(() => {
     if (hasUnsavedChanges && currentContent.trim()) {
@@ -597,6 +667,9 @@ export function EnhancedMainInterface({
                   className="h-12 w-auto" 
                 />
               </button>
+              
+              {/* Project Selector */}
+              <ProjectSelector />
             </div>
             
             <div className="flex items-center space-x-4">
@@ -704,6 +777,12 @@ export function EnhancedMainInterface({
               className="data-[state=active]:bg-card data-[state=active]:shadow-sm px-6 py-2.5 rounded-md transition-all"
             >
               Statistics
+            </TabsTrigger>
+            <TabsTrigger 
+              value="history" 
+              className="data-[state=active]:bg-card data-[state=active]:shadow-sm px-6 py-2.5 rounded-md transition-all"
+            >
+              History
             </TabsTrigger>
             <TabsTrigger 
               value="data" 
@@ -935,6 +1014,11 @@ export function EnhancedMainInterface({
                 </div>
               </Card>
             )}
+          </TabsContent>
+
+          {/* History Tab */}
+          <TabsContent value="history">
+            <HistoryPanel onRestoreSession={handleRestoreSession} />
           </TabsContent>
 
           {/* Data Management Tab */}
