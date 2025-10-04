@@ -9,14 +9,23 @@ interface EnhancedStatisticsTabProps {
 }
 
 export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ statistics }) => {
-  const validPercentage = statistics.totalTerms > 0 ? (statistics.validTerms / statistics.totalTerms) * 100 : 0;
-  const reviewPercentage = statistics.totalTerms > 0 ? (statistics.reviewTerms / statistics.totalTerms) * 100 : 0;
-  const criticalPercentage = statistics.totalTerms > 0 ? (statistics.criticalTerms / statistics.totalTerms) * 100 : 0;
+  // Add null safety for all statistics properties
+  const totalTerms = statistics?.totalTerms ?? 0;
+  const validTerms = statistics?.validTerms ?? 0;
+  const reviewTerms = statistics?.reviewTerms ?? 0;
+  const criticalTerms = statistics?.criticalTerms ?? 0;
+  const qualityScore = statistics?.qualityScore ?? 0;
+  const confidenceMin = statistics?.confidenceMin ?? 0;
+  const confidenceMax = statistics?.confidenceMax ?? 0;
+  
+  const validPercentage = totalTerms > 0 ? (validTerms / totalTerms) * 100 : 0;
+  const reviewPercentage = totalTerms > 0 ? (reviewTerms / totalTerms) * 100 : 0;
+  const criticalPercentage = totalTerms > 0 ? (criticalTerms / totalTerms) * 100 : 0;
   
   // Calculate additional metrics
   const successRate = validPercentage;
   const riskScore = (reviewPercentage * 0.5 + criticalPercentage * 1.0).toFixed(1);
-  const qualityGrade = statistics.qualityScore >= 8 ? 'A' : statistics.qualityScore >= 7 ? 'B' : statistics.qualityScore >= 6 ? 'C' : statistics.qualityScore >= 5 ? 'D' : 'F';
+  const qualityGrade = qualityScore >= 8 ? 'A' : qualityScore >= 7 ? 'B' : qualityScore >= 6 ? 'C' : qualityScore >= 5 ? 'D' : 'F';
   
   return (
     <div className="space-y-6 p-6">
@@ -36,7 +45,7 @@ export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ st
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{statistics.qualityScore.toFixed(2)}</div>
+            <div className="text-3xl font-bold">{qualityScore.toFixed(2)}</div>
             <div className="text-xs text-muted-foreground mt-1">Grade: {qualityGrade}</div>
           </CardContent>
         </Card>
@@ -50,7 +59,7 @@ export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ st
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-600">{successRate.toFixed(1)}%</div>
-            <div className="text-xs text-muted-foreground mt-1">{statistics.validTerms} valid terms</div>
+            <div className="text-xs text-muted-foreground mt-1">{validTerms} valid terms</div>
           </CardContent>
         </Card>
 
@@ -75,7 +84,7 @@ export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ st
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{statistics.totalTerms}</div>
+            <div className="text-3xl font-bold">{totalTerms}</div>
             <div className="text-xs text-muted-foreground mt-1">Analyzed</div>
           </CardContent>
         </Card>
@@ -97,7 +106,7 @@ export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ st
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 <span className="font-medium">Valid Terms</span>
               </div>
-              <span className="text-sm font-mono">{statistics.validTerms} ({validPercentage.toFixed(1)}%)</span>
+              <span className="text-sm font-mono">{validTerms} ({validPercentage.toFixed(1)}%)</span>
             </div>
             <Progress value={validPercentage} className="h-3 bg-green-100" />
             <p className="text-xs text-muted-foreground">
@@ -112,7 +121,7 @@ export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ st
                 <AlertCircle className="h-4 w-4 text-yellow-600" />
                 <span className="font-medium">Review Required</span>
               </div>
-              <span className="text-sm font-mono">{statistics.reviewTerms} ({reviewPercentage.toFixed(1)}%)</span>
+              <span className="text-sm font-mono">{reviewTerms} ({reviewPercentage.toFixed(1)}%)</span>
             </div>
             <Progress value={reviewPercentage} className="h-3 bg-yellow-100" />
             <p className="text-xs text-muted-foreground">
@@ -127,7 +136,7 @@ export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ st
                 <TrendingDown className="h-4 w-4 text-red-600" />
                 <span className="font-medium">Critical Issues</span>
               </div>
-              <span className="text-sm font-mono">{statistics.criticalTerms} ({criticalPercentage.toFixed(1)}%)</span>
+              <span className="text-sm font-mono">{criticalTerms} ({criticalPercentage.toFixed(1)}%)</span>
             </div>
             <Progress value={criticalPercentage} className="h-3 bg-red-100" />
             <p className="text-xs text-muted-foreground">
@@ -150,9 +159,9 @@ export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ st
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-muted-foreground">95% Confidence Range</span>
-                <span className="text-sm font-mono">{statistics.confidenceMin.toFixed(2)} - {statistics.confidenceMax.toFixed(2)}</span>
+                <span className="text-sm font-mono">{confidenceMin.toFixed(2)} - {confidenceMax.toFixed(2)}</span>
               </div>
-              <Progress value={(statistics.qualityScore / 10) * 100} className="h-2" />
+              <Progress value={(qualityScore / 10) * 100} className="h-2" />
             </div>
             <p className="text-xs text-muted-foreground">
               Statistical confidence interval indicating the reliability of the quality score. Narrower ranges indicate higher measurement precision.
@@ -160,19 +169,19 @@ export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ st
             <div className="space-y-1 text-xs">
               <div className="flex justify-between">
                 <span>Lower Bound:</span>
-                <span className="font-mono">{statistics.confidenceMin.toFixed(2)}</span>
+                <span className="font-mono">{confidenceMin.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Mean Score:</span>
-                <span className="font-mono font-semibold">{statistics.qualityScore.toFixed(2)}</span>
+                <span className="font-mono font-semibold">{qualityScore.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Upper Bound:</span>
-                <span className="font-mono">{statistics.confidenceMax.toFixed(2)}</span>
+                <span className="font-mono">{confidenceMax.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Interval Width:</span>
-                <span className="font-mono">{(statistics.confidenceMax - statistics.confidenceMin).toFixed(2)}</span>
+                <span className="font-mono">{(confidenceMax - confidenceMin).toFixed(2)}</span>
               </div>
             </div>
           </CardContent>
@@ -186,7 +195,7 @@ export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ st
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {statistics.qualityScore >= 8 && (
+            {qualityScore >= 8 && (
               <div className="p-3 rounded bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800">
                 <div className="font-medium text-green-900 dark:text-green-100">Excellent Quality</div>
                 <p className="text-xs text-green-700 dark:text-green-300 mt-1">
@@ -195,7 +204,7 @@ export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ st
               </div>
             )}
             
-            {statistics.qualityScore >= 6 && statistics.qualityScore < 8 && (
+            {qualityScore >= 6 && qualityScore < 8 && (
               <div className="p-3 rounded bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800">
                 <div className="font-medium text-yellow-900 dark:text-yellow-100">Good Quality</div>
                 <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
@@ -204,7 +213,7 @@ export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ st
               </div>
             )}
             
-            {statistics.qualityScore < 6 && (
+            {qualityScore < 6 && (
               <div className="p-3 rounded bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800">
                 <div className="font-medium text-red-900 dark:text-red-100">Needs Improvement</div>
                 <p className="text-xs text-red-700 dark:text-red-300 mt-1">
@@ -215,19 +224,19 @@ export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ st
 
             <div className="pt-3 space-y-2 border-t">
               <div className="text-xs font-medium">Action Items:</div>
-              {statistics.criticalTerms > 0 && (
+              {criticalTerms > 0 && (
                 <div className="text-xs flex items-start gap-2">
                   <span className="text-red-600">•</span>
-                  <span>Address {statistics.criticalTerms} critical term{statistics.criticalTerms !== 1 ? 's' : ''}</span>
+                  <span>Address {criticalTerms} critical term{criticalTerms !== 1 ? 's' : ''}</span>
                 </div>
               )}
-              {statistics.reviewTerms > 0 && (
+              {reviewTerms > 0 && (
                 <div className="text-xs flex items-start gap-2">
                   <span className="text-yellow-600">•</span>
-                  <span>Review {statistics.reviewTerms} flagged term{statistics.reviewTerms !== 1 ? 's' : ''}</span>
+                  <span>Review {reviewTerms} flagged term{reviewTerms !== 1 ? 's' : ''}</span>
                 </div>
               )}
-              {statistics.validTerms === statistics.totalTerms && (
+              {validTerms === totalTerms && (
                 <div className="text-xs flex items-start gap-2">
                   <span className="text-green-600">•</span>
                   <span>All terms validated successfully</span>
