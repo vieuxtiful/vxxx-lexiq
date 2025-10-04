@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { FolderOpen, Plus, Clock, Search } from 'lucide-react';
+import { FolderOpen, Plus, Clock, Search, Trash2, MoreVertical } from 'lucide-react';
 import { Project } from '@/hooks/useProjects';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { FloatingBackground } from './FloatingBackground';
+import { useProject } from '@/contexts/ProjectContext';
+import { useToast } from '@/hooks/use-toast';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface ProjectSelectionScreenProps {
   onProjectSelect: (project: Project) => void;
@@ -19,8 +22,11 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
   userProjects,
   loading
 }) => {
+  const { deleteProject } = useProject();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (searchTerm) {
@@ -34,6 +40,31 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
       setFilteredProjects(userProjects);
     }
   }, [searchTerm, userProjects]);
+
+  const handleDeleteProject = async (projectId: string, projectName: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    
+    if (!confirm(`Are you sure you want to delete "${projectName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingId(projectId);
+    try {
+      await deleteProject(projectId);
+      toast({
+        title: "Project deleted",
+        description: `"${projectName}" has been deleted`,
+      });
+    } catch (error) {
+      toast({
+        title: "Delete failed",
+        description: "Could not delete project",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -108,7 +139,7 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
               filteredProjects.map(project => (
                 <Card
                   key={project.id}
-                  className="cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] bg-card/95 backdrop-blur-sm border-border/40"
+                  className="cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] bg-card/95 backdrop-blur-sm border-border/40 group relative"
                   onClick={() => onProjectSelect(project)}
                 >
                   <CardContent className="p-6">
@@ -125,7 +156,33 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
                           <span>{project.domain}</span>
                         </div>
                       </div>
-                      <FolderOpen className="w-6 h-6 text-primary" />
+                      <div className="flex items-center gap-2">
+                        <FolderOpen className="w-6 h-6 text-primary" />
+                        
+                        {/* Delete dropdown */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                              onClick={(e) => handleDeleteProject(project.id, project.name, e)}
+                              disabled={deletingId === project.id}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              {deletingId === project.id ? 'Deleting...' : 'Delete Project'}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                     
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">

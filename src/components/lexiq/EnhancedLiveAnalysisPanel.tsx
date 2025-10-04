@@ -491,45 +491,47 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                   Types
                 </Label>
               </div>
-
-              {/* Show/Hide Legend Button - appears when Types is enabled AND analysis has been performed */}
-              {showSemanticTypes && flaggedTerms.length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowLegend(!showLegend)}
-                  className="h-8 text-xs"
-                >
-                  {showLegend ? 'Hide Legend' : 'Show Legend'}
-                </Button>
-              )}
             </div>
           </div>
           
           {/* Enhanced Category Badges - Shown/hidden via Term Status toggle */}
           {showTermStatus && (
-            <div className="flex gap-2 text-xs mt-2">
-              <Badge variant="outline" className="text-green-600 border-green-500 flex items-center gap-1">
-                <CheckCircle className="h-3 w-3" />
-                Valid ({categoryStats.valid})
-              </Badge>
-              <Badge variant="outline" className="text-yellow-600 border-yellow-500 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                Review ({categoryStats.review})
-              </Badge>
-              <Badge variant="outline" className="text-red-600 border-red-500 flex items-center gap-1">
-                <XCircle className="h-3 w-3" />
-                Critical ({categoryStats.critical})
-              </Badge>
-              <Badge variant="outline" className="text-orange-600 border-orange-500 flex items-center gap-1">
-                <BookOpen className="h-3 w-3" />
-                Spelling ({categoryStats.spelling})
-              </Badge>
-              {grammarCheckingEnabled && (
-                <Badge variant="outline" className="text-purple-600 border-purple-500 flex items-center gap-1">
-                  <Zap className="h-3 w-3" />
-                  Grammar ({categoryStats.grammar})
+            <div className="flex justify-between items-center gap-2 text-xs mt-2">
+              <div className="flex gap-2">
+                <Badge variant="outline" className="text-green-600 border-green-500 flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3" />
+                  Valid ({categoryStats.valid})
                 </Badge>
+                <Badge variant="outline" className="text-yellow-600 border-yellow-500 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  Review ({categoryStats.review})
+                </Badge>
+                <Badge variant="outline" className="text-red-600 border-red-500 flex items-center gap-1">
+                  <XCircle className="h-3 w-3" />
+                  Critical ({categoryStats.critical})
+                </Badge>
+                <Badge variant="outline" className="text-orange-600 border-orange-500 flex items-center gap-1">
+                  <BookOpen className="h-3 w-3" />
+                  Spelling ({categoryStats.spelling})
+                </Badge>
+                {grammarCheckingEnabled && (
+                  <Badge variant="outline" className="text-purple-600 border-purple-500 flex items-center gap-1">
+                    <Zap className="h-3 w-3" />
+                    Grammar ({categoryStats.grammar})
+                  </Badge>
+                )}
+              </div>
+              
+              {/* Legend button right-aligned when Types is enabled */}
+              {showSemanticTypes && flaggedTerms.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowLegend(!showLegend)}
+                  className="h-7 text-xs"
+                >
+                  {showLegend ? 'Hide Legend' : 'Show Legend'}
+                </Button>
               )}
             </div>
           )}

@@ -24,11 +24,19 @@ serve(async (req) => {
     console.log(`Starting analysis: language=${language}, domain=${domain}, checkGrammar=${checkGrammar}`);
     console.log(`Translation length: ${translationContent.length}, Glossary length: ${glossaryContent.length}`);
 
-    // Validate input sizes to prevent truncation issues
-    if (translationContent.length > 5000) {
-      console.error(`Translation too large: ${translationContent.length} characters`);
+    // Enhanced validation with better error messages
+    if (translationContent.length > 15000) {
       return new Response(
-        JSON.stringify({ error: "Translation text is too large. Please use chunking for files over 5,000 characters." }),
+        JSON.stringify({ 
+          error: `Text too large (${translationContent.length} characters). Please split into sections under 15,000 characters or use smaller files.` 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (translationContent.length < 10) {
+      return new Response(
+        JSON.stringify({ error: "Text is too short for meaningful analysis (minimum 10 characters)." }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -38,53 +46,93 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Streamlined efficient prompt
-    const prompt = `Analyze translation against glossary. Return compact JSON.
+    // ENHANCED PROMPT with stronger language enforcement
+    const prompt = `CRITICAL LANGUAGE REQUIREMENT: ALL output text, suggestions, rationale, and context MUST be in ${language}. Never provide English suggestions for ${language} text.
 
-Language: ${language} | Domain: ${domain}${checkGrammar ? ' | Grammar: ON' : ''}
+ANALYSIS CONTEXT:
+- Target Language: ${language}
+- Domain: ${domain}
+- Grammar Checking: ${checkGrammar ? 'ENABLED' : 'DISABLED'}
 
-GLOSSARY:
+GLOSSARY TERMS (authoritative reference):
 ${glossaryContent}
 
-TEXT:
+TRANSLATION TEXT TO ANALYZE:
 ${translationContent}
 
-RULES:
-1. Find glossary terms in text only (don't analyze terms not in glossary)
-2. Classifications:
-   - valid: Exact match to glossary
-   - review: Similar/variant (plurals, conjugations)
-   - critical: Wrong term or missing from glossary
-   - spelling: Obvious typo${checkGrammar ? `
-   - grammar: Grammar error` : ''}
+CLASSIFICATION RULES (STRICT ENFORCEMENT):
 
-3. Keep ALL strings brief (context max 40 chars, note max 20 chars)
-4. ALL text fields in ${language}
-5. Only return terms found in text
+1. VALID (green): Exact glossary match (case-insensitive for Latin scripts, exact for CJK)
+2. REVIEW (yellow): Fuzzy match (plurals, conjugations, minor variations)  
+3. CRITICAL (red): Inconsistent with glossary OR significantly better alternative exists
+4. SPELLING: Obvious typos/misspellings
+${checkGrammar ? '5. GRAMMAR: Grammar issues (subject-verb agreement, tense errors, etc.)' : ''}
 
-JSON (minified):
+LANGUAGE COMPLIANCE RULES:
+- ALL suggestions MUST be in ${language}
+- ALL rationale/notes MUST be in ${language} 
+- ALL context descriptions MUST be in ${language}
+- NEVER suggest English terms for ${language} content
+- If glossary has multiple languages, prioritize ${language} terms
+
+SEMANTIC TYPES (assign to every term):
+- Entity: People, places, organizations, objects (#2196F3)
+- Action: Verbs, processes, operations (#4CAF50)
+- Quality: Adjectives, properties, attributes (#FF9800)
+- Concept: Abstract ideas, principles (#9C27B0)
+- Technical: Technical terms, jargon (#00BCD4)
+
+REQUIRED JSON FORMAT (all text in ${language}):
 {
   "terms": [
     {
-      "text": "term",
-      "pos": [start, end],
-      "class": "valid|review|critical|spelling",
+      "text": "found term",
+      "startPosition": number,
+      "endPosition": number,
+      "classification": "valid|review|critical|spelling|grammar",
       "score": 0-100,
-      "ctx": "brief context",
-      "note": "brief reason",
-      "sugg": ["alt1", "alt2"]
+      "frequency": number,
+      "context": "surrounding text (${language})",
+      "rationale": "why this classification (${language})",
+      "suggestions": ["alt1 (${language})", "alt2 (${language})"],
+      "semantic_type": {
+        "semantic_type": "Entity|Action|Quality|Concept|Technical",
+        "confidence": 0-100,
+        "ui_information": {
+          "category": "semantic category",
+          "color_code": "#hexcolor",
+          "description": "brief description (${language})",
+          "display_name": "display name (${language})"
+        }
+      }${checkGrammar ? `,
+      "grammar_issues": [
+        {
+          "rule": "grammar rule name",
+          "severity": "low|medium|high",
+          "suggestion": "correction (${language})"
+        }
+      ]` : ''}
     }
   ],
-  "stats": {
-    "total": num,
-    "valid": num,
-    "review": num,
-    "critical": num,
-    "quality": 0-100
+  "statistics": {
+    "totalTerms": number,
+    "validTerms": number,
+    "reviewTerms": number,
+    "criticalTerms": number,
+    "spellingIssues": number,
+    ${checkGrammar ? '"grammarIssues": number,' : ''}
+    "qualityScore": 0-100,
+    "averageConfidence": 0-100,
+    "coverage": 0-100
   }
 }
 
-CRITICAL: Return ONLY terms found in text. Keep response minimal.`;
+CRITICAL REQUIREMENTS:
+1. ONLY analyze terms that appear in both glossary AND text
+2. ALL text output (suggestions, rationale, context) MUST be in ${language}
+3. Return valid JSON with exact field names above
+4. Provide specific, actionable suggestions in ${language}
+5. Include semantic type for every term`;
 
     // Call Lovable AI with timeout
     const controller = new AbortController();

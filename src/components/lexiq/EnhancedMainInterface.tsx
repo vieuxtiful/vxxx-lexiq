@@ -78,8 +78,6 @@ export function EnhancedMainInterface({
   const [engineReady, setEngineReady] = useState(true);
   const [activeMainTab, setActiveMainTab] = useState('edit');
   const [grammarCheckingEnabled, setGrammarCheckingEnabled] = useState(false);
-  const [selectedLanguage] = useState(initialLanguage);
-  const [selectedDomain] = useState(initialDomain);
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [currentContent, setCurrentContent] = useState('');
   const [translationFileUploaded, setTranslationFileUploaded] = useState(false);
@@ -112,6 +110,10 @@ export function EnhancedMainInterface({
   const [translationFileId, setTranslationFileId] = useState<string | null>(null);
   const [glossaryFileId, setGlossaryFileId] = useState<string | null>(null);
   const [showProjectSetup, setShowProjectSetup] = useState(false);
+  
+  // Use current project's language and domain
+  const selectedLanguage = currentProject?.language || 'en';
+  const selectedDomain = currentProject?.domain || 'general';
 
   // Show project setup wizard when required
   React.useEffect(() => {

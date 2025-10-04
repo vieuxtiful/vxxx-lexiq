@@ -9,6 +9,7 @@ interface ProjectContextType {
   setCurrentProject: (project: Project | null) => void;
   createProject: (name: string, language: string, domain: string) => Promise<Project | null>;
   deleteProject: (id: string) => Promise<void>;
+  clearProjectData: () => void;
   loading: boolean;
   refreshProjects: () => void;
   requiresProjectSetup: boolean;
@@ -78,6 +79,31 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return data;
   };
 
+  const clearProjectData = () => {
+    console.log('Clearing all project data...');
+    
+    // Clear all state
+    setCurrentProjectState(null);
+    
+    // Clear localStorage/sessionStorage
+    localStorage.removeItem('lexiq-session');
+    localStorage.removeItem('lexiq-current-project-id');
+    localStorage.removeItem('lexiq-saved-versions');
+    sessionStorage.removeItem('editedTerms');
+    
+    // Clear any other project-specific storage
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('lexiq-')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    
+    console.log('Project data cleared successfully');
+  };
+
   const deleteProject = async (id: string): Promise<void> => {
     console.log('Deleting project:', id);
     const result = await deleteProjectHook(id);
@@ -85,11 +111,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!result.error) {
       console.log('Project deleted successfully');
       
-      // If we deleted the current project, clear it and potentially show setup wizard
+      // If we deleted the current project, clear everything
       if (currentProject?.id === id) {
-        console.log('Deleted current project, clearing selection');
-        setCurrentProjectState(null);
-        localStorage.removeItem('lexiq-current-project-id');
+        console.log('Deleted current project, clearing all data');
+        clearProjectData();
         
         // If no projects left, show setup wizard
         if (projects.length === 1) { // Will be 0 after state updates
@@ -120,6 +145,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setCurrentProject,
         createProject,
         deleteProject,
+        clearProjectData,
         loading,
         refreshProjects,
         requiresProjectSetup,
