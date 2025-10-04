@@ -69,13 +69,15 @@ export const DomainSelector: React.FC<DomainSelectorProps> = ({
           <CardTitle className="text-3xl">Select Your Domain</CardTitle>
           <CardDescription className="text-base">
             Choose the specialized area for your {language?.name} translation work.
-            {defaults.lastDomain && (
-              <Badge variant="secondary" className="ml-2">
-                <Star className="h-3 w-3 mr-1" />
+          </CardDescription>
+          {defaults.lastDomain && (
+            <div className="flex justify-center">
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <Star className="h-3 w-3" />
                 Last used: {getDomainById(defaults.lastDomain)?.name}
               </Badge>
-            )}
-          </CardDescription>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative">
@@ -124,14 +126,16 @@ export const DomainSelector: React.FC<DomainSelectorProps> = ({
                         <TooltipTrigger asChild>
                           <Button
                             variant="outline"
-                            className="h-28 flex flex-col items-center justify-center space-y-2 hover:bg-primary/10 hover:border-primary transition-all relative p-4"
+                            className="h-28 flex flex-col items-center justify-center space-y-2 hover:bg-primary/10 hover:border-primary transition-all relative p-4 group"
                             onClick={() => handleSelect(domain.id)}
                           >
                             {domain.id === defaults.lastDomain && (
                               <Star className="absolute top-2 right-2 h-3 w-3 text-yellow-500 fill-yellow-500" />
                             )}
                             <domain.icon className={`h-8 w-8 ${domain.color}`} />
-                            <span className="text-sm font-medium text-center">{domain.name}</span>
+                            <span className="text-sm font-medium text-center group-hover:brightness-110 transition-all">
+                              {domain.name}
+                            </span>
                           </Button>
                         </TooltipTrigger>
                         {domain.description && (

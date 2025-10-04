@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, Plus, FolderOpen, Trash2, MoreVertical } from 'lucide-react';
+import { ChevronDown, Plus, FolderOpen, Trash2 } from 'lucide-react';
 import { useProject } from '@/contexts/ProjectContext';
 import { useProjects } from '@/hooks/useProjects';
 import { useAuth } from '@/hooks/useAuth';
@@ -93,15 +93,15 @@ export const ProjectSelector: React.FC = () => {
               projects.map(project => (
                 <div
                   key={project.id}
-                  className={`flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-sm ${
-                    project.id === currentProject?.id 
-                      ? 'bg-accent text-accent-foreground' 
-                      : ''
-                  }`}
+                  className="flex items-center justify-between group hover:bg-accent rounded-sm transition-colors"
                 >
-                  <button
+                  <DropdownMenuItem
                     onClick={() => setCurrentProject(project)}
-                    className="flex-1 text-left"
+                    className={`flex-1 cursor-pointer ${
+                      project.id === currentProject?.id 
+                        ? 'bg-accent text-accent-foreground' 
+                        : ''
+                    }`}
                   >
                     <div className="flex flex-col gap-1">
                       <span className="font-medium text-sm">{project.name}</span>
@@ -109,32 +109,19 @@ export const ProjectSelector: React.FC = () => {
                         {project.language.toUpperCase()} • {project.domain}
                       </span>
                     </div>
-                  </button>
+                  </DropdownMenuItem>
                   
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setProjectToDelete(project.id);
-                        }}
-                        className="text-destructive focus:text-destructive cursor-pointer gap-2"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Delete Project
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 mr-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setProjectToDelete(project.id);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
               ))
             )}
