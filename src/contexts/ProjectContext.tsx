@@ -7,6 +7,7 @@ interface ProjectContextType {
   currentProject: Project | null;
   projects: Project[];
   setCurrentProject: (project: Project | null) => void;
+  setCurrentProjectWithReset: (project: Project | null) => void;
   createProject: (name: string, language: string, domain: string) => Promise<Project | null>;
   deleteProject: (id: string) => Promise<void>;
   clearProjectData: () => void;
@@ -72,11 +73,37 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const { data } = await createProjectHook(name, language, domain);
     if (data) {
       console.log('Project created successfully:', data);
+      
+      // IMPORTANT: Set the new project as current BEFORE localStorage update
+      // This will trigger state reset in EnhancedMainInterface
       setCurrentProjectState(data);
       localStorage.setItem('lexiq-current-project-id', data.id);
       setRequiresProjectSetup(false);
     }
     return data;
+  };
+
+  // Enhanced project switching with state reset notification
+  const setCurrentProjectWithReset = (project: Project | null) => {
+    console.log('Switching to project:', project?.name);
+    setCurrentProjectState(project);
+    
+    // Store project ID for persistence
+    if (project) {
+      localStorage.setItem('lexiq-current-project-id', project.id);
+    } else {
+      localStorage.removeItem('lexiq-current-project-id');
+    }
+  };
+
+  const setCurrentProject = (project: Project | null) => {
+    console.log('Setting current project:', project?.name || 'null');
+    setCurrentProjectState(project);
+    if (project) {
+      localStorage.setItem('lexiq-current-project-id', project.id);
+    } else {
+      localStorage.removeItem('lexiq-current-project-id');
+    }
   };
 
   const clearProjectData = () => {
@@ -127,22 +154,13 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const setCurrentProject = (project: Project | null) => {
-    console.log('Setting current project:', project?.name || 'null');
-    setCurrentProjectState(project);
-    if (project) {
-      localStorage.setItem('lexiq-current-project-id', project.id);
-    } else {
-      localStorage.removeItem('lexiq-current-project-id');
-    }
-  };
-
   return (
     <ProjectContext.Provider
       value={{
         currentProject,
         projects,
         setCurrentProject,
+        setCurrentProjectWithReset,
         createProject,
         deleteProject,
         clearProjectData,

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { detectLanguageSimple } from '@/lib/languageDetector';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -88,6 +88,9 @@ export function EnhancedMainInterface({
   const [noGlossaryWarningShown, setNoGlossaryWarningShown] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
+  // Track previous project to detect changes
+  const [previousProjectId, setPreviousProjectId] = useState<string | null>(null);
+  
   // Undo/Redo history
   const [history, setHistory] = useState<HistoryState[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -116,6 +119,45 @@ export function EnhancedMainInterface({
   // Use current project's language and domain
   const selectedLanguage = currentProject?.language || 'en';
   const selectedDomain = currentProject?.domain || 'general';
+
+  // Comprehensive reset function
+  const resetMainWindowState = useCallback(() => {
+    console.log('Resetting Main Window state for new project...');
+    
+    // Reset all state variables
+    setTranslationFile(null);
+    setGlossaryFile(null);
+    setIsAnalyzing(false);
+    setAnalysisProgress(0);
+    setAnalysisComplete(false);
+    setAnalysisResults(null);
+    setCurrentContent('');
+    setTranslationFileUploaded(false);
+    setGlossaryFileUploaded(false);
+    setTextManuallyEntered(false);
+    setShowUploadIconTransition(false);
+    setNoGlossaryWarningShown(false);
+    setHasUnsavedChanges(false);
+    setHistory([]);
+    setHistoryIndex(-1);
+    setActiveMainTab('edit');
+    setTranslationFileId(null);
+    setGlossaryFileId(null);
+    
+    // Clear localStorage session
+    localStorage.removeItem('lexiq-session');
+    
+    console.log('Main Window state reset complete');
+  }, []);
+
+  // Reset all state when project changes
+  useEffect(() => {
+    if (currentProject && currentProject.id !== previousProjectId) {
+      console.log('Project changed, resetting Main Window state...');
+      resetMainWindowState();
+      setPreviousProjectId(currentProject.id);
+    }
+  }, [currentProject, previousProjectId, resetMainWindowState]);
 
   // Show project setup wizard when required
   React.useEffect(() => {
