@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { ChevronDown, Plus, FolderOpen } from 'lucide-react';
+import { ChevronDown, Plus, FolderOpen, Trash2, MoreVertical } from 'lucide-react';
 import { useProject } from '@/contexts/ProjectContext';
+import { useProjects } from '@/hooks/useProjects';
+import { useAuth } from '@/hooks/useAuth';
 import { ProjectCreateModal } from './ProjectCreateModal';
 import {
   DropdownMenu,
@@ -9,17 +11,49 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 export const ProjectSelector: React.FC = () => {
+  const { user } = useAuth();
   const { currentProject, projects, setCurrentProject, createProject, loading } = useProject();
+  const { deleteProject } = useProjects(user?.id);
+  const { toast } = useToast();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
 
   const handleProjectCreate = async (name: string, language: string, domain: string) => {
     const newProject = await createProject(name, language, domain);
     if (newProject) {
       setShowCreateModal(false);
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return;
+
+    try {
+      await deleteProject(projectToDelete);
+      
+      // If we deleted the current project, clear it
+      if (currentProject?.id === projectToDelete) {
+        setCurrentProject(null);
+      }
+      
+      setProjectToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete project:', error);
     }
   };
 
@@ -57,22 +91,51 @@ export const ProjectSelector: React.FC = () => {
               </div>
             ) : (
               projects.map(project => (
-                <DropdownMenuItem
+                <div
                   key={project.id}
-                  onClick={() => setCurrentProject(project)}
-                  className={`cursor-pointer ${
+                  className={`flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-sm ${
                     project.id === currentProject?.id 
                       ? 'bg-accent text-accent-foreground' 
                       : ''
                   }`}
                 >
-                  <div className="flex flex-col gap-1 w-full">
-                    <span className="font-medium">{project.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {project.language.toUpperCase()} • {project.domain}
-                    </span>
-                  </div>
-                </DropdownMenuItem>
+                  <button
+                    onClick={() => setCurrentProject(project)}
+                    className="flex-1 text-left"
+                  >
+                    <div className="flex flex-col gap-1">
+                      <span className="font-medium text-sm">{project.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {project.language.toUpperCase()} • {project.domain}
+                      </span>
+                    </div>
+                  </button>
+                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProjectToDelete(project.id);
+                        }}
+                        className="text-destructive focus:text-destructive cursor-pointer gap-2"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete Project
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               ))
             )}
           </div>
@@ -84,6 +147,26 @@ export const ProjectSelector: React.FC = () => {
         onClose={() => setShowCreateModal(false)}
         onCreate={handleProjectCreate}
       />
+
+      <AlertDialog open={!!projectToDelete} onOpenChange={() => setProjectToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Project</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this project? This will permanently delete all associated analysis sessions, files, and data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteProject}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Delete Project
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
