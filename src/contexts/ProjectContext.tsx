@@ -8,6 +8,7 @@ interface ProjectContextType {
   projects: Project[];
   setCurrentProject: (project: Project | null) => void;
   createProject: (name: string, language: string, domain: string) => Promise<Project | null>;
+  deleteProject: (id: string) => Promise<void>;
   loading: boolean;
   refreshProjects: () => void;
   requiresProjectSetup: boolean;
@@ -18,7 +19,7 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const { projects, loading: projectsLoading, createProject: createProjectHook, refreshProjects } = useProjects(user?.id);
+  const { projects, loading: projectsLoading, createProject: createProjectHook, deleteProject: deleteProjectHook, refreshProjects } = useProjects(user?.id);
   const [currentProject, setCurrentProjectState] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [requiresProjectSetup, setRequiresProjectSetup] = useState(false);
@@ -66,8 +67,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       throw new Error('Language and domain are required to create a project');
     }
 
+    console.log('Creating project:', { name, language, domain, userId: user?.id });
     const { data } = await createProjectHook(name, language, domain);
     if (data) {
+      console.log('Project created successfully:', data);
       setCurrentProjectState(data);
       localStorage.setItem('lexiq-current-project-id', data.id);
       setRequiresProjectSetup(false);
@@ -75,7 +78,32 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return data;
   };
 
+  const deleteProject = async (id: string): Promise<void> => {
+    console.log('Deleting project:', id);
+    const result = await deleteProjectHook(id);
+    
+    if (!result.error) {
+      console.log('Project deleted successfully');
+      
+      // If we deleted the current project, clear it and potentially show setup wizard
+      if (currentProject?.id === id) {
+        console.log('Deleted current project, clearing selection');
+        setCurrentProjectState(null);
+        localStorage.removeItem('lexiq-current-project-id');
+        
+        // If no projects left, show setup wizard
+        if (projects.length === 1) { // Will be 0 after state updates
+          setRequiresProjectSetup(true);
+        }
+      }
+    } else {
+      console.error('Failed to delete project:', result.error);
+      throw new Error('Failed to delete project');
+    }
+  };
+
   const setCurrentProject = (project: Project | null) => {
+    console.log('Setting current project:', project?.name || 'null');
     setCurrentProjectState(project);
     if (project) {
       localStorage.setItem('lexiq-current-project-id', project.id);
@@ -91,6 +119,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         projects,
         setCurrentProject,
         createProject,
+        deleteProject,
         loading,
         refreshProjects,
         requiresProjectSetup,

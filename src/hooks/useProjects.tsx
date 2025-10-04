@@ -29,13 +29,18 @@ export const useProjects = (userId?: string) => {
 
   const loadProjects = async () => {
     try {
+      console.log('Loading projects for user:', userId);
       const { data, error } = await supabase
         .from('projects')
         .select('*')
         .order('updated_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading projects:', error);
+        throw error;
+      }
 
+      console.log('Projects loaded:', data?.length || 0, 'projects');
       setProjects(data || []);
     } catch (error) {
       console.error('Error loading projects:', error);
@@ -51,6 +56,12 @@ export const useProjects = (userId?: string) => {
 
   const createProject = async (name: string, language: string, domain: string) => {
     try {
+      console.log('Creating project in DB:', { name, language, domain, user_id: userId });
+      
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
       const { data, error } = await supabase
         .from('projects')
         .insert({
@@ -62,8 +73,12 @@ export const useProjects = (userId?: string) => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase insert error:', error);
+        throw error;
+      }
 
+      console.log('Project created in DB:', data);
       setProjects(prev => [data, ...prev]);
       
       toast({
@@ -115,13 +130,23 @@ export const useProjects = (userId?: string) => {
 
   const deleteProject = async (id: string) => {
     try {
+      console.log('Attempting to delete project:', id, 'for user:', userId);
+      
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
       const { error } = await supabase
         .from('projects')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase delete error:', error);
+        throw error;
+      }
 
+      console.log('Project deleted from DB successfully');
       setProjects(prev => prev.filter(p => p.id !== id));
       
       toast({

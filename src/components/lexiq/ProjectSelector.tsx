@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, Plus, FolderOpen, Trash2 } from 'lucide-react';
 import { useProject } from '@/contexts/ProjectContext';
-import { useProjects } from '@/hooks/useProjects';
-import { useAuth } from '@/hooks/useAuth';
 import { ProjectCreateModal } from './ProjectCreateModal';
 import {
   DropdownMenu,
@@ -26,34 +24,39 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 
 export const ProjectSelector: React.FC = () => {
-  const { user } = useAuth();
-  const { currentProject, projects, setCurrentProject, createProject, loading } = useProject();
-  const { deleteProject } = useProjects(user?.id);
+  const { currentProject, projects, setCurrentProject, createProject, deleteProject, loading } = useProject();
   const { toast } = useToast();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
 
   const handleProjectCreate = async (name: string, language: string, domain: string) => {
+    console.log('ProjectSelector: Creating project:', { name, language, domain });
     const newProject = await createProject(name, language, domain);
     if (newProject) {
+      console.log('ProjectSelector: Project created, closing modal');
       setShowCreateModal(false);
     }
   };
 
   const handleDeleteProject = async () => {
-    if (!projectToDelete) return;
+    if (!projectToDelete) {
+      console.log('ProjectSelector: No project to delete');
+      return;
+    }
 
+    console.log('ProjectSelector: Deleting project:', projectToDelete);
+    
     try {
       await deleteProject(projectToDelete);
-      
-      // If we deleted the current project, clear it
-      if (currentProject?.id === projectToDelete) {
-        setCurrentProject(null);
-      }
-      
+      console.log('ProjectSelector: Project deleted successfully');
       setProjectToDelete(null);
     } catch (error) {
-      console.error('Failed to delete project:', error);
+      console.error('ProjectSelector: Failed to delete project:', error);
+      toast({
+        title: "Failed to delete project",
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: "destructive",
+      });
     }
   };
 
