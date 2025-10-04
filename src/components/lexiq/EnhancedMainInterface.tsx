@@ -751,16 +751,6 @@ export function EnhancedMainInterface({
                 {hasUnsavedChanges ? 'Save*' : 'Versions'}
               </Button>
 
-              {/* Return Button */}
-              <Button 
-                variant="outline" 
-                className="gap-2"
-                onClick={handleReturnToLanguageSelect}
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Return
-              </Button>
-
               {/* Sign Out Button */}
               <Button
                 onClick={() => setShowSignOutDialog(true)}

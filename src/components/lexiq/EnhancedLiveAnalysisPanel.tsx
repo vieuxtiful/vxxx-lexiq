@@ -258,18 +258,18 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
 
   // Show warning when approaching character limit
   useEffect(() => {
-    if (content.length >= 14000 && !warningShownRef.current) {
+    if (content.length >= 45000 && !warningShownRef.current) {
       warningShownRef.current = true;
-      const remaining = 15000 - content.length;
+      const remaining = 50000 - content.length;
       toast({
         title: "Approaching character limit",
-        description: `${remaining.toLocaleString()} characters remaining (${content.length.toLocaleString()} / 15,000)`,
+        description: `${remaining.toLocaleString()} characters remaining (${content.length.toLocaleString()} / 50,000)`,
         variant: "destructive",
       });
     }
     
     // Reset warning if content goes back below threshold
-    if (content.length < 14000) {
+    if (content.length < 45000) {
       warningShownRef.current = false;
     }
   }, [content.length, toast]);
@@ -319,7 +319,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
     if (!content || flaggedTerms.length === 0) {
       // Show placeholder with brush fade animation when not editing and no content
       if (!content && !isEditing) {
-        const placeholderText = 'Start typing or paste your text here... (0 / 15,000 characters)';
+        const placeholderText = 'Start typing or paste your text here... (0 / 50,000 characters)';
         return `<span class="placeholder-light-sweep" style="opacity: 0.5; color: #9ca3af;">${placeholderText}</span>`;
       }
       return content || '';
@@ -632,11 +632,11 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
               </div>
             )}
             <span className={`font-mono ml-auto ${
-              content.length > 14000 ? 'text-red-600 dark:text-red-400' : 
-              content.length > 10000 ? 'text-yellow-600 dark:text-yellow-400' : 
+              content.length > 45000 ? 'text-red-600 dark:text-red-400' : 
+              content.length > 35000 ? 'text-yellow-600 dark:text-yellow-400' : 
               'text-green-600 dark:text-green-400'
             }`}>
-              {content.length.toLocaleString()} / 15,000 characters
+              {content.length.toLocaleString()} / 50,000 characters
             </span>
           </div>
 

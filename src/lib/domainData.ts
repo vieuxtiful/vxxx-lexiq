@@ -58,6 +58,17 @@ export const DOMAINS: Domain[] = [
     keywords: ['software', 'technical', 'specification', 'manual', 'documentation'],
     popular: true,
   },
+  {
+    id: 'scientific',
+    name: 'Scientific & Research',
+    description: 'Scientific papers, research documents, academic publications, laboratory reports',
+    icon: BookOpen,
+    color: 'text-teal-600',
+    category: 'specialized',
+    subdomains: ['Research', 'Laboratory', 'Academic', 'Publications'],
+    keywords: ['scientific', 'research', 'study', 'experiment', 'analysis'],
+    popular: true,
+  },
 
   // General Domains
   {
