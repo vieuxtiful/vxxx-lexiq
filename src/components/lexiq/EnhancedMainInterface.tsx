@@ -15,10 +15,11 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import { 
   Upload, FileText, Play, TrendingUp, CheckCircle, 
   AlertCircle, BarChart3, Activity, BookOpen, Zap, ArrowLeft,
-  Globe, Building, Download, Undo2, Redo2, Database, Save
+  Globe, Building, Download, Undo2, Redo2, Database, Save, User, LogOut
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAnalysisEngine } from '@/hooks/useAnalysisEngine';
+import { useAuth } from '@/hooks/useAuth';
 import { transformAnalyzedTermsToFlagged } from '@/utils/analysisDataTransformer';
 import { EnhancedLiveAnalysisPanel } from './EnhancedLiveAnalysisPanel';
 import { EnhancedStatisticsTab } from './EnhancedStatisticsTab';
@@ -80,6 +81,7 @@ export function EnhancedMainInterface({
   const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const { analyzeTranslation, isAnalyzing: engineAnalyzing, progress: engineProgress } = useAnalysisEngine();
+  const { user, signOut } = useAuth();
 
   // Load saved state and versions on mount
   React.useEffect(() => {
@@ -662,6 +664,25 @@ export function EnhancedMainInterface({
                 <Activity className="h-3 w-3 mr-1" />
                 {engineReady ? 'Engine Ready' : 'Engine Not Ready'}
               </Badge>
+
+              {/* User Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full">
+                    <User className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="px-2 py-1.5">
+                    <p className="text-sm font-medium">{user?.email}</p>
+                    <p className="text-xs text-muted-foreground">Signed in</p>
+                  </div>
+                  <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
