@@ -5,6 +5,67 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Extract the full sentence containing a term
+ */
+function extractFullSentence(text: string, startPos: number, endPos: number): string {
+  if (!text || startPos < 0 || endPos > text.length) {
+    return text.substring(Math.max(0, startPos - 30), Math.min(text.length, endPos + 30)).trim();
+  }
+
+  // Find the start of the sentence
+  let sentenceStart = startPos;
+  for (let i = startPos; i >= 0; i--) {
+    if (text[i] === '.' || text[i] === '!' || text[i] === '?' || text[i] === '\n') {
+      sentenceStart = i + 1;
+      break;
+    }
+    if (i === 0) {
+      sentenceStart = 0;
+      break;
+    }
+  }
+
+  // Find the end of the sentence
+  let sentenceEnd = endPos;
+  for (let i = endPos; i < text.length; i++) {
+    if (text[i] === '.' || text[i] === '!' || text[i] === '?' || text[i] === '\n') {
+      sentenceEnd = i + 1;
+      break;
+    }
+    if (i === text.length - 1) {
+      sentenceEnd = text.length;
+      break;
+    }
+  }
+
+  let sentence = text.substring(sentenceStart, sentenceEnd).trim();
+  
+  // Clean up the sentence - remove extra whitespace
+  sentence = sentence.replace(/\s+/g, ' ').trim();
+  
+  // If sentence is too long, provide a reasonable excerpt around the term
+  if (sentence.length > 200) {
+    const termLength = endPos - startPos;
+    const targetContext = 100; // characters around the term
+    
+    let excerptStart = Math.max(0, startPos - targetContext);
+    let excerptEnd = Math.min(text.length, endPos + targetContext);
+    
+    // Try to align with word boundaries
+    while (excerptStart > 0 && !/\s/.test(text[excerptStart])) excerptStart--;
+    while (excerptEnd < text.length && !/\s/.test(text[excerptEnd])) excerptEnd++;
+    
+    sentence = text.substring(excerptStart, excerptEnd).trim();
+    
+    // Add ellipsis if we truncated
+    if (excerptStart > 0) sentence = '...' + sentence;
+    if (excerptEnd < text.length) sentence = sentence + '...';
+  }
+
+  return sentence;
+}
+
 interface AnalysisRequest {
   translationContent: string;
   glossaryContent: string;
@@ -92,7 +153,7 @@ REQUIRED JSON FORMAT (all text in ${language}):
       "classification": "valid|review|critical|spelling|grammar",
       "score": 0-100,
       "frequency": number,
-      "context": "surrounding text (${language})",
+      "context": "COMPLETE SENTENCE where term appears (${language})",
       "rationale": "why this classification (${language})",
       "suggestions": ["alt1 (${language})", "alt2 (${language})"],
       "semantic_type": {
@@ -282,19 +343,31 @@ CRITICAL REQUIREMENTS:
         };
       }
       
-      // Normalize term fields - simplified without semantic types
-      analysisResult.terms = analysisResult.terms.map((term: any) => ({
-        text: term.text,
-        startPosition: Array.isArray(term.pos) ? term.pos[0] : term.startPosition,
-        endPosition: Array.isArray(term.pos) ? term.pos[1] : term.endPosition,
-        classification: term.class || term.classification,
-        score: term.score,
-        frequency: term.freq || term.frequency || 1,
-        context: term.ctx || term.context || '',
-        rationale: term.note || term.rationale || '',
-        suggestions: term.sugg || term.suggestions || [],
-        grammar_issues: term.gram_issues || []
-      }));
+      // Normalize term fields with enhanced context extraction
+      analysisResult.terms = analysisResult.terms.map((term: any) => {
+        const startPos = Array.isArray(term.pos) ? term.pos[0] : term.startPosition;
+        const endPos = Array.isArray(term.pos) ? term.pos[1] : term.endPosition;
+        const existingContext = term.ctx || term.context || '';
+        
+        // Enhance context if it seems incomplete
+        const enhancedContext = existingContext.length > 20 && existingContext.includes('.') 
+          ? existingContext 
+          : extractFullSentence(translationContent, startPos, endPos);
+        
+        return {
+          text: term.text,
+          startPosition: startPos,
+          endPosition: endPos,
+          classification: term.class || term.classification,
+          score: term.score,
+          frequency: term.freq || term.frequency || 1,
+          context: enhancedContext,
+          rationale: term.note || term.rationale || '',
+          suggestions: term.sugg || term.suggestions || [],
+          grammar_issues: term.gram_issues || [],
+          semantic_type: term.semantic_type || term.sem_type || undefined
+        };
+      });
       
     } catch (parseError) {
       console.error("Initial parse failed, attempting aggressive cleanup...");
@@ -309,19 +382,31 @@ CRITICAL REQUIREMENTS:
         analysisResult = JSON.parse(aggressiveClean);
         console.log("Aggressive cleanup succeeded!");
         
-        // Simplified normalization for fallback
-        analysisResult.terms = analysisResult.terms.map((term: any) => ({
-          text: term.text,
-          startPosition: Array.isArray(term.pos) ? term.pos[0] : term.startPosition,
-          endPosition: Array.isArray(term.pos) ? term.pos[1] : term.endPosition,
-          classification: term.class || term.classification,
-          score: term.score,
-          frequency: term.freq || term.frequency || 1,
-          context: term.ctx || term.context || '',
-          rationale: term.note || term.rationale || '',
-          suggestions: term.sugg || term.suggestions || [],
-          grammar_issues: term.gram_issues || []
-        }));
+        // Simplified normalization for fallback with enhanced context
+        analysisResult.terms = analysisResult.terms.map((term: any) => {
+          const startPos = Array.isArray(term.pos) ? term.pos[0] : term.startPosition;
+          const endPos = Array.isArray(term.pos) ? term.pos[1] : term.endPosition;
+          const existingContext = term.ctx || term.context || '';
+          
+          // Enhance context if it seems incomplete
+          const enhancedContext = existingContext.length > 20 && existingContext.includes('.') 
+            ? existingContext 
+            : extractFullSentence(translationContent, startPos, endPos);
+          
+          return {
+            text: term.text,
+            startPosition: startPos,
+            endPosition: endPos,
+            classification: term.class || term.classification,
+            score: term.score,
+            frequency: term.freq || term.frequency || 1,
+            context: enhancedContext,
+            rationale: term.note || term.rationale || '',
+            suggestions: term.sugg || term.suggestions || [],
+            grammar_issues: term.gram_issues || [],
+            semantic_type: term.semantic_type || term.sem_type || undefined
+          };
+        });
         
       } catch (secondError) {
         // Both parsing attempts failed

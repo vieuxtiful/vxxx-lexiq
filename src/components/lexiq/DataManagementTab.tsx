@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -9,18 +9,46 @@ import { AnalyzedTerm } from '@/hooks/useAnalysisEngine';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEditedTerms } from '@/hooks/useEditedTerms';
+import { extractSentenceContext } from '@/utils/contextExtractor';
 
 interface DataManagementTabProps {
   terms: AnalyzedTerm[];
   glossaryContent: string;
+  currentFullText?: string; // Add this prop
 }
 
-export const DataManagementTab: React.FC<DataManagementTabProps> = ({ terms, glossaryContent }) => {
+export const DataManagementTab: React.FC<DataManagementTabProps> = ({ 
+  terms, 
+  glossaryContent,
+  currentFullText 
+}) => {
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const { editedTerms, setEditedTerms } = useEditedTerms(terms);
   const [editValues, setEditValues] = useState<Partial<AnalyzedTerm>>({});
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [processedTerms, setProcessedTerms] = useState<AnalyzedTerm[]>([]);
+
+  // Process terms to ensure good context on mount
+  useEffect(() => {
+    if (terms && terms.length > 0 && currentFullText) {
+      const enhancedTerms = terms.map(term => {
+        // If context seems incomplete, try to enhance it
+        if (term.context && term.context.length < 50 && !term.context.includes('.')) {
+          const fullContext = extractSentenceContext(
+            currentFullText, 
+            term.startPosition, 
+            term.endPosition
+          );
+          return { ...term, context: fullContext };
+        }
+        return term;
+      });
+      setProcessedTerms(enhancedTerms);
+    } else {
+      setProcessedTerms(terms || []);
+    }
+  }, [terms, currentFullText]);
 
   const getTermId = (term: AnalyzedTerm) => term.text.toLowerCase();
 
@@ -32,6 +60,9 @@ export const DataManagementTab: React.FC<DataManagementTabProps> = ({ terms, glo
   const handleEditSave = () => {
     if (editingId) {
       setEditedTerms(prev => 
+        prev.map(term => getTermId(term) === editingId ? { ...term, ...editValues } : term)
+      );
+      setProcessedTerms(prev => 
         prev.map(term => getTermId(term) === editingId ? { ...term, ...editValues } : term)
       );
       setEditingId(null);
@@ -61,6 +92,7 @@ export const DataManagementTab: React.FC<DataManagementTabProps> = ({ terms, glo
       suggestions: [],
     };
     setEditedTerms(prev => [...prev, newTerm]);
+    setProcessedTerms(prev => [...prev, newTerm]);
     toast({
       title: "Row added",
       description: "New term row has been added",
@@ -78,6 +110,7 @@ export const DataManagementTab: React.FC<DataManagementTabProps> = ({ terms, glo
     }
 
     setEditedTerms(prev => prev.filter(term => !selectedRows.has(getTermId(term))));
+    setProcessedTerms(prev => prev.filter(term => !selectedRows.has(getTermId(term))));
     setSelectedRows(new Set());
     toast({
       title: "Rows deleted",
@@ -99,7 +132,7 @@ export const DataManagementTab: React.FC<DataManagementTabProps> = ({ terms, glo
 
   const handleExportCSV = () => {
     const headers = ['Term', 'Classification', 'Score', 'Frequency', 'Context', 'Suggestions'];
-    const rows = editedTerms.map(term => [
+    const rows = processedTerms.map(term => [
       term.text,
       term.classification,
       term.score.toString(),
@@ -177,14 +210,14 @@ export const DataManagementTab: React.FC<DataManagementTabProps> = ({ terms, glo
       <div className="grid md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{editedTerms.length}</div>
+            <div className="text-2xl font-bold">{processedTerms.length}</div>
             <div className="text-xs text-muted-foreground">Total Terms</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-green-600">
-              {editedTerms.filter(t => t.classification === 'valid').length}
+              {processedTerms.filter(t => t.classification === 'valid').length}
             </div>
             <div className="text-xs text-muted-foreground">Valid</div>
           </CardContent>
@@ -192,7 +225,7 @@ export const DataManagementTab: React.FC<DataManagementTabProps> = ({ terms, glo
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-yellow-600">
-              {editedTerms.filter(t => t.classification === 'review').length}
+              {processedTerms.filter(t => t.classification === 'review').length}
             </div>
             <div className="text-xs text-muted-foreground">Review</div>
           </CardContent>
@@ -200,7 +233,7 @@ export const DataManagementTab: React.FC<DataManagementTabProps> = ({ terms, glo
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-red-600">
-              {editedTerms.filter(t => t.classification === 'critical').length}
+              {processedTerms.filter(t => t.classification === 'critical').length}
             </div>
             <div className="text-xs text-muted-foreground">Critical</div>
           </CardContent>
@@ -223,10 +256,10 @@ export const DataManagementTab: React.FC<DataManagementTabProps> = ({ terms, glo
                   <TableHead className="w-[50px]">
                     <input
                       type="checkbox"
-                      checked={selectedRows.size === editedTerms.length && editedTerms.length > 0}
+                      checked={selectedRows.size === processedTerms.length && processedTerms.length > 0}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setSelectedRows(new Set(editedTerms.map(getTermId)));
+                          setSelectedRows(new Set(processedTerms.map(getTermId)));
                         } else {
                           setSelectedRows(new Set());
                         }
@@ -243,14 +276,14 @@ export const DataManagementTab: React.FC<DataManagementTabProps> = ({ terms, glo
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {editedTerms.length === 0 ? (
+                {processedTerms.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                       No data available. Complete analysis first.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  editedTerms.map((term) => {
+                  processedTerms.map((term) => {
                     const termId = getTermId(term);
                     const isSelected = selectedRows.has(termId);
                     return (

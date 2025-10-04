@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { analysisCache } from '@/lib/analysisCache';
+import { enhanceAnalysisContext } from '@/utils/contextExtractor';
 
 export interface AnalyzedTerm {
   text: string;
@@ -56,6 +57,7 @@ export const useAnalysisEngine = () => {
   const { toast } = useToast();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [currentFullText, setCurrentFullText] = useState(''); // Track the analyzed text
 
   const analyzeTranslation = async (
     translationContent: string,
@@ -79,6 +81,7 @@ export const useAnalysisEngine = () => {
 
     setIsAnalyzing(true);
     setProgress(0);
+    setCurrentFullText(translationContent); // Store the full text for context enhancement
 
     try {
       // Simulate progress updates
@@ -155,8 +158,11 @@ export const useAnalysisEngine = () => {
 
       const result = data as AnalysisResult;
 
-      // Cache the result
-      analysisCache.set(cacheKey, result);
+      // ENHANCE CONTEXT: Process the results to improve context fields
+      const enhancedResult = enhanceAnalysisContext(result, translationContent);
+
+      // Cache the enhanced result
+      analysisCache.set(cacheKey, enhancedResult);
 
       // Set progress to 100 and keep it visible briefly
       setProgress(100);
@@ -164,10 +170,10 @@ export const useAnalysisEngine = () => {
 
       toast({
         title: "Analysis complete",
-        description: `Analyzed ${result.statistics.totalTerms} terms with ${result.statistics.qualityScore.toFixed(1)}% quality score`,
+        description: `Analyzed ${enhancedResult.statistics.totalTerms} terms with ${enhancedResult.statistics.qualityScore.toFixed(1)}% quality score`,
       });
 
-      return result;
+      return enhancedResult;
     } catch (error) {
       console.error('Analysis error:', error);
       toast({
@@ -183,5 +189,16 @@ export const useAnalysisEngine = () => {
     }
   };
 
-  return { analyzeTranslation, isAnalyzing, progress };
+  // Add a function to re-process context if needed
+  const enhanceExistingAnalysisContext = (analysisResult: AnalysisResult, fullText: string): AnalysisResult => {
+    return enhanceAnalysisContext(analysisResult, fullText);
+  };
+
+  return { 
+    analyzeTranslation, 
+    isAnalyzing, 
+    progress,
+    enhanceExistingAnalysisContext,
+    currentFullText 
+  };
 };

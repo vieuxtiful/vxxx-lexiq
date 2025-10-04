@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useChunkedAnalysis } from '@/hooks/useChunkedAnalysis';
+import { useAnalysisEngine } from '@/hooks/useAnalysisEngine';
 import { useAuth } from '@/hooks/useAuth';
 import { useProject } from '@/contexts/ProjectContext';
 import { useAnalysisSession, AnalysisSession } from '@/hooks/useAnalysisSession';
@@ -102,6 +103,7 @@ export function EnhancedMainInterface({
   const startTimeRef = useRef<number | null>(null);
   const { toast } = useToast();
   const { analyzeWithChunking, isAnalyzing: engineAnalyzing, progress: engineProgress, currentChunk, totalChunks } = useChunkedAnalysis();
+  const { currentFullText } = useAnalysisEngine();
   const { user, signOut } = useAuth();
   const { currentProject, requiresProjectSetup, setRequiresProjectSetup, createProject } = useProject();
   const { saveAnalysisSession } = useAnalysisSession();
@@ -1124,13 +1126,14 @@ export function EnhancedMainInterface({
           </TabsContent>
 
           {/* Data Management Tab */}
-          <TabsContent value="data">
-            {analysisComplete && analysisResults ? (
-              <DataManagementTab 
-                terms={analysisResults.terms || []} 
-                glossaryContent={glossaryFile ? '' : ''} 
-              />
-            ) : (
+            <TabsContent value="data">
+              {analysisComplete && analysisResults ? (
+                <DataManagementTab 
+                  terms={analysisResults.terms || []} 
+                  glossaryContent={glossaryFile ? '' : ''}
+                  currentFullText={currentFullText}
+                />
+              ) : (
               <Card className="p-12">
                 <div className="text-center text-muted-foreground">
                   <Database className="h-16 w-16 mx-auto mb-4 opacity-30" />
