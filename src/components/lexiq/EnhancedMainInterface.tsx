@@ -38,6 +38,16 @@ import { BatchProcessor } from './BatchProcessor';
 import { AnalyticsDashboard } from './AnalyticsDashboard';
 import { validateFile } from '@/utils/fileValidation';
 import lexiqLogo from '@/assets/lexiq-logo.png';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface EnhancedMainInterfaceProps {
   onReturn?: () => void;
@@ -84,6 +94,7 @@ export function EnhancedMainInterface({
   // Save versions
   const [savedVersions, setSavedVersions] = useState<SavedVersion[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   
   const translationInputRef = useRef<HTMLInputElement>(null);
   const glossaryInputRef = useRef<HTMLInputElement>(null);
@@ -676,7 +687,8 @@ export function EnhancedMainInterface({
                 />
               </button>
               
-              {/* Project Selector */}
+              {/* Organization & Project Selectors */}
+              <OrganizationSwitcher />
               <ProjectSelector />
             </div>
             
@@ -712,6 +724,16 @@ export function EnhancedMainInterface({
               >
                 <ArrowLeft className="h-4 w-4" />
                 Return
+              </Button>
+
+              {/* Sign Out Button */}
+              <Button
+                onClick={() => setShowSignOutDialog(true)}
+                variant="outline"
+                className="gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
               </Button>
 
               {/* Download Dropdown */}
@@ -758,10 +780,6 @@ export function EnhancedMainInterface({
                     <p className="text-sm font-medium">{user?.email}</p>
                     <p className="text-xs text-muted-foreground">Signed in</p>
                   </div>
-                  <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -779,6 +797,12 @@ export function EnhancedMainInterface({
               className="data-[state=active]:bg-card data-[state=active]:shadow-sm px-6 py-2.5 rounded-md transition-all"
             >
               Edit
+            </TabsTrigger>
+            <TabsTrigger 
+              value="batch" 
+              className="data-[state=active]:bg-card data-[state=active]:shadow-sm px-6 py-2.5 rounded-md transition-all"
+            >
+              Batch
             </TabsTrigger>
             <TabsTrigger 
               value="statistics" 
@@ -1009,19 +1033,37 @@ export function EnhancedMainInterface({
             </ResizablePanelGroup>
           </TabsContent>
 
-          {/* Statistics Tab */}
+          {/* Batch Tab */}
+          <TabsContent value="batch">
+            <BatchProcessor />
+          </TabsContent>
+
+          {/* Statistics Tab with Sub-tabs */}
           <TabsContent value="statistics">
-            {analysisComplete && analysisResults ? (
-              <EnhancedStatisticsTab statistics={analysisResults.statistics} />
-            ) : (
-              <Card className="p-12">
-                <div className="text-center text-muted-foreground">
-                  <BarChart3 className="h-16 w-16 mx-auto mb-4 opacity-30" />
-                  <h3 className="text-lg font-semibold mb-2">No Analysis Data</h3>
-                  <p>Complete an analysis in the Edit tab to view detailed statistics</p>
-                </div>
-              </Card>
-            )}
+            <Tabs defaultValue="enhanced" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="enhanced">Enhanced</TabsTrigger>
+                <TabsTrigger value="analytics">Analytics</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="enhanced">
+                {analysisComplete && analysisResults ? (
+                  <EnhancedStatisticsTab statistics={analysisResults.statistics} />
+                ) : (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <BarChart3 className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                      <h3 className="text-lg font-semibold mb-2">No Analysis Data</h3>
+                      <p>Complete an analysis in the Edit tab to view detailed statistics</p>
+                    </div>
+                  </Card>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="analytics">
+                <AnalyticsDashboard />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           {/* History Tab */}
@@ -1062,6 +1104,27 @@ export function EnhancedMainInterface({
           setShowSaveDialog(false);
         }}
       />
+
+      {/* Sign Out Confirmation Dialog */}
+      <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign Out</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to sign out? Any unsaved work will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              await signOut();
+              setShowSignOutDialog(false);
+            }}>
+              Sign Out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

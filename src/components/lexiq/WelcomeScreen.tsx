@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, LogOut } from 'lucide-react';
 import lexiqLogo from '@/assets/lexiq-logo.png';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface WelcomeScreenProps {
   onEnter: () => void;
@@ -9,6 +20,8 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onEnter }: WelcomeScreenProps) {
   const [showStartupOverlay, setShowStartupOverlay] = useState(true);
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false);
+  const { signOut } = useAuth();
 
   useEffect(() => {
     setShowStartupOverlay(true);
@@ -21,7 +34,19 @@ export function WelcomeScreen({ onEnter }: WelcomeScreenProps) {
 
   return (
     <div className="h-full relative flex items-center justify-center">
-      
+      {/* Sign Out Button - Top Right */}
+      <div className="absolute top-4 right-4 z-20">
+        <Button
+          onClick={() => setShowSignOutDialog(true)}
+          variant="outline"
+          size="sm"
+          className="gap-2"
+        >
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </Button>
+      </div>
+
       {/* Startup Overlay with Gaussian Blur */}
       <div 
         className={`absolute inset-0 z-50 pointer-events-none transition-opacity duration-[7000ms] ease-out ${
@@ -73,6 +98,27 @@ export function WelcomeScreen({ onEnter }: WelcomeScreenProps) {
           LocWorld54 Demo © LexiQ Development Team
         </div>
       </div>
+
+      {/* Sign Out Confirmation Dialog */}
+      <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign Out</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to sign out?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              await signOut();
+              setShowSignOutDialog(false);
+            }}>
+              Sign Out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
