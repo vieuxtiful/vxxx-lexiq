@@ -554,51 +554,58 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
         </CardHeader>
         
         <CardContent className="flex-1 overflow-auto relative">
-          <div
-            ref={editorRef}
-            className="min-h-[400px] p-4 rounded-md border bg-background/50 font-mono text-sm leading-relaxed"
-            contentEditable={isEditing}
-            spellCheck={false}
-            suppressContentEditableWarning
-            onInput={(e) => {
-              if (!isEditing || isComposing) return;
-              saveCursorPosition();
-              const newContent = e.currentTarget.textContent || '';
-              onContentChange(newContent);
-            }}
-            onBlur={(e) => {
-              setIsEditing(false);
-              setIsComposing(false);
-              setTimeout(() => {
-                e.currentTarget.innerHTML = renderContentWithUnderlines();
-              }, 100);
-            }}
-            onKeyUp={saveCursorPosition}
-            onClick={saveCursorPosition}
-            onCompositionStart={() => {
-              // Pause state updates while user composes non-roman characters
-              setIsComposing(true);
-              saveCursorPosition();
-            }}
-            onCompositionUpdate={() => {
-              // Continue tracking cursor during IME composition
-              saveCursorPosition();
-            }}
-            onCompositionEnd={(e) => {
-              // Commit the composed text when user selects character
-              setIsComposing(false);
-              if (isEditing) {
+          {editorRef.current ? (
+            <div
+              ref={editorRef}
+              className="min-h-[400px] p-4 rounded-md border bg-background/50 font-mono text-sm leading-relaxed"
+              contentEditable={isEditing}
+              spellCheck={false}
+              suppressContentEditableWarning
+              onInput={(e) => {
+                if (!isEditing || isComposing) return;
+                saveCursorPosition();
                 const newContent = e.currentTarget.textContent || '';
                 onContentChange(newContent);
+              }}
+              onBlur={(e) => {
+                setIsEditing(false);
+                setIsComposing(false);
+                setTimeout(() => {
+                  e.currentTarget.innerHTML = renderContentWithUnderlines();
+                }, 100);
+              }}
+              onKeyUp={saveCursorPosition}
+              onClick={saveCursorPosition}
+              onCompositionStart={() => {
+                // Pause state updates while user composes non-roman characters
+                setIsComposing(true);
                 saveCursorPosition();
-              }
-            }}
-            dangerouslySetInnerHTML={editorRef.current ? { 
-              __html: renderContentWithUnderlines() || ''
-            } : undefined}
-          >
-            {!editorRef.current && content}
-          </div>
+              }}
+              onCompositionUpdate={() => {
+                // Continue tracking cursor during IME composition
+                saveCursorPosition();
+              }}
+              onCompositionEnd={(e) => {
+                // Commit the composed text when user selects character
+                setIsComposing(false);
+                if (isEditing) {
+                  const newContent = e.currentTarget.textContent || '';
+                  onContentChange(newContent);
+                  saveCursorPosition();
+                }
+              }}
+              dangerouslySetInnerHTML={{ 
+                __html: renderContentWithUnderlines() || ''
+              }}
+            />
+          ) : (
+            <div
+              ref={editorRef}
+              className="min-h-[400px] p-4 rounded-md border bg-background/50 font-mono text-sm leading-relaxed"
+            >
+              {content}
+            </div>
+          )}
 
           {/* Character Counter and Legend */}
           <div className="text-xs mt-2 flex items-center justify-between">
