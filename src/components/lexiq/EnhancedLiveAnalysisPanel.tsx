@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { CheckCircle, AlertCircle, XCircle, Zap, BookOpen, Palette, Check } from 'lucide-react';
+import { CheckCircle, AlertCircle, XCircle, Zap, BookOpen, Palette, Check, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface FlaggedTerm {
@@ -236,25 +236,28 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
     }
   }, [content, isEditing]);
 
-  // Debounced re-analysis when content changes
-  useEffect(() => {
-    if (!isEditing || !onReanalyze) return;
-
-    if (reanalyzeTimeoutRef.current) {
-      clearTimeout(reanalyzeTimeoutRef.current);
-    }
-
-    reanalyzeTimeoutRef.current = setTimeout(() => {
-      console.log('Triggering enhanced re-analysis of edited content...');
-      onReanalyze(content);
-    }, 25000);
-
-    return () => {
-      if (reanalyzeTimeoutRef.current) {
-        clearTimeout(reanalyzeTimeoutRef.current);
-      }
-    };
-  }, [content, isEditing, onReanalyze]);
+  /**
+   * Auto-reanalysis feature DISABLED to prevent unexpected AI credit usage
+   * Users must manually trigger analysis via the "Start QA" button or the "Reanalyze" button
+   */
+  // useEffect(() => {
+  //   if (!isEditing || !onReanalyze) return;
+  //
+  //   if (reanalyzeTimeoutRef.current) {
+  //     clearTimeout(reanalyzeTimeoutRef.current);
+  //   }
+  //
+  //   reanalyzeTimeoutRef.current = setTimeout(() => {
+  //     console.log('Triggering enhanced re-analysis of edited content...');
+  //     onReanalyze(content);
+  //   }, 25000);
+  //
+  //   return () => {
+  //     if (reanalyzeTimeoutRef.current) {
+  //       clearTimeout(reanalyzeTimeoutRef.current);
+  //     }
+  //   };
+  // }, [content, isEditing, onReanalyze]);
 
   // Show warning when approaching character limit
   useEffect(() => {
@@ -466,6 +469,19 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
               >
                 {showTermStatus ? 'Hide Term Status' : 'Show Term Status'}
               </Button>
+              
+              {/* Manual reanalysis button */}
+              {onReanalyze && content.trim().length > 0 && isEditing && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onReanalyze(content)}
+                  className="h-6 text-xs gap-1.5 px-2"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  Reanalyze
+                </Button>
+              )}
             </div>
             
             <div className="flex items-center gap-4">
@@ -577,10 +593,12 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                 saveCursorPosition();
               }
             }}
-            dangerouslySetInnerHTML={{ 
-              __html: renderContentWithUnderlines()
-            }}
-          />
+            dangerouslySetInnerHTML={editorRef.current ? { 
+              __html: renderContentWithUnderlines() || ''
+            } : undefined}
+          >
+            {!editorRef.current && content}
+          </div>
 
           {/* Character Counter and Legend */}
           <div className="text-xs mt-2 flex items-center justify-between">
