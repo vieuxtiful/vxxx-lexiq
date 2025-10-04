@@ -38,7 +38,7 @@ import { BatchProcessor } from './BatchProcessor';
 import { AnalyticsDashboard } from './AnalyticsDashboard';
 import { ProjectSetupWizard } from './ProjectSetupWizard';
 import { validateFile } from '@/utils/fileValidation';
-import lexiqLogo from '@/assets/lexiq-logo.png';
+import lexiqLogo from '@/assets/lexiq-team-logo.png';
 import {
   AlertDialog,
   AlertDialogAction,

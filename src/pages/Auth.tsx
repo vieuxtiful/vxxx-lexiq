@@ -81,11 +81,8 @@ const Auth = () => {
           <div className="flex justify-center mb-2">
             <img src={lexiqLogo} alt="LexiQ Logo" className="h-16 hover-scale" />
           </div>
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-            Welcome to LexiQ
-          </CardTitle>
-          <CardDescription className="text-base">
-            Enterprise Translation Quality Assurance Platform
+          <CardDescription className="text-base mt-2">
+            LQA. Simple.
           </CardDescription>
         </CardHeader>
         <CardContent>

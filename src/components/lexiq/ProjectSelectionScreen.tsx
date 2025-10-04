@@ -1,0 +1,144 @@
+import React, { useState, useEffect } from 'react';
+import { FolderOpen, Plus, Clock, Search } from 'lucide-react';
+import { Project } from '@/hooks/useProjects';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { FloatingBackground } from './FloatingBackground';
+
+interface ProjectSelectionScreenProps {
+  onProjectSelect: (project: Project) => void;
+  onCreateNewProject: () => void;
+  userProjects: Project[];
+  loading: boolean;
+}
+
+export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
+  onProjectSelect,
+  onCreateNewProject,
+  userProjects,
+  loading
+}) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+
+  useEffect(() => {
+    if (searchTerm) {
+      const filtered = userProjects.filter(project =>
+        project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.language.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.domain.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredProjects(filtered);
+    } else {
+      setFilteredProjects(userProjects);
+    }
+  }, [searchTerm, userProjects]);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen relative overflow-hidden" style={{ background: 'var(--gradient-welcome)' }}>
+        <div className="fixed inset-0 z-0 pointer-events-none">
+          <FloatingBackground />
+        </div>
+        <div className="relative z-10 flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading your projects...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen relative overflow-hidden" style={{ background: 'var(--gradient-welcome)' }}>
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <FloatingBackground />
+      </div>
+      
+      <div className="relative z-10 container mx-auto px-6 py-8">
+        {/* Header */}
+        <div className="text-center mb-12 mt-8">
+          <h1 className="text-4xl font-bold text-foreground mb-4">
+            Welcome Back!
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Choose a project to continue working, or start a new one
+          </p>
+        </div>
+
+        {/* Search and Actions */}
+        <div className="max-w-4xl mx-auto mb-8">
+          <div className="flex gap-4 mb-6">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+              <Input
+                type="text"
+                placeholder="Search projects..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button onClick={onCreateNewProject} className="gap-2">
+              <Plus className="w-5 h-5" />
+              New Project
+            </Button>
+          </div>
+
+          {/* Projects Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredProjects.length === 0 ? (
+              <div className="col-span-2 text-center py-12">
+                <FolderOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground text-lg">
+                  {searchTerm ? 'No projects found matching your search' : 'No projects yet'}
+                </p>
+              </div>
+            ) : (
+              filteredProjects.map(project => (
+                <Card
+                  key={project.id}
+                  className="cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] bg-card/95 backdrop-blur-sm border-border/40"
+                  onClick={() => onProjectSelect(project)}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <h3 className="text-xl font-semibold text-foreground mb-2">
+                          {project.name}
+                        </h3>
+                        <div className="flex gap-3 text-sm text-muted-foreground">
+                          <span className="font-medium">
+                            {project.language.toUpperCase()}
+                          </span>
+                          <span>•</span>
+                          <span>{project.domain}</span>
+                        </div>
+                      </div>
+                      <FolderOpen className="w-6 h-6 text-primary" />
+                    </div>
+                    
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="w-4 h-4" />
+                      <span>Updated {formatDate(project.updated_at)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

@@ -1,8 +1,7 @@
-import React from 'react';
-import { EnhancedMainInterface } from '@/components/lexiq/EnhancedMainInterface';
+import { AppRouter } from '@/components/AppRouter';
 
 const Index = () => {
-  return <EnhancedMainInterface />;
+  return <AppRouter />;
 };
 
 export default Index;
