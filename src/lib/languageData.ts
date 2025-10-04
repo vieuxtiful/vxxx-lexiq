@@ -28,7 +28,7 @@ export const LANGUAGES: Language[] = [
   { code: 'it', name: 'Italian', nativeName: 'Italiano', locale: 'it-IT', bcp47: 'it-IT', family: 'Romance', script: 'Latin', rtl: false, flag: '🇮🇹', popular: true },
   { code: 'pt', name: 'Portuguese', nativeName: 'Português', locale: 'pt-PT', bcp47: 'pt-PT', family: 'Romance', script: 'Latin', rtl: false, flag: '🇵🇹', popular: true },
   { code: 'ro', name: 'Romanian', nativeName: 'Română', locale: 'ro-RO', bcp47: 'ro-RO', family: 'Romance', script: 'Latin', rtl: false, flag: '🇷🇴' },
-  { code: 'ca', name: 'Catalan', nativeName: 'Català', locale: 'ca-ES', bcp47: 'ca-ES', family: 'Romance', script: 'Latin', rtl: false, flag: '🏴' },
+  { code: 'ca', name: 'Catalan', nativeName: 'Català', locale: 'ca-ES', bcp47: 'ca-ES', family: 'Romance', script: 'Latin', rtl: false, flag: '' },
 
   // Slavic Languages
   { code: 'ru', name: 'Russian', nativeName: 'Русский', locale: 'ru-RU', bcp47: 'ru-RU', family: 'Slavic', script: 'Cyrillic', rtl: false, flag: '🇷🇺', popular: true },

@@ -10,6 +10,8 @@ interface ProjectContextType {
   createProject: (name: string, language: string, domain: string) => Promise<Project | null>;
   loading: boolean;
   refreshProjects: () => void;
+  requiresProjectSetup: boolean;
+  setRequiresProjectSetup: (value: boolean) => void;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -19,12 +21,14 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const { projects, loading: projectsLoading, createProject: createProjectHook, refreshProjects } = useProjects(user?.id);
   const [currentProject, setCurrentProjectState] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [requiresProjectSetup, setRequiresProjectSetup] = useState(false);
   const { toast } = useToast();
 
-  // Load current project from localStorage or auto-create
+  // Load current project from localStorage
   useEffect(() => {
     if (!user) {
       setCurrentProjectState(null);
+      setRequiresProjectSetup(false);
       setLoading(false);
       return;
     }
@@ -37,6 +41,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const savedProject = projects.find(p => p.id === savedProjectId);
       if (savedProject) {
         setCurrentProjectState(savedProject);
+        setRequiresProjectSetup(false);
         setLoading(false);
         return;
       }
@@ -46,36 +51,26 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (projects.length > 0) {
       setCurrentProjectState(projects[0]);
       localStorage.setItem('lexiq-current-project-id', projects[0].id);
+      setRequiresProjectSetup(false);
       setLoading(false);
     } else {
-      // Auto-create default project for new users
-      createDefaultProject();
+      // No projects - show setup wizard instead of auto-creating
+      setCurrentProjectState(null);
+      setRequiresProjectSetup(true);
+      setLoading(false);
     }
   }, [user, projects, projectsLoading]);
 
-  const createDefaultProject = async () => {
-    try {
-      const { data } = await createProjectHook('My First Project', 'en', 'general');
-      if (data) {
-        setCurrentProjectState(data);
-        localStorage.setItem('lexiq-current-project-id', data.id);
-        toast({
-          title: "Welcome! 🎉",
-          description: "Your first project has been created.",
-        });
-      }
-    } catch (error) {
-      console.error('Failed to create default project:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const createProject = async (name: string, language: string, domain: string): Promise<Project | null> => {
+    if (!language || !domain) {
+      throw new Error('Language and domain are required to create a project');
+    }
+
     const { data } = await createProjectHook(name, language, domain);
     if (data) {
       setCurrentProjectState(data);
       localStorage.setItem('lexiq-current-project-id', data.id);
+      setRequiresProjectSetup(false);
     }
     return data;
   };
@@ -98,6 +93,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         createProject,
         loading,
         refreshProjects,
+        requiresProjectSetup,
+        setRequiresProjectSetup,
       }}
     >
       {children}

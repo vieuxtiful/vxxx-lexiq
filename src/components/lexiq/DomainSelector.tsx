@@ -8,6 +8,7 @@ import { DOMAINS, DOMAIN_CATEGORIES, getDomainById, searchDomains } from '@/lib/
 import { useSmartDefaults } from '@/hooks/useSmartDefaults';
 import { Badge } from '@/components/ui/badge';
 import { getLanguageByCode } from '@/lib/languageData';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface DomainSelectorProps {
   onSelect: (domain: string) => void;
@@ -114,27 +115,37 @@ export const DomainSelector: React.FC<DomainSelectorProps> = ({
             </TabsList>
 
             <TabsContent value={selectedTab} className="mt-4">
-              <div className="grid grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2">
-                {filteredDomains
-                  .filter(d => d.id !== 'general') // Exclude general from grid since it's always shown
-                  .map((domain) => (
-                    <Button
-                      key={domain.id}
-                      variant="outline"
-                      className="h-28 flex flex-col items-center justify-center space-y-2 hover:bg-primary/10 hover:border-primary transition-all relative p-4"
-                      onClick={() => handleSelect(domain.id)}
-                    >
-                      {domain.id === defaults.lastDomain && (
-                        <Star className="absolute top-2 right-2 h-3 w-3 text-yellow-500 fill-yellow-500" />
-                      )}
-                      <domain.icon className={`h-8 w-8 ${domain.color}`} />
-                      <span className="text-sm font-medium text-center">{domain.name}</span>
-                      <span className="text-xs text-muted-foreground text-center line-clamp-2">
-                        {domain.description}
-                      </span>
-                    </Button>
-                  ))}
-              </div>
+              <TooltipProvider>
+                <div className="grid grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2">
+                  {filteredDomains
+                    .filter(d => d.id !== 'general') // Exclude general from grid since it's always shown
+                    .map((domain) => (
+                      <Tooltip key={domain.id}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="h-28 flex flex-col items-center justify-center space-y-2 hover:bg-primary/10 hover:border-primary transition-all relative p-4"
+                            onClick={() => handleSelect(domain.id)}
+                          >
+                            {domain.id === defaults.lastDomain && (
+                              <Star className="absolute top-2 right-2 h-3 w-3 text-yellow-500 fill-yellow-500" />
+                            )}
+                            <domain.icon className={`h-8 w-8 ${domain.color}`} />
+                            <span className="text-sm font-medium text-center">{domain.name}</span>
+                          </Button>
+                        </TooltipTrigger>
+                        {domain.description && (
+                          <TooltipContent 
+                            side="top" 
+                            className="max-w-xs p-3 text-sm animate-in fade-in-0 zoom-in-95"
+                          >
+                            {domain.description}
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    ))}
+                </div>
+              </TooltipProvider>
               {filteredDomains.filter(d => d.id !== 'general').length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   No domains found matching "{searchQuery}"

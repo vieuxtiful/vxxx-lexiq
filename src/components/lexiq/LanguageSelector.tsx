@@ -61,13 +61,15 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ onSelect, on
           <CardTitle className="text-3xl">Select Your Working Language</CardTitle>
           <CardDescription className="text-base">
             Choose the language you'll be working in for translation QA.
-            {defaults.lastLanguage && (
-              <Badge variant="secondary" className="ml-2">
-                <Star className="h-3 w-3 mr-1" />
+          </CardDescription>
+          {defaults.lastLanguage && (
+            <div className="flex justify-center">
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <Star className="h-3 w-3" />
                 Last used: {LANGUAGES.find(l => l.code === defaults.lastLanguage)?.name}
               </Badge>
-            )}
-          </CardDescription>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative">
@@ -96,15 +98,15 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ onSelect, on
                   <Button
                     key={lang.code}
                     variant="outline"
-                    className="h-20 flex flex-col items-center justify-center space-y-1 hover:bg-primary/10 hover:border-primary transition-all relative"
+                    className="h-20 flex items-center justify-center group hover:bg-primary/10 hover:border-primary transition-all relative"
                     onClick={() => handleSelect(lang.code)}
                   >
                     {lang.code === defaults.lastLanguage && (
                       <Star className="absolute top-1 right-1 h-3 w-3 text-yellow-500 fill-yellow-500" />
                     )}
-                    <span className="text-3xl">{lang.flag}</span>
-                    <span className="text-sm font-medium">{lang.name}</span>
-                    <span className="text-xs text-muted-foreground">{lang.nativeName}</span>
+                    <span className="text-lg font-medium text-center group-hover:brightness-110 transition-all">
+                      {lang.nativeName}
+                    </span>
                   </Button>
                 ))}
               </div>

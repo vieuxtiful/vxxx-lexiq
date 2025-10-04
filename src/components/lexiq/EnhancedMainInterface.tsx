@@ -36,6 +36,7 @@ import { HistoryPanel } from './HistoryPanel';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
 import { BatchProcessor } from './BatchProcessor';
 import { AnalyticsDashboard } from './AnalyticsDashboard';
+import { ProjectSetupWizard } from './ProjectSetupWizard';
 import { validateFile } from '@/utils/fileValidation';
 import lexiqLogo from '@/assets/lexiq-logo.png';
 import {
@@ -103,12 +104,20 @@ export function EnhancedMainInterface({
   const { toast } = useToast();
   const { analyzeTranslation, isAnalyzing: engineAnalyzing, progress: engineProgress } = useAnalysisEngine();
   const { user, signOut } = useAuth();
-  const { currentProject } = useProject();
+  const { currentProject, requiresProjectSetup, setRequiresProjectSetup, createProject } = useProject();
   const { saveAnalysisSession } = useAnalysisSession();
   const { processFile } = useFileProcessor();
   const { logAnalysis, logFileUpload, logProjectCreated, logSessionRestored } = useAuditLog();
   const [translationFileId, setTranslationFileId] = useState<string | null>(null);
   const [glossaryFileId, setGlossaryFileId] = useState<string | null>(null);
+  const [showProjectSetup, setShowProjectSetup] = useState(false);
+
+  // Show project setup wizard when required
+  React.useEffect(() => {
+    if (requiresProjectSetup && user) {
+      setShowProjectSetup(true);
+    }
+  }, [requiresProjectSetup, user]);
 
   // Load saved state and versions on mount
   React.useEffect(() => {
@@ -565,6 +574,34 @@ export function EnhancedMainInterface({
       setCurrentContent(fullText);
     }
   }, []);
+
+  // Handle project setup completion
+  const handleProjectSetupComplete = async (
+    projectName: string, 
+    language: string, 
+    domain: string
+  ) => {
+    try {
+      await createProject(projectName, language, domain);
+      setShowProjectSetup(false);
+      toast({
+        title: "Project Created",
+        description: `${projectName} is ready to use.`,
+      });
+    } catch (error) {
+      console.error('Failed to create project:', error);
+      toast({
+        title: "Failed to create project",
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSetupSkip = () => {
+    setRequiresProjectSetup(false);
+    setShowProjectSetup(false);
+  };
 
   // Clear all data when returning to language select
   const handleReturnToLanguageSelect = useCallback(() => {
@@ -1090,6 +1127,13 @@ export function EnhancedMainInterface({
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Project Setup Wizard */}
+      <ProjectSetupWizard
+        isOpen={showProjectSetup}
+        onComplete={handleProjectSetupComplete}
+        onSkip={handleSetupSkip}
+      />
 
       {/* Save Versions Dialog */}
       <SaveVersionsDialog
