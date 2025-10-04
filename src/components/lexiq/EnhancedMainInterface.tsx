@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
+import { detectLanguageSimple } from '@/lib/languageDetector';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -272,6 +273,23 @@ export function EnhancedMainInterface({
     if (type === 'translation') {
       try {
         const content = await file.text();
+        
+        // Detect language and warn if mismatch with project language
+        const detectedLang = detectLanguageSimple(content);
+        if (detectedLang !== selectedLanguage) {
+          const languageNames: Record<string, string> = {
+            'en': 'English', 'ja': 'Japanese', 'zh': 'Chinese', 'ko': 'Korean',
+            'es': 'Spanish', 'fr': 'French', 'de': 'German', 'it': 'Italian',
+            'pt': 'Portuguese', 'ru': 'Russian', 'ar': 'Arabic', 'hi': 'Hindi'
+          };
+          
+          toast({
+            title: "Language Mismatch",
+            description: `Project: ${languageNames[selectedLanguage] || selectedLanguage} | Detected: ${languageNames[detectedLang] || detectedLang}. Analysis may be less accurate.`,
+            variant: "destructive",
+          });
+        }
+        
         if (content.length > 50000) {
           toast({
             title: "Large File Detected",
