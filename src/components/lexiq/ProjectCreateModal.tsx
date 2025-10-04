@@ -3,13 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { LanguageCombobox } from '@/components/ui/language-combobox';
+import { DomainCombobox } from '@/components/ui/domain-combobox';
+import { useSmartDefaults } from '@/hooks/useSmartDefaults';
 
 interface ProjectCreateModalProps {
   isOpen: boolean;
@@ -17,39 +13,15 @@ interface ProjectCreateModalProps {
   onCreate: (name: string, language: string, domain: string) => void;
 }
 
-const languages = [
-  { value: 'en', label: 'English', flag: '🇺🇸' },
-  { value: 'es', label: 'Spanish', flag: '🇪🇸' },
-  { value: 'fr', label: 'French', flag: '🇫🇷' },
-  { value: 'de', label: 'German', flag: '🇩🇪' },
-  { value: 'it', label: 'Italian', flag: '🇮🇹' },
-  { value: 'pt', label: 'Portuguese', flag: '🇵🇹' },
-  { value: 'ja', label: 'Japanese', flag: '🇯🇵' },
-  { value: 'zh', label: 'Chinese', flag: '🇨🇳' },
-  { value: 'ko', label: 'Korean', flag: '🇰🇷' },
-  { value: 'ar', label: 'Arabic', flag: '🇸🇦' },
-  { value: 'th', label: 'Thai', flag: '🇹🇭' },
-];
-
-const domains = [
-  { value: 'general', label: 'General', icon: '📝' },
-  { value: 'technology', label: 'Technology', icon: '💻' },
-  { value: 'medical', label: 'Medical', icon: '🏥' },
-  { value: 'legal', label: 'Legal', icon: '⚖️' },
-  { value: 'finance', label: 'Finance', icon: '💰' },
-  { value: 'academic', label: 'Academic', icon: '🎓' },
-  { value: 'marketing', label: 'Marketing', icon: '📈' },
-  { value: 'engineering', label: 'Engineering', icon: '🔧' }
-];
-
 export const ProjectCreateModal: React.FC<ProjectCreateModalProps> = ({
   isOpen,
   onClose,
   onCreate
 }) => {
+  const { defaults } = useSmartDefaults();
   const [projectName, setProjectName] = useState('');
-  const [language, setLanguage] = useState('en');
-  const [domain, setDomain] = useState('general');
+  const [language, setLanguage] = useState(defaults.lastLanguage || 'en');
+  const [domain, setDomain] = useState(defaults.lastDomain || 'general');
   const [errors, setErrors] = useState<{ projectName?: string }>({});
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -108,34 +80,20 @@ export const ProjectCreateModal: React.FC<ProjectCreateModalProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="language">Language</Label>
-              <Select value={language} onValueChange={setLanguage}>
-                <SelectTrigger id="language">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px] bg-popover z-[100]">
-                  {languages.map(lang => (
-                    <SelectItem key={lang.value} value={lang.value}>
-                      {lang.flag} {lang.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <LanguageCombobox
+                value={language}
+                onValueChange={setLanguage}
+                placeholder="Select language..."
+              />
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="domain">Domain</Label>
-              <Select value={domain} onValueChange={setDomain}>
-                <SelectTrigger id="domain">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px] bg-popover z-[100]">
-                  {domains.map(dom => (
-                    <SelectItem key={dom.value} value={dom.value}>
-                      {dom.icon} {dom.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <DomainCombobox
+                value={domain}
+                onValueChange={setDomain}
+                placeholder="Select domain..."
+              />
             </div>
           </div>
           
