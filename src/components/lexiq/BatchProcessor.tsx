@@ -5,11 +5,12 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { useFileProcessor } from '@/hooks/useFileProcessor';
-import { useAnalysisEngine } from '@/hooks/useAnalysisEngine';
+import { useChunkedAnalysis } from '@/hooks/useChunkedAnalysis';
 import { useProject } from '@/contexts/ProjectContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { supabase } from '@/integrations/supabase/client';
 
 interface BatchFileResult {
   fileName: string;
@@ -25,7 +26,7 @@ export const BatchProcessor: React.FC = () => {
   const [results, setResults] = useState<BatchFileResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const { processFile } = useFileProcessor();
-  const { analyzeTranslation } = useAnalysisEngine();
+  const { analyzeWithChunking, currentChunk, totalChunks } = useChunkedAnalysis();
   const { currentProject } = useProject();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -33,10 +34,10 @@ export const BatchProcessor: React.FC = () => {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
-    if (selectedFiles.length > 10) {
+    if (selectedFiles.length > 25) {
       toast({
         title: "Too many files",
-        description: "You can upload a maximum of 10 files at once.",
+        description: "You can upload a maximum of 25 files at once.",
         variant: "destructive"
       });
       return;
@@ -52,8 +53,25 @@ export const BatchProcessor: React.FC = () => {
   const processBatch = async () => {
     if (!currentProject || !user) return;
 
+    // Check rate limit: 100 analyses per hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { data: recentAnalyses, error: rateLimitError } = await supabase
+      .from('analysis_sessions')
+      .select('created_at')
+      .eq('user_id', user.id)
+      .gte('created_at', oneHourAgo);
+
+    if (!rateLimitError && recentAnalyses && recentAnalyses.length >= 100) {
+      toast({
+        title: "Rate limit reached",
+        description: "You've reached the maximum of 100 analyses per hour. Please try again later.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsProcessing(true);
-    const CONCURRENT_LIMIT = 3; // Process 3 files at a time to avoid rate limits
+    const CONCURRENT_LIMIT = 5; // Process 5 files at a time
     
     for (let i = 0; i < files.length; i += CONCURRENT_LIMIT) {
       const batch = files.slice(i, i + CONCURRENT_LIMIT);
@@ -86,8 +104,8 @@ export const BatchProcessor: React.FC = () => {
               return newResults;
             });
 
-            // Analyze content
-            const analysis = await analyzeTranslation(
+            // Analyze content with chunking support
+            const analysis = await analyzeWithChunking(
               processed.content,
               '',
               currentProject.language || 'en',
@@ -155,7 +173,7 @@ export const BatchProcessor: React.FC = () => {
             <div>
               <h3 className="text-lg font-semibold">Batch File Processing</h3>
               <p className="text-sm text-muted-foreground">
-                Upload and analyze up to 10 files at once
+                Upload and analyze up to 25 files at once (max 50MB per file)
               </p>
             </div>
             <input
@@ -217,7 +235,14 @@ export const BatchProcessor: React.FC = () => {
                 </div>
 
                 {result.status === 'processing' && (
-                  <Progress value={result.progress} className="h-1" />
+                  <div className="space-y-1">
+                    <Progress value={result.progress} className="h-1" />
+                    {totalChunks > 1 && (
+                      <p className="text-xs text-muted-foreground">
+                        Processing chunk {currentChunk} of {totalChunks}
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 {result.error && (

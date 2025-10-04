@@ -18,7 +18,7 @@ import {
   Globe, Building, Download, Undo2, Redo2, Database, Save, User, LogOut
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAnalysisEngine } from '@/hooks/useAnalysisEngine';
+import { useChunkedAnalysis } from '@/hooks/useChunkedAnalysis';
 import { useAuth } from '@/hooks/useAuth';
 import { useProject } from '@/contexts/ProjectContext';
 import { useAnalysisSession, AnalysisSession } from '@/hooks/useAnalysisSession';
@@ -102,7 +102,7 @@ export function EnhancedMainInterface({
   const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const { toast } = useToast();
-  const { analyzeTranslation, isAnalyzing: engineAnalyzing, progress: engineProgress } = useAnalysisEngine();
+  const { analyzeWithChunking, isAnalyzing: engineAnalyzing, progress: engineProgress, currentChunk, totalChunks } = useChunkedAnalysis();
   const { user, signOut } = useAuth();
   const { currentProject, requiresProjectSetup, setRequiresProjectSetup, createProject } = useProject();
   const { saveAnalysisSession } = useAnalysisSession();
@@ -268,17 +268,15 @@ export function EnhancedMainInterface({
       return;
     }
 
-    // Additional check for translation file size (character limit)
+    // Read translation file content (no character limit - chunking will handle large files)
     if (type === 'translation') {
       try {
         const content = await file.text();
-        if (content.length > 15000) {
+        if (content.length > 50000) {
           toast({
-            title: "File Too Large",
-            description: `Translation text is ${content.length.toLocaleString()} characters. Please limit to 15,000 characters or split into smaller sections.`,
-            variant: "destructive",
+            title: "Large File Detected",
+            description: `File has ${content.length.toLocaleString()} characters. It will be automatically split into chunks for analysis.`,
           });
-          return;
         }
         setCurrentContent(content);
         addToHistory(content, null);
@@ -356,7 +354,7 @@ export function EnhancedMainInterface({
       const translationContent = translationFile ? await translationFile.text() : currentContent;
       const glossaryContent = await glossaryFile.text();
       
-      const result = await analyzeTranslation(
+      const result = await analyzeWithChunking(
         translationContent,
         glossaryContent,
         selectedLanguage,
@@ -432,7 +430,7 @@ export function EnhancedMainInterface({
     try {
       const glossaryContent = await glossaryFile.text();
       
-      const result = await analyzeTranslation(
+      const result = await analyzeWithChunking(
         content,
         glossaryContent,
         selectedLanguage,
@@ -937,7 +935,7 @@ export function EnhancedMainInterface({
                       <p className="text-[10px] text-muted-foreground px-1">
                         {textManuallyEntered 
                           ? 'Paste or type in editor • Clear text to upload files' 
-                          : 'Max 15,000 characters · 20MB file size limit'
+                          : 'Up to 50,000 characters · 50MB file size limit'
                         }
                       </p>
                       <input
@@ -965,7 +963,7 @@ export function EnhancedMainInterface({
                         )}
                       </div>
                       <p className="text-[10px] text-muted-foreground px-1">
-                        CSV or TXT format · 20MB file size limit
+                        CSV or TXT format · 50MB file size limit
                       </p>
                       <input
                         ref={glossaryInputRef}
@@ -985,7 +983,14 @@ export function EnhancedMainInterface({
                       </Button>
 
                       {isAnalyzing && (
-                        <Progress value={engineProgress} className="h-2" />
+                        <div className="space-y-1">
+                          <Progress value={engineProgress} className="h-2" />
+                          {totalChunks > 1 && (
+                            <p className="text-xs text-muted-foreground text-center">
+                              Processing chunk {currentChunk} of {totalChunks}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </CardContent>
                   </Card>

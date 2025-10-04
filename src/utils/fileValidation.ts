@@ -2,8 +2,8 @@
  * File validation utilities for LexiQ
  */
 
-export const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB in bytes
-export const MAX_FILES = 10;
+export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB in bytes
+export const MAX_FILES = 25;
 
 export interface FileValidationResult {
   valid: boolean;
