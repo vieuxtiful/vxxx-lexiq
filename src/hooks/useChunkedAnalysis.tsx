@@ -37,6 +37,7 @@ export const useChunkedAnalysis = () => {
       });
 
       const chunkResults: AnalyzedTerm[][] = [];
+      const MAX_RETRIES = 3;
 
       for (let i = 0; i < chunks.length; i++) {
         setCurrentChunk(i + 1);
@@ -44,29 +45,64 @@ export const useChunkedAnalysis = () => {
 
         console.log(`Processing chunk ${i + 1}/${chunks.length}`);
 
-        const analysis = await analyzeTranslation(
-          chunks[i].content,
-          glossary,
-          language,
-          domain,
-          checkGrammar
-        );
+        let analysis: AnalysisResult | null = null;
+        let lastError: Error | null = null;
+
+        // Retry logic with exponential backoff
+        for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+          try {
+            if (attempt > 0) {
+              const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+              console.log(`Retry attempt ${attempt + 1}/${MAX_RETRIES} for chunk ${i + 1} after ${backoffMs}ms`);
+              await new Promise(resolve => setTimeout(resolve, backoffMs));
+            }
+
+            analysis = await analyzeTranslation(
+              chunks[i].content,
+              glossary,
+              language,
+              domain,
+              checkGrammar
+            );
+
+            if (analysis) {
+              break; // Success - exit retry loop
+            }
+          } catch (error) {
+            lastError = error instanceof Error ? error : new Error('Unknown error');
+            console.error(`Chunk ${i + 1} attempt ${attempt + 1} failed:`, lastError.message);
+          }
+        }
 
         if (!analysis) {
-          throw new Error(`Analysis failed for chunk ${i + 1}`);
+          console.error(`All retries failed for chunk ${i + 1}. Last error:`, lastError?.message);
+          toast({
+            title: "Chunk analysis failed",
+            description: `Chunk ${i + 1}/${chunks.length} failed after ${MAX_RETRIES} attempts. Skipping...`,
+            variant: "destructive",
+          });
+          // Continue with empty results for this chunk instead of failing entirely
+          chunkResults.push([]);
+          continue;
         }
 
         chunkResults.push(analysis.terms);
 
-        // Small delay between chunks to avoid rate limiting
+        // Delay between chunks to avoid rate limiting
         if (i < chunks.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
 
-      // Merge all chunk results
-      console.log('Merging chunk results...');
-      const mergedTerms = mergeChunkedAnalysis(chunkResults, chunks);
+      // Filter out empty results and merge
+      const validResults = chunkResults.filter(r => r.length > 0);
+      
+      if (validResults.length === 0) {
+        throw new Error('All chunks failed analysis. Please try with smaller file or check your connection.');
+      }
+
+      console.log(`Merging ${validResults.length}/${chunks.length} successful chunk results...`);
+      const mergedTerms = mergeChunkedAnalysis(validResults, chunks.filter((_, i) => chunkResults[i].length > 0));
       const statistics = calculateStatistics(mergedTerms);
 
       const result: AnalysisResult = {
@@ -76,9 +112,10 @@ export const useChunkedAnalysis = () => {
 
       setProgress(100);
 
+      const successRate = (validResults.length / chunks.length * 100).toFixed(0);
       toast({
-        title: "Large file analysis complete",
-        description: `Analyzed ${statistics.totalTerms} terms across ${chunks.length} chunks with ${statistics.qualityScore.toFixed(1)}% quality score`,
+        title: "Analysis complete",
+        description: `Analyzed ${statistics.totalTerms} terms from ${validResults.length}/${chunks.length} chunks (${successRate}% success rate)`,
       });
 
       return result;
