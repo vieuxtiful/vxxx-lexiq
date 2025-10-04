@@ -23,6 +23,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProject } from '@/contexts/ProjectContext';
 import { useAnalysisSession, AnalysisSession } from '@/hooks/useAnalysisSession';
 import { useFileProcessor } from '@/hooks/useFileProcessor';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { transformAnalyzedTermsToFlagged } from '@/utils/analysisDataTransformer';
 import { EnhancedLiveAnalysisPanel } from './EnhancedLiveAnalysisPanel';
 import { EnhancedStatisticsTab } from './EnhancedStatisticsTab';
@@ -32,6 +33,9 @@ import { QAChatPanel } from './QAChatPanel';
 import { SaveVersionsDialog, type SavedVersion } from './SaveVersionsDialog';
 import { ProjectSelector } from './ProjectSelector';
 import { HistoryPanel } from './HistoryPanel';
+import { OrganizationSwitcher } from './OrganizationSwitcher';
+import { BatchProcessor } from './BatchProcessor';
+import { AnalyticsDashboard } from './AnalyticsDashboard';
 import { validateFile } from '@/utils/fileValidation';
 import lexiqLogo from '@/assets/lexiq-logo.png';
 
@@ -91,6 +95,7 @@ export function EnhancedMainInterface({
   const { currentProject } = useProject();
   const { saveAnalysisSession } = useAnalysisSession();
   const { processFile } = useFileProcessor();
+  const { logAnalysis, logFileUpload, logProjectCreated, logSessionRestored } = useAuditLog();
   const [translationFileId, setTranslationFileId] = useState<string | null>(null);
   const [glossaryFileId, setGlossaryFileId] = useState<string | null>(null);
 
@@ -351,7 +356,7 @@ export function EnhancedMainInterface({
         // Auto-save to database if user and project exist
         if (user && currentProject) {
           try {
-            await saveAnalysisSession(
+            const session = await saveAnalysisSession(
               currentProject.id,
               user.id,
               selectedLanguage,
@@ -361,6 +366,9 @@ export function EnhancedMainInterface({
               glossaryFileId || undefined,
               processingTime
             );
+            
+            // Log audit trail
+            await logAnalysis(session?.id || '', translationContent.length);
             console.log('Analysis session auto-saved to database');
           } catch (error) {
             console.error('Failed to auto-save analysis session:', error);

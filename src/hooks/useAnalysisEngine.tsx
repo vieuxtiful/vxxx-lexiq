@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { analysisCache } from '@/lib/analysisCache';
 
 export interface AnalyzedTerm {
   text: string;
@@ -63,6 +64,19 @@ export const useAnalysisEngine = () => {
     domain: string,
     checkGrammar: boolean = false
   ): Promise<AnalysisResult | null> => {
+    // Check cache first
+    const cacheKey = analysisCache.generateKey(translationContent, language, domain, checkGrammar);
+    const cachedResult = analysisCache.get<AnalysisResult>(cacheKey);
+    
+    if (cachedResult) {
+      console.log('Returning cached analysis result');
+      toast({
+        title: "Analysis complete (cached)",
+        description: `Analyzed ${cachedResult.statistics.totalTerms} terms with ${cachedResult.statistics.qualityScore.toFixed(1)}% quality score`,
+      });
+      return cachedResult;
+    }
+
     setIsAnalyzing(true);
     setProgress(0);
 
@@ -140,6 +154,9 @@ export const useAnalysisEngine = () => {
       }
 
       const result = data as AnalysisResult;
+
+      // Cache the result
+      analysisCache.set(cacheKey, result);
 
       // Set progress to 100 and keep it visible briefly
       setProgress(100);

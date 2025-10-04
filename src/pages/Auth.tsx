@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { usePasswordValidation } from '@/hooks/usePasswordValidation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PasswordStrengthIndicator } from '@/components/ui/password-strength-indicator';
 import { FloatingBackground } from '@/components/lexiq/FloatingBackground';
 import lexiqLogo from '@/assets/lexiq-logo.png';
 
@@ -14,8 +16,13 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('signin');
   const { signIn, signUp, user } = useAuth();
+  const { validatePassword } = usePasswordValidation();
   const navigate = useNavigate();
+
+  // Password validation for signup
+  const passwordValidation = activeTab === 'signup' ? validatePassword(password) : null;
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -39,6 +46,13 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate password strength
+    const validation = validatePassword(password);
+    if (!validation.isValid) {
+      return; // Password strength indicator will show requirements
+    }
+
     setIsLoading(true);
     
     const { error } = await signUp(email, password, name);
@@ -75,7 +89,7 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -143,10 +157,21 @@ const Auth = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    minLength={6}
+                    minLength={8}
                   />
+                  {passwordValidation && (
+                    <PasswordStrengthIndicator
+                      password={password}
+                      requirements={passwordValidation.requirements}
+                      strength={passwordValidation.strength}
+                    />
+                  )}
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={isLoading || (passwordValidation && !passwordValidation.isValid)}
+                >
                   {isLoading ? 'Creating account...' : 'Sign Up'}
                 </Button>
               </form>

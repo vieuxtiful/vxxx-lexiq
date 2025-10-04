@@ -1,1 +1,8 @@
 project_id = "zulhoqtziujwljghbgrw"
+
+[auth]
+enable_signup = true
+double_confirm_changes = true
+
+[auth.password_requirements]
+hibp = true  # Enable leaked password protection (HaveIBeenPwned)
