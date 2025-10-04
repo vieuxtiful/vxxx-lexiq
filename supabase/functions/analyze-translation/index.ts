@@ -38,116 +38,41 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Enhanced prompt with optional grammar checking
-    const prompt = `Analyze translation terminology against glossary. Return JSON only.
+    // Streamlined efficient prompt
+    const prompt = `Analyze translation against glossary. Return compact JSON.
 
-Domain: ${domain} | Language: ${language}${checkGrammar ? ' | Grammar Check: ENABLED' : ''}
+Language: ${language} | Domain: ${domain}${checkGrammar ? ' | Grammar: ON' : ''}
 
-LANGUAGE REQUIREMENT: All analysis output including suggestions, rationale, and context must be in ${language}. When providing alternatives or suggestions, ensure they are appropriate terms in ${language}, not English. Even if the glossary contains terms in multiple languages, all suggestions and recommendations must be provided in ${language}.
-
-GLOSSARY (authoritative source):
+GLOSSARY:
 ${glossaryContent}
 
-DETECTION REQUIREMENT: For EVERY term in the glossary above, scan the translation and identify ALL occurrences, including:
-- Exact matches (mark as VALID)
-- Morphological variants (mark as REVIEW)
-- Similar but incorrect terms (mark as CRITICAL)
-- Terms with spelling errors (mark as SPELLING)
-
-Do not skip any glossary term even if it appears correctly used in context. Provide comprehensive coverage of all glossary terms present in the translation.
-
-TRANSLATION TO ANALYZE:
+TEXT:
 ${translationContent}
 
-🔍 SPELLING DETECTION PRIORITY (FIRST PASS - HIGHEST PRIORITY):
-Before any glossary matching, scan for obvious spelling errors:
-- Check words against standard ${language} dictionaries
-- Look for common spelling patterns:
-  • Transposed letters: "recieve" → "receive", "teh" → "the"
-  • Doubled letters: "occurence" → "occurrence", "accomodate" → "accommodate"
-  • Missing letters: "enviroment" → "environment", "goverment" → "government"
-  • Extra letters: "untill" → "until", "realy" → "really"
-- Flag words that don't match glossary AND aren't valid ${language} words
-- Examples for ${language}: Common misspellings in technical/domain-specific terms
-- CRITICAL: Spelling errors take precedence over all other classifications
+RULES:
+1. Find glossary terms in text only (don't analyze terms not in glossary)
+2. Classifications:
+   - valid: Exact match to glossary
+   - review: Similar/variant (plurals, conjugations)
+   - critical: Wrong term or missing from glossary
+   - spelling: Obvious typo${checkGrammar ? `
+   - grammar: Grammar error` : ''}
 
-🔄 MORPHOLOGICAL VARIANT DETECTION (SECOND PASS):
-For each glossary term, automatically check these variations:
-- CASE VARIATIONS: If glossary has "aluminum", accept "Aluminum", "ALUMINUM", "AlUmInUm" (all case forms)
-- PLURALS (English): 
-  • Regular: add -s ("aluminum" → "aluminums")
-  • -es endings: ("process" → "processes")  
-  • -ies endings: change -y to -ies ("quality" → "qualities")
-  • Irregular: ("analysis" → "analyses", "datum" → "data")
-- VERB FORMS (English):
-  • -ing form: ("anneal" → "annealing")
-  • -ed form: ("anneal" → "annealed")
-  • -s form: ("anneal" → "anneals")
-- ADJECTIVE FORMS:
-  • Comparative: -er ("hard" → "harder")
-  • Superlative: -est ("hard" → "hardest")
+3. Keep ALL strings brief (context max 40 chars, note max 20 chars)
+4. ALL text fields in ${language}
+5. Only return terms found in text
 
-VARIANT CLASSIFICATION RULES:
-- If glossary contains "aluminum" and translation has "aluminums" → Mark as REVIEW (not CRITICAL)
-- If glossary contains "anneal" and translation has "annealing" → Mark as REVIEW
-- Case-only variations (Aluminum vs aluminum) → Mark as VALID (exact match)
-- Flag these as "morphological variant" in the rationale
-
-CRITICAL CLASSIFICATION RULES (MUST FOLLOW EXACTLY):
-
-1. VALID (green): 
-   - Term is an EXACT match to glossary (case-insensitive for Latin, exact for CJK)
-   - This classification is INDEPENDENT of whether better alternatives exist
-   - If term appears in glossary, it MUST be marked as VALID
-
-2. REVIEW (yellow):
-   - Term is a FUZZY match to glossary (plurals, conjugations, minor variations)
-   - OR term is a fuzzy match based on LLM contextual analysis
-   - Use when term is close but not exact match
-
-3. CRITICAL (red):
-   - Term is inconsistent with or non-existent in glossary
-   - OR a significantly better "hot match" exists based on LLM analysis
-   - These conditions are evaluated INDEPENDENTLY
-
-4. SPELLING: Obvious typos, misspellings (dotted orange underline)
-
-${checkGrammar ? `5. GRAMMAR: Grammar issues like subject-verb agreement, tense errors, etc. (wavy purple underline)` : ''}
-
-IMPORTANT: Exact glossary matches are ALWAYS valid, regardless of potential improvements.
-
-SEMANTIC TYPE CLASSIFICATION (for ALL terms):
-Identify the semantic type of each term:
-- Entity: People, places, organizations, objects
-- Event: Actions, processes, states over time
-- Property: Attributes, qualities, characteristics
-- Concept: Abstract ideas, theories
-- Relation: Connections between entities
-- Unknown: Cannot determine
-
-JSON format - keep all fields short and minimal:
+JSON (minified):
 {
   "terms": [
     {
-      "text": "exact term",
+      "text": "term",
       "pos": [start, end],
-      "class": "valid|review|critical|spelling${checkGrammar ? '|grammar' : ''}",
+      "class": "valid|review|critical|spelling",
       "score": 0-100,
-      "freq": count,
-      "ctx": "context (max 40 chars)",
-      "note": "reason (max 25 chars)",
-      "sugg": ["term1", "term2"],
-      "sem_type": {
-        "type": "Entity|Event|Property|Concept|Relation|Unknown",
-        "conf": 0.0-1.0,
-        "ui": {
-          "cat": "entity|event|property|concept|relation|unknown",
-          "color": "#2196F3|#FF9800|#4CAF50|#9C27B0|#F44336|#757575",
-          "desc": "brief desc",
-          "name": "Entity|Event|Property|Concept|Relation|Unknown"
-        }
-      }${checkGrammar ? `,
-      "gram_issues": [{"rule": "name", "sev": "low|medium|high", "sugg": "fix"}]` : ''}
+      "ctx": "brief context",
+      "note": "brief reason",
+      "sugg": ["alt1", "alt2"]
     }
   ],
   "stats": {
@@ -155,14 +80,11 @@ JSON format - keep all fields short and minimal:
     "valid": num,
     "review": num,
     "critical": num,
-    "spelling_errors": num,
-    "quality": 0-100,
-    "coverage": 0-100${checkGrammar ? `,
-    "grammar": num` : ''}
+    "quality": 0-100
   }
 }
 
-CRITICAL: Keep response COMPACT. Focus on IMPORTANT terms only. Limit rationale/context strings. ALL text in ${language}.`;
+CRITICAL: Return ONLY terms found in text. Keep response minimal.`;
 
     // Call Lovable AI with timeout
     const controller = new AbortController();
@@ -182,11 +104,11 @@ CRITICAL: Keep response COMPACT. Focus on IMPORTANT terms only. Limit rationale/
         body: JSON.stringify({
           model: "google/gemini-2.5-flash",
           messages: [
-            { role: "system", content: `You are a JSON-only system. Return ONLY compact, minified JSON. No markdown, no extra whitespace. Keep all text fields brief. All content in ${language}.` },
+            { role: "system", content: `Return compact minified JSON only. No markdown. Brief text fields. All content in ${language}.` },
             { role: "user", content: prompt }
           ],
           response_format: { type: "json_object" },
-          max_tokens: 50000,
+          max_tokens: 40000,
         }),
       });
       clearTimeout(timeoutId);
@@ -312,58 +234,19 @@ CRITICAL: Keep response COMPACT. Focus on IMPORTANT terms only. Limit rationale/
         };
       }
       
-      // Normalize term fields with enhanced data
-      analysisResult.terms = analysisResult.terms.map((term: any) => {
-        const normalized: any = {
-          text: term.text,
-          startPosition: Array.isArray(term.pos) ? term.pos[0] : term.startPosition,
-          endPosition: Array.isArray(term.pos) ? term.pos[1] : term.endPosition,
-          classification: term.class || term.classification,
-          score: term.score,
-          frequency: term.freq || term.frequency,
-          context: term.ctx || term.context,
-          rationale: term.note || term.rationale,
-          suggestions: term.sugg || term.suggestions || []
-        };
-        
-        // Add semantic type if present
-        if (term.sem_type) {
-          console.log('Raw sem_type structure:', JSON.stringify(term.sem_type, null, 2));
-          
-          normalized.semantic_type = {
-            semantic_type: String(term.sem_type.type || ''),
-            confidence: Number(term.sem_type.conf || 0),
-            ui_information: term.sem_type.ui ? {
-              category: String(term.sem_type.ui.cat || '').toLowerCase(),
-              color_code: String(term.sem_type.ui.color || '#757575'),
-              description: String(term.sem_type.ui.desc || '').substring(0, 200),
-              display_name: String(term.sem_type.ui.name || term.sem_type.type || '')
-            } : undefined
-          };
-          
-          console.log('Normalized semantic_type:', JSON.stringify(normalized.semantic_type, null, 2));
-        }
-        
-        // Add grammar issues if present
-        if (term.gram_issues) {
-          normalized.grammar_issues = term.gram_issues.map((issue: any) => ({
-            rule: issue.rule,
-            severity: issue.sev,
-            suggestion: issue.sugg
-          }));
-        }
-        
-        // Add UI metadata
-        if (term.sem_type || term.gram_issues) {
-          normalized.ui_metadata = {
-            confidence_level: term.sem_type?.conf >= 0.8 ? 'high' : term.sem_type?.conf >= 0.5 ? 'medium' : 'low',
-            has_grammar_issues: !!term.gram_issues && term.gram_issues.length > 0,
-            grammar_severity: term.gram_issues?.[0]?.sev || 'none'
-          };
-        }
-        
-        return normalized;
-      });
+      // Normalize term fields - simplified without semantic types
+      analysisResult.terms = analysisResult.terms.map((term: any) => ({
+        text: term.text,
+        startPosition: Array.isArray(term.pos) ? term.pos[0] : term.startPosition,
+        endPosition: Array.isArray(term.pos) ? term.pos[1] : term.endPosition,
+        classification: term.class || term.classification,
+        score: term.score,
+        frequency: term.freq || term.frequency || 1,
+        context: term.ctx || term.context || '',
+        rationale: term.note || term.rationale || '',
+        suggestions: term.sugg || term.suggestions || [],
+        grammar_issues: term.gram_issues || []
+      }));
       
     } catch (parseError) {
       console.error("Initial parse failed, attempting aggressive cleanup...");
@@ -378,71 +261,19 @@ CRITICAL: Keep response COMPACT. Focus on IMPORTANT terms only. Limit rationale/
         analysisResult = JSON.parse(aggressiveClean);
         console.log("Aggressive cleanup succeeded!");
         
-        // Same normalization as above
-        if (!analysisResult.terms || !Array.isArray(analysisResult.terms)) {
-          throw new Error("Invalid response structure: missing or invalid 'terms' array");
-        }
-        
-        if (!analysisResult.stats && !analysisResult.statistics) {
-          throw new Error("Invalid response structure: missing statistics");
-        }
-        if (analysisResult.stats && !analysisResult.statistics) {
-          analysisResult.statistics = {
-            totalTerms: analysisResult.stats.total,
-            validTerms: analysisResult.stats.valid,
-            reviewTerms: analysisResult.stats.review,
-            criticalTerms: analysisResult.stats.critical,
-            qualityScore: analysisResult.stats.quality,
-            confidenceMin: 0,
-            confidenceMax: 100,
-            coverage: analysisResult.stats.coverage
-          };
-        }
-        
-        analysisResult.terms = analysisResult.terms.map((term: any) => {
-          const normalized: any = {
-            text: term.text,
-            startPosition: Array.isArray(term.pos) ? term.pos[0] : term.startPosition,
-            endPosition: Array.isArray(term.pos) ? term.pos[1] : term.endPosition,
-            classification: term.class || term.classification,
-            score: term.score,
-            frequency: term.freq || term.frequency,
-            context: term.ctx || term.context,
-            rationale: term.note || term.rationale,
-            suggestions: term.sugg || term.suggestions || []
-          };
-          
-          if (term.sem_type) {
-            normalized.semantic_type = {
-              semantic_type: String(term.sem_type.type || ''),
-              confidence: Number(term.sem_type.conf || 0),
-              ui_information: term.sem_type.ui ? {
-                category: String(term.sem_type.ui.cat || '').toLowerCase(),
-                color_code: String(term.sem_type.ui.color || '#757575'),
-                description: String(term.sem_type.ui.desc || '').substring(0, 200),
-                display_name: String(term.sem_type.ui.name || term.sem_type.type || '')
-              } : undefined
-            };
-          }
-          
-          if (term.gram_issues) {
-            normalized.grammar_issues = term.gram_issues.map((issue: any) => ({
-              rule: issue.rule,
-              severity: issue.sev,
-              suggestion: issue.sugg
-            }));
-          }
-          
-          if (term.sem_type || term.gram_issues) {
-            normalized.ui_metadata = {
-              confidence_level: term.sem_type?.conf >= 0.8 ? 'high' : term.sem_type?.conf >= 0.5 ? 'medium' : 'low',
-              has_grammar_issues: !!term.gram_issues && term.gram_issues.length > 0,
-              grammar_severity: term.gram_issues?.[0]?.sev || 'none'
-            };
-          }
-          
-          return normalized;
-        });
+        // Simplified normalization for fallback
+        analysisResult.terms = analysisResult.terms.map((term: any) => ({
+          text: term.text,
+          startPosition: Array.isArray(term.pos) ? term.pos[0] : term.startPosition,
+          endPosition: Array.isArray(term.pos) ? term.pos[1] : term.endPosition,
+          classification: term.class || term.classification,
+          score: term.score,
+          frequency: term.freq || term.frequency || 1,
+          context: term.ctx || term.context || '',
+          rationale: term.note || term.rationale || '',
+          suggestions: term.sugg || term.suggestions || [],
+          grammar_issues: term.gram_issues || []
+        }));
         
       } catch (secondError) {
         // Both parsing attempts failed
