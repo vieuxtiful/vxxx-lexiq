@@ -25,10 +25,10 @@ serve(async (req) => {
     console.log(`Translation length: ${translationContent.length}, Glossary length: ${glossaryContent.length}`);
 
     // Validate input sizes to prevent truncation issues
-    if (translationContent.length > 15000) {
+    if (translationContent.length > 8000) {
       console.error(`Translation too large: ${translationContent.length} characters`);
       return new Response(
-        JSON.stringify({ error: "Translation text is too large. Please limit to 15,000 characters or split into smaller sections for analysis." }),
+        JSON.stringify({ error: "Translation text is too large. Please limit to 8,000 characters or use chunking for larger files." }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -201,7 +201,7 @@ CRITICAL FORMATTING REQUIREMENTS:
             { role: "user", content: prompt }
           ],
           response_format: { type: "json_object" },
-          max_tokens: 16000, // Increased limit for larger texts
+          max_tokens: 32000, // Increased for detailed analysis
         }),
       });
       clearTimeout(timeoutId);
