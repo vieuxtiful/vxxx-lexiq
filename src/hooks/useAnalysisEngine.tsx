@@ -67,10 +67,11 @@ export const useAnalysisEngine = () => {
     language: string,
     domain: string,
     checkGrammar: boolean = false,
+    checkSpelling: boolean = true,
     signal?: AbortSignal
-  ): Promise<AnalysisResult | null> => {
+  ): Promise<AnalysisResult> => {
     // Check cache first
-    const cacheKey = analysisCache.generateKey(translationContent, language, domain, checkGrammar);
+    const cacheKey = analysisCache.generateKey(translationContent, language, domain, checkGrammar, checkSpelling);
     const cachedResult = analysisCache.get<AnalysisResult>(cacheKey);
     
     if (cachedResult) {
@@ -116,6 +117,7 @@ export const useAnalysisEngine = () => {
           language,
           domain,
           checkGrammar,
+          checkSpelling,
         },
       });
 

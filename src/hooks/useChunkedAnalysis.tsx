@@ -32,11 +32,12 @@ export const useChunkedAnalysis = () => {
     glossary: string,
     language: string,
     domain: string,
-    checkGrammar: boolean
+    checkGrammar: boolean,
+    checkSpelling: boolean = true
   ): Promise<AnalysisResult | null> => {
     // If content is within normal limits, use standard analysis
     if (content.length <= 5000) {
-      return analyzeTranslation(content, glossary, language, domain, checkGrammar);
+      return analyzeTranslation(content, glossary, language, domain, checkGrammar, checkSpelling);
     }
 
     // Content is large - use chunking
@@ -90,6 +91,7 @@ export const useChunkedAnalysis = () => {
               language,
               domain,
               checkGrammar,
+              checkSpelling,
               abortControllerRef.current.signal // Pass abort signal
             );
 

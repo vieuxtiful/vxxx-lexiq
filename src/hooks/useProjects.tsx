@@ -62,10 +62,47 @@ export const useProjects = (userId?: string) => {
         throw new Error('User not authenticated');
       }
 
+      // Check for existing projects with similar names to enable auto-increment
+      const { data: existingProjects, error: checkError } = await supabase
+        .from('projects')
+        .select('name')
+        .eq('user_id', userId);
+
+      if (checkError) throw checkError;
+
+      let finalName = name.trim();
+      
+      if (existingProjects && existingProjects.length > 0) {
+        const baseName = name.trim();
+        const similarProjects = existingProjects.filter(p => 
+          p.name.toLowerCase() === baseName.toLowerCase() ||
+          p.name.toLowerCase().startsWith(baseName.toLowerCase() + ' (')
+        );
+
+        if (similarProjects.length > 0) {
+          // Find the highest number suffix
+          const numberPattern = /^(.+?)\s*\((\d+)\)$/;
+          let maxNumber = 0;
+          
+          similarProjects.forEach(p => {
+            const match = p.name.match(numberPattern);
+            if (match && match[1].trim().toLowerCase() === baseName.toLowerCase()) {
+              const num = parseInt(match[2]);
+              if (num > maxNumber) maxNumber = num;
+            } else if (p.name.toLowerCase() === baseName.toLowerCase()) {
+              maxNumber = 0; // Base name exists, start at (1)
+            }
+          });
+          
+          finalName = `${baseName} (${maxNumber + 1})`;
+          console.log(`Duplicate detected, auto-incrementing: "${name}" → "${finalName}"`);
+        }
+      }
+
       const { data, error } = await supabase
         .from('projects')
         .insert({
-          name,
+          name: finalName,
           language,
           domain,
           user_id: userId,

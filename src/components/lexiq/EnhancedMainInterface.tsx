@@ -170,6 +170,16 @@ export function EnhancedMainInterface({
   const glossaryInputRef = useRef<HTMLInputElement>(null);
   const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(null);
+
+  // Clear cache when language check toggles change to force fresh analysis
+  useEffect(() => {
+    if (lastAnalyzedContent && 
+        (lastAnalysisParams.spellingChecking !== spellingCheckingEnabled ||
+         lastAnalysisParams.grammarChecking !== grammarCheckingEnabled)) {
+      console.log('🗑️ Language check toggles changed - clearing analysis cache');
+      analysisCache.clear();
+    }
+  }, [spellingCheckingEnabled, grammarCheckingEnabled, lastAnalyzedContent, lastAnalysisParams]);
   const {
     toast
   } = useToast();
@@ -1006,7 +1016,7 @@ export function EnhancedMainInterface({
       const glossaryContent = await glossaryFile.text();
 
       // Generate cache key for current content
-      const cacheKey = analysisCache.generateKey(content, selectedLanguage, selectedDomain, grammarCheckingEnabled);
+      const cacheKey = analysisCache.generateKey(content, selectedLanguage, selectedDomain, grammarCheckingEnabled, spellingCheckingEnabled);
       console.log('=== Smart Reanalysis Debug ===');
       console.log('Cache Key:', cacheKey);
       console.log('Current Content Length:', content.length);
@@ -1040,15 +1050,24 @@ export function EnhancedMainInterface({
         const changes = analysisCache.calculateContentChanges(content, lastAnalyzedContent);
         console.log(`📊 Content changes: ${changes.percentChanged.toFixed(1)}% changed, ${changes.changedSegments.length} segments`);
 
-        // If less than 30% changed and we have cached terms, try partial analysis
-        if (changes.percentChanged < 30 && changes.changedSegments.length > 0) {
+        // Check if we need to force full analysis for minor language edits
+        const hasLanguageCheckEnabled = spellingCheckingEnabled || grammarCheckingEnabled;
+        const isMinorEdit = changes.percentChanged < 1 && changes.changedSegments.length <= 2;
+
+        if (hasLanguageCheckEnabled && isMinorEdit) {
+          console.log('🔍 Minor edit detected with language checks enabled - forcing full analysis of changed segments');
+          analysisCache.clear();
+        }
+
+        // If less than 30% changed and we have cached terms, try partial analysis (unless it's a minor edit with language checks)
+        if (changes.percentChanged < 30 && changes.changedSegments.length > 0 && !isMinorEdit) {
           try {
             console.log('🔄 Attempting partial re-analysis of changed segments');
 
             // Analyze only the changed segments (but use full glossary for context)
             const changedContent = changes.changedSegments.map(seg => seg.content).join('\n');
             console.log(`📝 Analyzing ${changedContent.length} characters of changed content`);
-            const partialResult = await analyzeWithChunking(changedContent, glossaryContent, selectedLanguage, selectedDomain, grammarCheckingEnabled);
+            const partialResult = await analyzeWithChunking(changedContent, glossaryContent, selectedLanguage, selectedDomain, grammarCheckingEnabled, spellingCheckingEnabled);
             if (partialResult && partialResult.terms.length > 0) {
               console.log(`✅ Partial analysis successful: ${partialResult.terms.length} terms found`);
 
@@ -1091,7 +1110,7 @@ export function EnhancedMainInterface({
 
       // Fallback to full analysis
       console.log('🔄 Performing full re-analysis');
-      const result = await analyzeWithChunking(content, glossaryContent, selectedLanguage, selectedDomain, grammarCheckingEnabled);
+      const result = await analyzeWithChunking(content, glossaryContent, selectedLanguage, selectedDomain, grammarCheckingEnabled, spellingCheckingEnabled);
       if (result) {
         console.log(`✅ Full re-analysis complete: ${result.terms.length} terms`);
 

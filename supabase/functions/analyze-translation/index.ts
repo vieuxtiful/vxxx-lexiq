@@ -72,6 +72,7 @@ interface AnalysisRequest {
   language: string;
   domain: string;
   checkGrammar?: boolean;
+  checkSpelling?: boolean;
 }
 
 serve(async (req) => {
@@ -80,10 +81,10 @@ serve(async (req) => {
   }
 
   try {
-    const { translationContent, glossaryContent, language, domain, checkGrammar = false } = await req.json() as AnalysisRequest;
+    const { translationContent, glossaryContent, language, domain, checkGrammar = false, checkSpelling = true } = await req.json() as AnalysisRequest;
 
     console.log('=== Edge Function: Starting Analysis ===');
-    console.log(`Parameters: language=${language}, domain=${domain}, checkGrammar=${checkGrammar}`);
+    console.log(`Parameters: language=${language}, domain=${domain}, checkGrammar=${checkGrammar}, checkSpelling=${checkSpelling}`);
     console.log(`Content sizes: Translation=${translationContent.length} chars, Glossary=${glossaryContent.length} chars`);
 
     // Enhanced validation with better error messages
@@ -127,8 +128,12 @@ CLASSIFICATION RULES (STRICT ENFORCEMENT):
 1. VALID (green): Exact glossary match (case-insensitive for Latin scripts, exact for CJK)
 2. REVIEW (yellow): Fuzzy match (plurals, conjugations, minor variations)  
 3. CRITICAL (red): Inconsistent with glossary OR significantly better alternative exists
-4. SPELLING: Obvious typos/misspellings
-${checkGrammar ? '5. GRAMMAR: Grammar issues (subject-verb agreement, tense errors, etc.)' : ''}
+${checkSpelling ? '4. SPELLING: Obvious typos/misspellings (ONLY if checkSpelling=true)' : ''}
+${checkGrammar ? '5. GRAMMAR: Grammar issues (subject-verb agreement, tense errors, etc.) (ONLY if checkGrammar=true)' : ''}
+
+LANGUAGE CHECK PARAMETERS:
+- checkSpelling: ${checkSpelling} - ${checkSpelling ? 'Flag spelling issues' : 'DO NOT flag spelling issues'}
+- checkGrammar: ${checkGrammar} - ${checkGrammar ? 'Flag grammar issues' : 'DO NOT flag grammar issues'}
 
 LANGUAGE COMPLIANCE RULES:
 - ALL suggestions MUST be in ${language}
