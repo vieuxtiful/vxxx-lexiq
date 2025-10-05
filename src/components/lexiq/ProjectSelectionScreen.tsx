@@ -8,6 +8,7 @@ import { FloatingBackground } from './FloatingBackground';
 import { useProject } from '@/contexts/ProjectContext';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useAuth } from '@/hooks/useAuth';
 import lexiqQLogo from '@/assets/lexiq-q-logo.png';
 
 interface ProjectSelectionScreenProps {
@@ -24,6 +25,7 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
   loading
 }) => {
   const { deleteProject } = useProject();
+  const { signOut } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
@@ -202,6 +204,16 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
               ))
             )}
           </div>
+        </div>
+        
+        {/* Return to Home Link - at the very bottom */}
+        <div className="text-center pb-8 mt-8">
+          <button
+            onClick={() => signOut()}
+            className="text-sm text-foreground/40 hover:text-foreground/60 transition-colors underline"
+          >
+            Return to Home
+          </button>
         </div>
       </div>
     </div>

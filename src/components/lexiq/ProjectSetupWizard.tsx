@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LanguageCombobox } from '@/components/ui/language-combobox';
 import { DomainCombobox } from '@/components/ui/domain-combobox';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ProjectSetupWizardProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export const ProjectSetupWizard: React.FC<ProjectSetupWizardProps> = ({
   const [projectName, setProjectName] = useState('My Translation Project');
   const [language, setLanguage] = useState('en');
   const [domain, setDomain] = useState('general');
+  const { signOut } = useAuth();
 
   const handleComplete = () => {
     onComplete(projectName, language, domain);
@@ -182,7 +184,17 @@ export const ProjectSetupWizard: React.FC<ProjectSetupWizardProps> = ({
                 </Button>
               </div>
             </div>
-          )}
+           )}
+        </div>
+        
+        {/* Return to Home Link */}
+        <div className="text-center pb-6">
+          <button
+            onClick={() => signOut()}
+            className="text-sm text-foreground/40 hover:text-foreground/60 transition-colors underline"
+          >
+            Return to Home
+          </button>
         </div>
       </div>
     </div>
