@@ -87,10 +87,10 @@ serve(async (req) => {
     console.log(`Content sizes: Translation=${translationContent.length} chars, Glossary=${glossaryContent.length} chars`);
 
     // Enhanced validation with better error messages
-    if (translationContent.length > 15000) {
+    if (translationContent.length > 50000) {
       return new Response(
         JSON.stringify({ 
-          error: `Text too large (${translationContent.length} characters). Please split into sections under 15,000 characters or use smaller files.` 
+          error: `Text too large (${translationContent.length} characters). Maximum allowed is 50,000 characters. Please split into smaller sections.` 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
