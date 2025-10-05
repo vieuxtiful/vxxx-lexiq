@@ -101,13 +101,11 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
         {/* Header with Animated Q Logo */}
         <div className="text-center mb-12 mt-8">
           <div className="flex justify-center mb-6">
-            <div className="p-4 rounded-full bg-gradient-to-br from-blue-500/10 to-green-500/10 animate-pulse-slow">
-              <img 
-                src={lexiqQLogo} 
-                alt="LexiQ Q Logo" 
-                className="w-24 h-24 animate-spin-slow"
-              />
-            </div>
+            <img 
+              src={lexiqQLogo} 
+              alt="LexiQ Q Logo" 
+              className="h-auto w-auto max-w-[120px] light-sweep-logo"
+            />
           </div>
           <h1 className="text-4xl font-bold text-foreground mb-4">
             Welcome Back!

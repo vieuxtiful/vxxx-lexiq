@@ -311,6 +311,37 @@ All colors MUST be HSL.
   .animate-shimmer {
     animation: shimmer 2s infinite;
   }
+
+  @keyframes light-sweep-logo {
+    0%, 100% { 
+      filter: brightness(1) drop-shadow(0 0 0px rgba(59, 130, 246, 0));
+    }
+    50% { 
+      filter: brightness(1.3) drop-shadow(0 0 20px rgba(59, 130, 246, 0.8));
+    }
+  }
+
+  .light-sweep-logo {
+    animation: light-sweep-logo 7s ease-in-out infinite;
+  }
+
+  @keyframes shine {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
+  }
+
+  .animate-shine {
+    animation: shine 8s ease-in-out infinite;
+  }
+
+  .hover-glow {
+    transition: all 0.3s ease;
+  }
+
+  .hover-glow:hover {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+    transform: translateY(-1px);
+  }
 }
 
 @keyframes slide-left-to-right {

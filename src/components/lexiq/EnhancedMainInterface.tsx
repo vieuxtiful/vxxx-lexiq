@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useChunkedAnalysis } from '@/hooks/useChunkedAnalysis';
 import { useAnalysisEngine } from '@/hooks/useAnalysisEngine';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuthFlow } from '@/contexts/AuthFlowContext';
 import { analysisCache } from '@/lib/analysisCache';
 import { useProject } from '@/contexts/ProjectContext';
 import { useAnalysisSession, AnalysisSession } from '@/hooks/useAnalysisSession';
@@ -121,7 +122,8 @@ export function EnhancedMainInterface({
   const { analyzeWithChunking, isAnalyzing: engineAnalyzing, progress: engineProgress, currentChunk, totalChunks } = useChunkedAnalysis();
   const { currentFullText } = useAnalysisEngine();
   const { user, signOut } = useAuth();
-  const { currentProject, requiresProjectSetup, setRequiresProjectSetup, createProject } = useProject();
+  const { setSelectedProject } = useAuthFlow();
+  const { currentProject, projects, requiresProjectSetup, setRequiresProjectSetup, createProject } = useProject();
   const { saveAnalysisSession, getProjectSessions } = useAnalysisSession();
   const { processFile } = useFileProcessor();
   const { logAnalysis, logFileUpload, logProjectCreated, logSessionRestored } = useAuditLog();
@@ -1048,9 +1050,12 @@ export function EnhancedMainInterface({
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
-      {/* Header */}
-      <div className="bg-card border-b border-border/40 shadow-lexiq sticky top-0 z-50">
-        <div className="max-w-[1800px] mx-auto px-6 py-4">
+      {/* Modernized Header with Glossy Effect */}
+      <div className="bg-gradient-to-br from-card/95 via-card/90 to-card/95 backdrop-blur-xl border-b border-border/40 shadow-[0_8px_32px_rgba(0,0,0,0.12)] sticky top-0 z-50 relative overflow-hidden">
+        {/* Shine overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-shine pointer-events-none" />
+        
+        <div className="max-w-[1800px] mx-auto px-6 py-4 relative z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6">
               <button
@@ -1058,11 +1063,11 @@ export function EnhancedMainInterface({
                   if (currentContent.trim()) {
                     setShowQuitDialog(true);
                   } else {
-                    onReturnToWelcome?.();
+                    setSelectedProject(null);
                   }
                 }}
                 className="cursor-pointer transition-transform hover:scale-105"
-                title="Return to welcome screen"
+                title="Return to project selection"
               >
                 <img 
                   src={lexiqLogo} 
@@ -1071,9 +1076,9 @@ export function EnhancedMainInterface({
                 />
               </button>
               
-              {/* Organization & Project Selectors */}
+              {/* Organization & Project Selectors - Conditionally render ProjectSelector */}
               <OrganizationSwitcher />
-              <ProjectSelector />
+              {projects.length > 0 && <ProjectSelector />}
             </div>
             
             <div className="flex items-center space-x-4">
@@ -1528,6 +1533,27 @@ export function EnhancedMainInterface({
       </AlertDialog>
 
       {/* Quit Confirmation Dialog */}
+      <AlertDialog open={showQuitDialog} onOpenChange={setShowQuitDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Quit to Project Selection</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to quit? Any unsaved work will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                setShowQuitDialog(false);
+                setSelectedProject(null);
+              }}
+            >
+              Quit
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={showQuitDialog} onOpenChange={setShowQuitDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>

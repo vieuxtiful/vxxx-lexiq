@@ -138,15 +138,13 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!result.error) {
       console.log('Project deleted successfully');
       
+      // IMPORTANT: Refresh projects list before checking state
+      await refreshProjects();
+      
       // If we deleted the current project, clear everything
       if (currentProject?.id === id) {
         console.log('Deleted current project, clearing all data');
         clearProjectData();
-        
-        // If no projects left, show setup wizard
-        if (projects.length === 1) { // Will be 0 after state updates
-          setRequiresProjectSetup(true);
-        }
       }
     } else {
       console.error('Failed to delete project:', result.error);
