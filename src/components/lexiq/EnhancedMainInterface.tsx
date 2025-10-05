@@ -936,6 +936,13 @@ export function EnhancedMainInterface({
   const handleContentChange = (content: string) => {
     setCurrentContent(content);
     setHasUnsavedChanges(true);
+    
+    // Clear translation file reference when content is manually changed
+    // This ensures the analysis uses the new content, not the old file
+    if (translationFile) {
+      setTranslationFile(null);
+      setTranslationFileUploaded(false);
+    }
 
     // Check if content has changed significantly from what was analyzed
     if (analysisResults && originalAnalyzedContent) {
