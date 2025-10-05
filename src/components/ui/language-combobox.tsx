@@ -58,7 +58,7 @@ export function LanguageCombobox({
       <PopoverContent className="w-[400px] p-0 z-50 bg-popover" align="start">
         <Command>
           <CommandInput placeholder="Search languages..." />
-          <CommandList className="max-h-[300px] overflow-y-auto overscroll-contain">
+          <CommandList>
             <CommandEmpty>No language found.</CommandEmpty>
             {Object.entries(LANGUAGE_FAMILIES).map(([family, codes]) => {
               const familyLanguages = LANGUAGES.filter((lang) =>

@@ -57,7 +57,7 @@ export function DomainCombobox({
       <PopoverContent className="w-[400px] p-0 z-50 bg-popover" align="start">
         <Command>
           <CommandInput placeholder="Search domains..." />
-          <CommandList className="max-h-[300px] overflow-y-auto overscroll-contain">
+          <CommandList>
             <CommandEmpty>No domain found.</CommandEmpty>
             {Object.entries(DOMAIN_CATEGORIES).map(([categoryKey, categoryData]) => {
               if (categoryData.domains.length === 0) return null;
