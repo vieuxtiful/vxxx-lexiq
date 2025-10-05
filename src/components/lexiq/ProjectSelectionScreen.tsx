@@ -8,6 +8,7 @@ import { FloatingBackground } from './FloatingBackground';
 import { useProject } from '@/contexts/ProjectContext';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import lexiqQLogo from '@/assets/lexiq-q-logo.png';
 
 interface ProjectSelectionScreenProps {
   onProjectSelect: (project: Project) => void;
@@ -97,8 +98,17 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
       </div>
       
       <div className="relative z-10 container mx-auto px-6 py-8">
-        {/* Header */}
+        {/* Header with Animated Q Logo */}
         <div className="text-center mb-12 mt-8">
+          <div className="flex justify-center mb-6">
+            <div className="p-4 rounded-full bg-gradient-to-br from-blue-500/10 to-green-500/10 animate-pulse-slow">
+              <img 
+                src={lexiqQLogo} 
+                alt="LexiQ Q Logo" 
+                className="w-24 h-24 animate-spin-slow"
+              />
+            </div>
+          </div>
           <h1 className="text-4xl font-bold text-foreground mb-4">
             Welcome Back!
           </h1>

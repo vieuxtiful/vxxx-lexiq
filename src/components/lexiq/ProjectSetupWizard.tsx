@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Rocket } from 'lucide-react';
+import { Hand, Languages } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,11 +37,19 @@ export const ProjectSetupWizard: React.FC<ProjectSetupWizardProps> = ({
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-card border rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-lg">
         <div className="p-6">
-          {/* Header */}
+          {/* Header with Step-Specific Icons */}
           <div className="text-center mb-6">
             <div className="flex justify-center mb-4">
               <div className="p-3 rounded-full bg-primary/10">
-                <Rocket className="w-12 h-12 text-primary" />
+                {step === 1 && (
+                  <Hand className="w-12 h-12 text-primary animate-wave" />
+                )}
+                {step === 2 && (
+                  <Languages className="w-12 h-12 text-primary" />
+                )}
+                {step === 3 && (
+                  <Languages className="w-12 h-12 text-primary" />
+                )}
               </div>
             </div>
             <h2 className="text-2xl font-bold">

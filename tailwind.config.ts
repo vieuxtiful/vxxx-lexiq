@@ -101,6 +101,13 @@ export default {
           "0%": { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(100%)" },
         },
+        "wave": {
+          "0%, 100%": { transform: "rotate(0deg)" },
+          "10%, 30%": { transform: "rotate(14deg)" },
+          "20%": { transform: "rotate(-8deg)" },
+          "40%": { transform: "rotate(-4deg)" },
+          "50%": { transform: "rotate(10deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -109,6 +116,9 @@ export default {
         "glow": "glow 3s ease-in-out infinite",
         "gradient-x": "gradient-x 3s ease infinite",
         "shimmer": "shimmer 2s infinite",
+        "spin-slow": "spin 8s linear infinite",
+        "pulse-slow": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "wave": "wave 2s ease-in-out infinite",
       },
       backgroundImage: {
         "gradient-lexiq": "var(--gradient-primary)",
