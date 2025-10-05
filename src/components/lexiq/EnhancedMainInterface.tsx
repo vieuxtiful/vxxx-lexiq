@@ -587,7 +587,7 @@ export function EnhancedMainInterface({
     }
   };
 
-  const handleReanalyze = async (content: string) => {
+  const handleReanalyze = async () => {
     if (!glossaryFile) {
       if (!noGlossaryWarningShown) {
         toast({
@@ -603,6 +603,8 @@ export function EnhancedMainInterface({
 
     setIsReanalyzing(true);
     try {
+      // Use currentContent from state to get the latest edited content
+      const content = currentContent;
       const glossaryContent = await glossaryFile.text();
       
       // Generate cache key for current content
@@ -1391,7 +1393,7 @@ export function EnhancedMainInterface({
                           content={currentContent}
                           flaggedTerms={analysisResults?.terms ? transformAnalyzedTermsToFlagged(analysisResults.terms) : []}
                           onContentChange={handleContentChange}
-                          onReanalyze={handleReanalyze}
+                          onReanalyze={() => handleReanalyze()}
                           isReanalyzing={isReanalyzing}
                           grammarCheckingEnabled={grammarCheckingEnabled}
                           onGrammarCheckingToggle={setGrammarCheckingEnabled}
@@ -1550,22 +1552,6 @@ export function EnhancedMainInterface({
                 setSelectedProject(null);
               }}
             >
-              Quit
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <AlertDialog open={showQuitDialog} onOpenChange={setShowQuitDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Quit to Welcome Screen</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to quit? Any unsaved work will be lost.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={onReturnToWelcome}>
               Quit
             </AlertDialogAction>
           </AlertDialogFooter>

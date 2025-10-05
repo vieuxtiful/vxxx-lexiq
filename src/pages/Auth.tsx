@@ -76,10 +76,10 @@ const Auth = () => {
       {/* Auth content */}
       <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
         <div className="animate-fade-in">
-          <Card className="w-full max-w-lg shadow-lexiq border-border/40 backdrop-blur-sm bg-card/95">
+          <Card className="w-full max-w-[540px] shadow-lexiq border-border/40 backdrop-blur-sm bg-card/95">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center mb-2">
-            <img src={lexiqLogo} alt="LexiQ Logo" className="h-16 hover-scale" />
+            <img src={lexiqLogo} alt="LexiQ Logo" className="h-16 hover-scale light-sweep-logo" />
           </div>
           <CardDescription className="text-base mt-2">
             LQA. Simple.
