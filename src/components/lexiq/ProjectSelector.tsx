@@ -109,7 +109,7 @@ export const ProjectSelector: React.FC = () => {
                     <div className="flex flex-col gap-1">
                       <span className="font-medium text-sm">{project.name}</span>
                       <span className="text-xs text-muted-foreground">
-                        {project.language.toUpperCase()} • {project.domain}
+                        {project.language.toUpperCase()} • {project.domain.charAt(0).toUpperCase() + project.domain.slice(1)}
                       </span>
                     </div>
                   </DropdownMenuItem>

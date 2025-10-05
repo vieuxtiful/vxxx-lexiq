@@ -141,7 +141,7 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
                             {project.language.toUpperCase()}
                           </span>
                           <span>•</span>
-                          <span>{project.domain}</span>
+                          <span>{project.domain.charAt(0).toUpperCase() + project.domain.slice(1)}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

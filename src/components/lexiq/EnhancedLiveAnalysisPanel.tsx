@@ -536,7 +536,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                   </Badge>
                   <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 flex items-center gap-1">
                     <Building className="h-3 w-3" />
-                    {selectedDomain}
+                    {selectedDomain.charAt(0).toUpperCase() + selectedDomain.slice(1)}
                   </Badge>
                   
                   {/* Content validation warning with similarity percentage */}
