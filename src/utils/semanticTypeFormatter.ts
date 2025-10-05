@@ -25,6 +25,14 @@ const ABBREVIATIONS = new Set([
 export const formatSemanticType = (text: string): string => {
   if (!text || typeof text !== 'string') return '';
   
+  // Handle comma-separated types (e.g., "entity,concept" -> "Entity, Concept")
+  if (text.includes(',')) {
+    return text
+      .split(',')
+      .map(part => formatSemanticType(part.trim()))
+      .join(', '); // Add space after comma
+  }
+  
   // Handle text with forward slashes (e.g., "ethical/legal" -> "Ethical/Legal")
   if (text.includes('/')) {
     return text
