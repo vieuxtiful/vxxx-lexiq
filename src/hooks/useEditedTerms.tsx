@@ -4,77 +4,93 @@ import { AnalyzedTerm } from './useAnalysisEngine';
 export const useEditedTerms = (originalTerms: AnalyzedTerm[]) => {
   // Deduplicate terms by text and extract full sentence context
   const deduplicatedTerms = useMemo(() => {
-    const termMap = new Map<string, AnalyzedTerm>();
+    const termsList: AnalyzedTerm[] = [];
     
-    // Enhanced function to normalize and stem terms
-    const normalizeTermText = (text: string) => {
-      // First normalize spacing
-      let normalized = text.toLowerCase().trim();
+    // Language-agnostic normalization using Unicode NFD
+    const normalizeTermText = (text: string): string => {
+      // Normalize Unicode to decompose accented characters (NFD)
+      let normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      
+      // Basic normalization: lowercase, trim, normalize punctuation spacing
+      normalized = normalized.toLowerCase().trim();
       normalized = normalized.replace(/([.,;:!?])(\S)/g, '$1 $2');
       
-      // Simple stemming for common English patterns
-      normalized = normalized
-        // Remove common plural suffixes
-        .replace(/(?<=[bcdfghjklmnpqrstvwxz])s\b/g, '')
-        .replace(/ies\b/g, 'y')
-        .replace(/(?<=[aeiou])es\b/g, '')
-        // Remove common tense suffixes
-        .replace(/(?<=[bcdfghjklmnpqrstvwxyz])ed\b/g, '')
-        .replace(/(?<=[bcdfghjklmnpqrstvwxyz])ing\b/g, '')
-        .replace(/(?<=[aeiou])d\b/g, '');
+      return normalized;
+    };
+    
+    // Calculate similarity between two strings (0-1, where 1 is identical)
+    const calculateSimilarity = (str1: string, str2: string): number => {
+      const longer = str1.length > str2.length ? str1 : str2;
+      const shorter = str1.length > str2.length ? str2 : str1;
       
-      // Handle common irregular plurals
-      const irregularPlurals: Record<string, string> = {
-        'people': 'person',
-        'children': 'child',
-        'men': 'man', 
-        'women': 'woman',
-        'teeth': 'tooth',
-        'feet': 'foot',
-        'mice': 'mouse',
-        'geese': 'goose'
+      if (longer.length === 0) return 1.0;
+      
+      // Simple Levenshtein distance
+      const editDistance = (s1: string, s2: string): number => {
+        const costs: number[] = [];
+        for (let i = 0; i <= s1.length; i++) {
+          let lastValue = i;
+          for (let j = 0; j <= s2.length; j++) {
+            if (i === 0) {
+              costs[j] = j;
+            } else if (j > 0) {
+              let newValue = costs[j - 1];
+              if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+                newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+              }
+              costs[j - 1] = lastValue;
+              lastValue = newValue;
+            }
+          }
+          if (i > 0) costs[s2.length] = lastValue;
+        }
+        return costs[s2.length];
       };
       
-      Object.entries(irregularPlurals).forEach(([plural, singular]) => {
-        if (normalized === plural) {
-          normalized = singular;
-        }
-      });
-      
-      return normalized;
+      const distance = editDistance(longer, shorter);
+      return (longer.length - distance) / longer.length;
     };
     
     originalTerms.forEach(term => {
       const normalizedText = normalizeTermText(term.text);
       
-      if (!termMap.has(normalizedText)) {
-        // Extract full sentence for context
-        const context = term.context || '';
-        const sentenceMatch = context.match(/[^.!?]*[.!?]/);
-        const fullSentence = sentenceMatch ? sentenceMatch[0].trim() : context;
-        const normalizedContext = fullSentence.replace(/([.,;:!?])(\S)/g, '$1 $2');
+      // Extract full sentence for context
+      const context = term.context || '';
+      const sentenceMatch = context.match(/[^.!?]*[.!?]/);
+      const fullSentence = sentenceMatch ? sentenceMatch[0].trim() : context;
+      const normalizedContext = fullSentence.replace(/([.,;:!?])(\S)/g, '$1 $2');
+      
+      // Check for similar existing terms (>90% similarity threshold)
+      let foundSimilar = false;
+      for (let i = 0; i < termsList.length; i++) {
+        const existingNormalized = normalizeTermText(termsList[i].text);
+        const similarity = calculateSimilarity(normalizedText, existingNormalized);
         
-        termMap.set(normalizedText, {
+        if (similarity > 0.9) {
+          // Merge with similar term
+          termsList[i].frequency = (termsList[i].frequency || 1) + 1;
+          
+          // Use the longer context if available
+          if (normalizedContext.length > (termsList[i].context?.length || 0)) {
+            termsList[i].context = normalizedContext;
+          }
+          
+          foundSimilar = true;
+          break;
+        }
+      }
+      
+      // If no similar term found, add as new
+      if (!foundSimilar) {
+        termsList.push({
           ...term,
           context: normalizedContext,
           frequency: 1
         });
-      } else {
-        // Increment frequency for duplicate terms and merge data
-        const existingTerm = termMap.get(normalizedText)!;
-        existingTerm.frequency += 1;
-        
-        // Use the longer context if available
-        if (term.context && term.context.length > (existingTerm.context?.length || 0)) {
-          const context = term.context || '';
-          const sentenceMatch = context.match(/[^.!?]*[.!?]/);
-          const fullSentence = sentenceMatch ? sentenceMatch[0].trim() : context;
-          existingTerm.context = fullSentence.replace(/([.,;:!?])(\S)/g, '$1 $2');
-        }
       }
     });
     
-    return Array.from(termMap.values());
+    return termsList;
   }, [originalTerms]);
 
   // Load edited terms from session storage or use deduplicated terms
