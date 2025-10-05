@@ -1,6 +1,7 @@
 // Phase 8 - Enhanced Main Interface with AuthFlow integration
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { detectLanguageSimple } from '@/lib/languageDetector';
+import { detectLanguageSimple, validateContentLanguage, getLanguageName } from '@/lib/languageDetector';
+import { LanguageMismatchDialog } from './LanguageMismatchDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -212,9 +213,69 @@ export function EnhancedMainInterface({
   const [glossaryFileId, setGlossaryFileId] = useState<string | null>(null);
   const [showProjectSetup, setShowProjectSetup] = useState(false);
 
+  // Language validation state
+  const [languageValidation, setLanguageValidation] = useState<{
+    isOpen: boolean;
+    validation: any;
+    context: { type: 'file' | 'analysis'; fileName?: string };
+    onContinue: () => void;
+    onCancel: () => void;
+  } | null>(null);
+
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+
   // Use current project's language and domain
   const selectedLanguage = currentProject?.language || 'en';
   const selectedDomain = currentProject?.domain || 'general';
+
+  // Centralized language validation
+  const validateContentBeforeAction = async (
+    content: string, 
+    context: { type: 'file' | 'analysis'; fileName?: string }
+  ): Promise<boolean> => {
+    if (!currentProject || !content.trim()) return true;
+
+    try {
+      const validationResult = await validateContentLanguage(content, currentProject.language);
+      
+      if (!validationResult.canProceed) {
+        return new Promise((resolve) => {
+          setLanguageValidation({
+            isOpen: true,
+            validation: validationResult.validation,
+            context,
+            onContinue: () => {
+              setLanguageValidation(null);
+              // Log the override (using console for now since logAnalysis has different signature)
+              console.log('Language validation override:', {
+                detected: validationResult.detectedLanguage,
+                expected: currentProject.language,
+                confidence: validationResult.validation.confidence,
+                context: context.type
+              });
+              resolve(true);
+            },
+            onCancel: () => {
+              setLanguageValidation(null);
+              // Log the cancellation
+              console.log('Language validation blocked:', {
+                detected: validationResult.detectedLanguage,
+                expected: currentProject.language,
+                confidence: validationResult.validation.confidence,
+                context: context.type
+              });
+              resolve(false);
+            }
+          });
+        });
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Language validation error:', error);
+      return true; // Allow proceed on error
+    }
+  };
 
   // Comprehensive reset function - project-aware
   const resetMainWindowState = useCallback(() => {
@@ -274,6 +335,25 @@ export function EnhancedMainInterface({
       localStorage.setItem('lexiq-dark-mode', 'false');
     }
   }, [isDarkMode]);
+
+  // Real-time language detection for editor content
+  useEffect(() => {
+    if (!currentProject || !currentContent.trim() || currentContent.length < 50) return;
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const detectedLang = detectLanguageSimple(currentContent);
+        if (detectedLang !== currentProject.language) {
+          // Show subtle indicator (logged for now)
+          console.log(`🌍 Real-time detection: ${getLanguageName(detectedLang)} detected (Expected: ${getLanguageName(currentProject.language)})`);
+        }
+      } catch (error) {
+        // Silent fail for real-time detection
+      }
+    }, 2000); // Debounce 2 seconds
+
+    return () => clearTimeout(timeoutId);
+  }, [currentContent, currentProject]);
 
   // Consolidated session loading with proper priority and race condition prevention
   React.useEffect(() => {
@@ -624,56 +704,49 @@ export function EnhancedMainInterface({
       return;
     }
 
-    // Read translation file content (no character limit - chunking will handle large files)
-    if (type === 'translation') {
-      try {
-        const content = await file.text();
+    try {
+      const fileContent = await file.text();
+      
+      // Validate language for translation files
+      if (type === 'translation' && currentProject) {
+        const shouldProceed = await validateContentBeforeAction(fileContent, {
+          type: 'file',
+          fileName: file.name
+        });
+        
+        if (!shouldProceed) return;
+      }
 
-        // Detect language and warn if mismatch with project language
-        const detectedLang = detectLanguageSimple(content);
-        if (detectedLang !== selectedLanguage) {
-          const languageNames: Record<string, string> = {
-            'en': 'English',
-            'ja': 'Japanese',
-            'zh': 'Chinese',
-            'ko': 'Korean',
-            'es': 'Spanish',
-            'fr': 'French',
-            'de': 'German',
-            'it': 'Italian',
-            'pt': 'Portuguese',
-            'ru': 'Russian',
-            'ar': 'Arabic',
-            'hi': 'Hindi'
-          };
-          toast({
-            title: "Language Mismatch",
-            description: `Project: ${languageNames[selectedLanguage] || selectedLanguage} | Detected: ${languageNames[detectedLang] || detectedLang}. Analysis may be less accurate.`,
-            variant: "destructive"
-          });
-        }
-        if (content.length > 50000) {
+      // Continue with existing processing...
+      if (type === 'translation') {
+        if (fileContent.length > 50000) {
           toast({
             title: "Large File Detected",
-            description: `File has ${content.length.toLocaleString()} characters. It will be automatically split into chunks for analysis.`
+            description: `File has ${fileContent.length.toLocaleString()} characters. It will be automatically split into chunks for analysis.`
           });
         }
-        setCurrentContent(content);
-        addToHistory(content, null);
-      } catch (error) {
-        toast({
-          title: "File Read Error",
-          description: "Could not read file content",
-          variant: "destructive"
-        });
-        return;
+        setCurrentContent(fileContent);
+        addToHistory(fileContent, null);
       }
+    } catch (error) {
+      toast({
+        title: "File Read Error",
+        description: "Could not read file content",
+        variant: "destructive"
+      });
+      return;
     }
 
     // Upload file to storage if user and project exist
     if (user && currentProject) {
       try {
-        const processedFile = await processFile(file, type, currentProject.id, user.id);
+        const processedFile = await processFile(
+          file, 
+          type, 
+          currentProject.id, 
+          user.id,
+          { expectedLanguage: currentProject.language } // Pass expected language
+        );
         if (processedFile?.fileId) {
           if (type === 'translation') {
             setTranslationFileId(processedFile.fileId);
@@ -739,6 +812,19 @@ export function EnhancedMainInterface({
       });
       return;
     }
+
+    // FINAL VALIDATION GATE: Check content language before analysis
+    if (currentProject && currentContent.trim()) {
+      const shouldProceed = await validateContentBeforeAction(currentContent, {
+        type: 'analysis'
+      });
+
+      if (!shouldProceed) {
+        console.log('Analysis cancelled due to language mismatch');
+        return;
+      }
+    }
+
     setIsAnalyzing(true);
     setAnalysisProgress(0);
     setAnalysisComplete(false);
@@ -1699,5 +1785,18 @@ export function EnhancedMainInterface({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Language Validation Dialog */}
+      {languageValidation && (
+        <LanguageMismatchDialog
+          isOpen={languageValidation.isOpen}
+          onClose={() => setLanguageValidation(null)}
+          onCancel={languageValidation.onCancel}
+          onContinue={languageValidation.onContinue}
+          validation={languageValidation.validation}
+          contentType={languageValidation.context.type === 'file' ? 'file' : 'translation'}
+          fileName={languageValidation.context.fileName}
+        />
+      )}
     </div>;
 }

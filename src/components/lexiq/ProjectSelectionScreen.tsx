@@ -41,6 +41,19 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Force light mode on project selection screen
+  useEffect(() => {
+    document.documentElement.classList.remove('dark');
+    return () => {
+      // Restore dark mode preference when leaving this screen
+      const savedDarkMode = localStorage.getItem('lexiq-dark-mode');
+      if (savedDarkMode === 'true') {
+        document.documentElement.classList.add('dark');
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (searchTerm) {
       const filtered = userProjects.filter(project => project.name.toLowerCase().includes(searchTerm.toLowerCase()) || project.language.toLowerCase().includes(searchTerm.toLowerCase()) || project.domain.toLowerCase().includes(searchTerm.toLowerCase()));

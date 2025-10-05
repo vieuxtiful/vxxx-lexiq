@@ -88,12 +88,13 @@ export const BatchProcessor: React.FC = () => {
               return newResults;
             });
 
-            // Process file
+            // Process file with language validation
             const processed = await processFile(
               file,
               'translation',
               currentProject.id,
-              user.id
+              user.id,
+              { expectedLanguage: currentProject.language } // NEW
             );
 
             if (!processed) throw new Error('File processing failed');

@@ -6,6 +6,59 @@ export interface LanguageDetectionResult {
   suggestions: Array<{ language: string; confidence: number }>;
 }
 
+export interface LanguageValidationResult {
+  canProceed: boolean;
+  detectedLanguage: string;
+  validation: {
+    isMatch: boolean;
+    expectedLanguage: string;
+    detectedLanguage: string;
+    confidence: number;
+    message: string;
+  };
+}
+
+// Language name mapping for user-friendly display
+const LANGUAGE_NAMES: Record<string, string> = {
+  'en': 'English',
+  'es': 'Spanish',
+  'fr': 'French',
+  'de': 'German',
+  'it': 'Italian',
+  'pt': 'Portuguese',
+  'ru': 'Russian',
+  'zh': 'Chinese',
+  'ja': 'Japanese',
+  'ko': 'Korean',
+  'ar': 'Arabic',
+  'he': 'Hebrew',
+  'hi': 'Hindi',
+  'th': 'Thai',
+  'tr': 'Turkish',
+  'pl': 'Polish',
+  'nl': 'Dutch',
+  'sv': 'Swedish',
+  'no': 'Norwegian',
+  'da': 'Danish',
+  'fi': 'Finnish',
+  'cs': 'Czech',
+  'hu': 'Hungarian',
+  'ro': 'Romanian',
+  'uk': 'Ukrainian',
+  'el': 'Greek',
+  'vi': 'Vietnamese',
+  'id': 'Indonesian',
+  'ms': 'Malay',
+  'tl': 'Tagalog',
+};
+
+/**
+ * Get user-friendly language name from ISO code
+ */
+export function getLanguageName(code: string): string {
+  return LANGUAGE_NAMES[code.toLowerCase()] || code.toUpperCase();
+}
+
 /**
  * Detects the language of the given text using Lovable AI
  */
@@ -52,4 +105,75 @@ export function detectLanguageSimple(text: string): string {
 
   // Default to English for Latin scripts
   return 'en';
+}
+
+/**
+ * Validates content language against expected project language
+ * Returns whether the analysis can proceed and detailed validation results
+ */
+export async function validateContentLanguage(
+  content: string,
+  expectedLanguage: string
+): Promise<LanguageValidationResult> {
+  if (!content || content.trim().length < 50) {
+    // Too short to validate
+    return {
+      canProceed: true,
+      detectedLanguage: expectedLanguage,
+      validation: {
+        isMatch: true,
+        expectedLanguage,
+        detectedLanguage: expectedLanguage,
+        confidence: 1,
+        message: 'Content too short to validate'
+      }
+    };
+  }
+
+  try {
+    // Use AI detection for accuracy
+    const detection = await detectLanguage(content);
+    const detectedLang = detection.language;
+    const confidence = detection.confidence;
+
+    const isMatch = detectedLang === expectedLanguage;
+    const canProceed = isMatch || confidence < 0.7; // Allow proceed if low confidence
+
+    let message = '';
+    if (!isMatch) {
+      if (confidence >= 0.9) {
+        message = `Strong mismatch detected: Expected ${getLanguageName(expectedLanguage)}, but content appears to be ${getLanguageName(detectedLang)} (${(confidence * 100).toFixed(0)}% confidence)`;
+      } else if (confidence >= 0.7) {
+        message = `Possible mismatch: Expected ${getLanguageName(expectedLanguage)}, detected ${getLanguageName(detectedLang)} (${(confidence * 100).toFixed(0)}% confidence)`;
+      } else {
+        message = `Language unclear. Expected ${getLanguageName(expectedLanguage)}, detected ${getLanguageName(detectedLang)} (low confidence: ${(confidence * 100).toFixed(0)}%)`;
+      }
+    }
+
+    return {
+      canProceed,
+      detectedLanguage: detectedLang,
+      validation: {
+        isMatch,
+        expectedLanguage,
+        detectedLanguage: detectedLang,
+        confidence,
+        message
+      }
+    };
+  } catch (error) {
+    console.error('Language validation error:', error);
+    // Allow proceed on error
+    return {
+      canProceed: true,
+      detectedLanguage: expectedLanguage,
+      validation: {
+        isMatch: true,
+        expectedLanguage,
+        detectedLanguage: expectedLanguage,
+        confidence: 0.5,
+        message: 'Validation failed, proceeding with caution'
+      }
+    };
+  }
 }

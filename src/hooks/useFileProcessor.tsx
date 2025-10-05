@@ -20,7 +20,8 @@ export const useFileProcessor = () => {
     file: File, 
     type: 'translation' | 'glossary',
     projectId?: string,
-    userId?: string
+    userId?: string,
+    options?: { expectedLanguage?: string }
   ): Promise<ProcessedFile | null> => {
     setIsProcessing(true);
     
@@ -74,6 +75,7 @@ export const useFileProcessor = () => {
           fileContent,
           fileSize: file.size,
           type,
+          expectedLanguage: options?.expectedLanguage, // Include expected language
         },
       });
 
