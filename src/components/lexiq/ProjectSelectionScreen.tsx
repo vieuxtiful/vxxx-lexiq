@@ -112,7 +112,7 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
             />
           </div>
           <h1 className="text-4xl font-bold text-foreground mb-4">
-            Welcome Back!
+            My Projects
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Choose a project to continue working, or start a new one

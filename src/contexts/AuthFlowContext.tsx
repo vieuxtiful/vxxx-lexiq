@@ -23,21 +23,26 @@ export const AuthFlowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentState, setCurrentState] = useState<AuthFlowState>('checking');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
-  // Check for last used project in localStorage
+  // Check for last used project in localStorage and clear if deleted
   useEffect(() => {
-    if (user && userProjects.length > 0 && !selectedProject) {
+    if (user && userProjects.length > 0) {
       const lastProjectId = localStorage.getItem('lastProjectId');
       if (lastProjectId) {
         const lastProject = userProjects.find(p => p.id === lastProjectId);
-        if (lastProject) {
+        if (lastProject && !selectedProject) {
           console.log('Auto-loading last used project:', lastProject.name);
           setSelectedProject(lastProject);
           setCurrentState('project_selected');
           return;
+        } else if (!lastProject) {
+          // Project was deleted - clear from localStorage and selected state
+          console.log('Last project no longer exists, clearing selection');
+          localStorage.removeItem('lastProjectId');
+          setSelectedProject(null);
         }
       }
     }
-  }, [user, userProjects, selectedProject]);
+  }, [user, userProjects]);
 
   // Main state management
   useEffect(() => {
