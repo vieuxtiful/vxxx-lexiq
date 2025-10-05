@@ -85,15 +85,15 @@ const Auth = () => {
             LQA. Simple.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full px-[64px]">
+        <CardContent className="mx-[18px] px-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full px-[45px]">
             <TabsList className="grid w-full grid-cols-2 px-0">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsTrigger value="signin" className="px-0 mx-[7px]">Sign In</TabsTrigger>
+              <TabsTrigger value="signup" className="mx-[7px]">Sign Up</TabsTrigger>
             </TabsList>
             
             <TabsContent value="signin">
-              <form onSubmit={handleSignIn} className="space-y-4 px-0">
+              <form onSubmit={handleSignIn} className="space-y-4 mx-0 px-[3px]">
                 <div className="space-y-2">
                   <Label htmlFor="signin-email">Email</Label>
                   <Input id="signin-email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
@@ -110,11 +110,11 @@ const Auth = () => {
             
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2 px-[20px]">
+                <div className="space-y-2 px-0">
                   <Label htmlFor="signup-name">Name</Label>
                   <Input id="signup-name" type="text" placeholder="Your name" value={name} onChange={e => setName(e.target.value)} />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 px-0 mx-[16px]">
                   <Label htmlFor="signup-email">Email</Label>
                   <Input id="signup-email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
                 </div>
