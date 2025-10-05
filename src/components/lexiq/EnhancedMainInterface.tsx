@@ -292,7 +292,11 @@ export function EnhancedMainInterface({
               if (parsed.activeMainTab) {
                 setActiveMainTab(parsed.activeMainTab);
               }
-              console.log('✅ Loaded from localStorage session');
+              // Restore edited terms if available
+              if (parsed.editedTerms) {
+                sessionStorage.setItem('lexiq-edited-terms', JSON.stringify(parsed.editedTerms));
+              }
+              console.log('✅ Loaded from localStorage session (including edited terms)');
               setIsLoadingSession(false);
               return; // Stop here if we loaded from localStorage
             }
@@ -376,11 +380,23 @@ export function EnhancedMainInterface({
     const sessionKey = `lexiq-session-${currentProject.id}`;
     autoSaveIntervalRef.current = setInterval(() => {
       if (currentContent || analysisResults) {
+        // Retrieve edited terms from sessionStorage to include in auto-save
+        let editedTerms = null;
+        try {
+          const editedTermsData = sessionStorage.getItem('lexiq-edited-terms');
+          if (editedTermsData) {
+            editedTerms = JSON.parse(editedTermsData);
+          }
+        } catch (error) {
+          console.error('Failed to retrieve edited terms for auto-save:', error);
+        }
+
         const stateToSave = {
           currentContent,
           analysisResults,
           textManuallyEntered,
           activeMainTab,
+          editedTerms, // Include edited terms in auto-save
           projectId: currentProject.id,
           // Add project ID for validation
           timestamp: new Date().toISOString()
