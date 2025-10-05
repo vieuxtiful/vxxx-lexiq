@@ -127,7 +127,11 @@ export function EnhancedMainInterface({
   const [showGlossaryCheckmark, setShowGlossaryCheckmark] = useState(false);
   const [noGlossaryWarningShown, setNoGlossaryWarningShown] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Load dark mode preference from localStorage
+    const saved = localStorage.getItem('lexiq-dark-mode');
+    return saved === 'true';
+  });
   
   // Drag and drop states
   const [isDraggingTranslation, setIsDraggingTranslation] = useState(false);
@@ -260,12 +264,14 @@ export function EnhancedMainInterface({
     }
   }, [requiresProjectSetup, user]);
 
-  // Dark mode effect
+  // Dark mode effect with persistence
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
+      localStorage.setItem('lexiq-dark-mode', 'true');
     } else {
       document.documentElement.classList.remove('dark');
+      localStorage.setItem('lexiq-dark-mode', 'false');
     }
   }, [isDarkMode]);
 
