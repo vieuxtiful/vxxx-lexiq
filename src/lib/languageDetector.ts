@@ -137,7 +137,17 @@ export async function validateContentLanguage(
     const confidence = detection.confidence;
 
     const isMatch = detectedLang === expectedLanguage;
-    const canProceed = isMatch || confidence < 0.7; // Allow proceed if low confidence
+    
+    console.log('🔍 Language Detection Result:', {
+      detected: detectedLang,
+      expected: expectedLanguage,
+      confidence: (confidence * 100).toFixed(1) + '%',
+      isMatch
+    });
+    
+    // Show dialog for mismatches with reasonable confidence (>0.6)
+    // Only auto-proceed if match OR confidence is very low (<0.6)
+    const canProceed = isMatch || confidence < 0.6;
 
     let message = '';
     if (!isMatch) {
@@ -162,17 +172,23 @@ export async function validateContentLanguage(
       }
     };
   } catch (error) {
-    console.error('Language validation error:', error);
-    // Allow proceed on error
+    console.error('❌ Language validation error:', error);
+    
+    // Try simple fallback detection
+    const simpleLang = detectLanguageSimple(content);
+    const isMatch = simpleLang === expectedLanguage;
+    
     return {
-      canProceed: true,
-      detectedLanguage: expectedLanguage,
+      canProceed: isMatch, // Only proceed if simple detection matches
+      detectedLanguage: simpleLang,
       validation: {
-        isMatch: true,
+        isMatch,
         expectedLanguage,
-        detectedLanguage: expectedLanguage,
+        detectedLanguage: simpleLang,
         confidence: 0.5,
-        message: 'Validation failed, proceeding with caution'
+        message: isMatch 
+          ? 'Validation used fallback detection (match found)' 
+          : `Validation error: Expected ${getLanguageName(expectedLanguage)}, simple detection suggests ${getLanguageName(simpleLang)}`
       }
     };
   }

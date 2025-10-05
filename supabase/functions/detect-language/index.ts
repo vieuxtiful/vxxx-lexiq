@@ -37,7 +37,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a language detection expert. Analyze the text and return ONLY a JSON object with the detected language ISO code, confidence score (0-1), and top 3 language suggestions with confidence scores. Format: {"language":"en","confidence":0.95,"suggestions":[{"language":"en","confidence":0.95},{"language":"es","confidence":0.03}]}'
+            content: 'You are a language detection expert. Analyze the text and return ONLY valid JSON (no markdown, no code blocks, no additional text). The response must be parseable by JSON.parse(). Format exactly as: {"language":"en","confidence":0.95,"suggestions":[{"language":"en","confidence":0.95},{"language":"es","confidence":0.03}]}'
           },
           {
             role: 'user',
@@ -54,9 +54,17 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
+    let content = data.choices[0].message.content.trim();
     
-    // Parse the JSON response from the AI
+    // Remove markdown code blocks if present
+    if (content.startsWith('```')) {
+      content = content.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '');
+    }
+    
+    // Remove any leading/trailing whitespace and quotes
+    content = content.trim().replace(/^["']|["']$/g, '');
+    
+    // Parse the cleaned JSON
     const result = JSON.parse(content);
 
     return new Response(
