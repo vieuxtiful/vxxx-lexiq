@@ -4,6 +4,8 @@ export interface LanguageDetectionResult {
   language: string;
   confidence: number;
   suggestions: Array<{ language: string; confidence: number }>;
+  isMixed?: boolean;
+  secondaryLanguage?: string;
 }
 
 export interface LanguageValidationResult {
@@ -165,34 +167,40 @@ export async function validateContentLanguage(
     const detection = await detectLanguage(content);
     const detectedLang = detection.language;
     const confidence = detection.confidence;
+    const isMixedContent = detection.isMixed === true;
 
-    const isMatch = detectedLang === expectedLanguage;
+    // Match only if primary language matches AND content is NOT mixed
+    const isMatch = detectedLang === expectedLanguage && !isMixedContent;
     
     console.log('🔍 Language Detection Result:', {
       detected: detectedLang,
       expected: expectedLanguage,
       confidence: (confidence * 100).toFixed(1) + '%',
+      isMixed: isMixedContent,
+      secondaryLanguage: detection.secondaryLanguage || 'none',
       isMatch
     });
     
-    // Fixed logic: Only bypass if confidence is very low (<0.3) or if it matches
-    // This ensures mismatches with confidence >= 0.3 trigger the dialog
-    const isMixedContent = !isMatch && confidence >= 0.4 && confidence < 0.6;
+    // Block if:
+    // 1. Language mismatch with confidence >= 0.3, OR
+    // 2. Content is flagged as mixed-language
     const canProceed = isMatch || confidence < 0.3;
     
     console.log('🚦 Validation decision:', {
       isMatch,
+      isMixed: isMixedContent,
       confidence,
       canProceed,
       reason: canProceed ? 
-        (isMatch ? 'Language matches' : 'Detection confidence too low (<0.3)') :
-        'Language mismatch detected with sufficient confidence'
+        (isMatch ? 'Language matches and not mixed' : 'Detection confidence too low (<0.3)') :
+        (isMixedContent ? 'Mixed language content detected' : 'Language mismatch detected with sufficient confidence')
     });
 
     let message = '';
     if (!isMatch) {
       if (isMixedContent) {
-        message = `Mixed language content detected (${(confidence * 100).toFixed(0)}% confidence). Expected ${getLanguageName(expectedLanguage)}, but detected ${getLanguageName(detectedLang)}. The content may contain multiple languages or technical terms, which can affect translation quality.`;
+        const secondary = detection.secondaryLanguage ? getLanguageName(detection.secondaryLanguage) : 'unknown';
+        message = `Mixed language content detected. Primary: ${getLanguageName(detectedLang)} (${(confidence * 100).toFixed(0)}%), Secondary: ${secondary}. Expected ${getLanguageName(expectedLanguage)} only. Mixed content may affect translation quality.`;
       } else if (confidence >= 0.8) {
         message = `High confidence (${(confidence * 100).toFixed(0)}%) that content is in ${getLanguageName(detectedLang)}, but expected ${getLanguageName(expectedLanguage)}. This may affect translation quality.`;
       } else if (confidence >= 0.6) {
