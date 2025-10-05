@@ -123,6 +123,8 @@ export function EnhancedMainInterface({
   const [glossaryFileUploaded, setGlossaryFileUploaded] = useState(false);
   const [textManuallyEntered, setTextManuallyEntered] = useState(false);
   const [showUploadIconTransition, setShowUploadIconTransition] = useState(false);
+  const [showTranslationCheckmark, setShowTranslationCheckmark] = useState(false);
+  const [showGlossaryCheckmark, setShowGlossaryCheckmark] = useState(false);
   const [noGlossaryWarningShown, setNoGlossaryWarningShown] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
@@ -646,6 +648,13 @@ export function EnhancedMainInterface({
     if (type === 'translation') {
       setTranslationFile(file);
       setTranslationFileUploaded(true);
+      setShowTranslationCheckmark(true);
+      
+      // Transition from checkmark to upload icon after 1 second
+      setTimeout(() => {
+        setShowTranslationCheckmark(false);
+      }, 1000);
+      
       toast({
         title: "Translation File Uploaded",
         description: `${file.name} uploaded successfully`
@@ -653,6 +662,13 @@ export function EnhancedMainInterface({
     } else {
       setGlossaryFile(file);
       setGlossaryFileUploaded(true);
+      setShowGlossaryCheckmark(true);
+      
+      // Transition from checkmark to upload icon after 1 second
+      setTimeout(() => {
+        setShowGlossaryCheckmark(false);
+      }, 1000);
+      
       setNoGlossaryWarningShown(false);
       toast({
         title: "Glossary Uploaded",
@@ -1377,7 +1393,21 @@ export function EnhancedMainInterface({
                                   : 'Translation File'}
                           </span>
                         </div>
-                        {textManuallyEntered ? showUploadIconTransition ? <CheckCircle className="h-4 w-4 text-success flex-shrink-0 ml-2 animate-in fade-in" /> : <Upload className="h-4 w-4 text-success flex-shrink-0 ml-2 rotate-180 animate-in fade-in" /> : translationFileUploaded ? <CheckCircle className="h-4 w-4 text-success flex-shrink-0 ml-2" /> : <Upload className="h-4 w-4 flex-shrink-0 ml-2" />}
+                        {textManuallyEntered ? (
+                          showUploadIconTransition ? (
+                            <CheckCircle className="h-4 w-4 text-success flex-shrink-0 ml-2 animate-in fade-in" />
+                          ) : (
+                            <Upload className="h-4 w-4 text-success flex-shrink-0 ml-2 rotate-180 animate-in fade-in" />
+                          )
+                        ) : translationFileUploaded ? (
+                          showTranslationCheckmark ? (
+                            <CheckCircle className="h-4 w-4 text-success flex-shrink-0 ml-2 animate-in fade-in" />
+                          ) : (
+                            <Upload className="h-4 w-4 text-success flex-shrink-0 ml-2 rotate-180 animate-in fade-in" />
+                          )
+                        ) : (
+                          <Upload className="h-4 w-4 flex-shrink-0 ml-2" />
+                        )}
                       </div>
                       <p className="text-[10px] text-muted-foreground px-1">
                         {textManuallyEntered ? 'Paste or type in editor • Clear text to upload files' : 'Up to 50,000 characters · 50MB file size limit'}
@@ -1402,7 +1432,15 @@ export function EnhancedMainInterface({
                             {isDraggingGlossary ? 'Drop file here...' : glossaryFile ? glossaryFile.name : 'Glossary File'}
                           </span>
                         </div>
-                        {glossaryFileUploaded ? <CheckCircle className="h-4 w-4 text-success flex-shrink-0 ml-2" /> : <Upload className="h-4 w-4 flex-shrink-0 ml-2" />}
+                        {glossaryFileUploaded ? (
+                          showGlossaryCheckmark ? (
+                            <CheckCircle className="h-4 w-4 text-success flex-shrink-0 ml-2 animate-in fade-in" />
+                          ) : (
+                            <Upload className="h-4 w-4 text-success flex-shrink-0 ml-2 rotate-180 animate-in fade-in" />
+                          )
+                        ) : (
+                          <Upload className="h-4 w-4 flex-shrink-0 ml-2" />
+                        )}
                       </div>
                       <p className="text-[10px] text-muted-foreground px-1">
                         CSV or TXT format · 50MB file size limit
