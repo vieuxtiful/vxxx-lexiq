@@ -401,6 +401,19 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
     }
     return semanticType.ui_information.color_code;
   };
+
+  // Helper to convert hex color to rgba with opacity
+  const hexToRgba = (hex: string, opacity: number) => {
+    // Remove # if present
+    hex = hex.replace('#', '');
+    
+    // Parse hex values
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  };
   const renderContentWithUnderlines = () => {
     if (!content || flaggedTerms.length === 0) {
       // Show placeholder with brush fade animation when not editing and no content
@@ -465,13 +478,15 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
       // Enhanced styling with semantic type information (with text color)
       let underlineStyle = '';
       if (termPos.term.classification === 'grammar') {
-        underlineStyle = `color: ${color}; border-bottom: 2px wavy ${color}; cursor: pointer; background: linear-gradient(90deg, ${color}20, ${semanticColor}20); padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
+        const bgGradient = `linear-gradient(90deg, ${hexToRgba(color, 0.12)}, ${hexToRgba(semanticColor, 0.12)})`;
+        underlineStyle = `color: ${color}; border-bottom: 2px wavy ${color}; cursor: pointer; background: ${bgGradient}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
       } else if (termPos.term.classification === 'spelling') {
-        underlineStyle = `color: ${color}; border-bottom: 2px dotted ${color}; cursor: pointer; background-color: ${color}15; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
+        underlineStyle = `color: ${color}; border-bottom: 2px dotted ${color}; cursor: pointer; background-color: ${hexToRgba(color, 0.08)}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
       } else if (termPos.term.classification === 'valid') {
-        underlineStyle = `color: ${showSemanticTypes ? semanticColor : color}; border-bottom: 2px dashed ${showSemanticTypes ? semanticColor : color}; cursor: pointer; background-color: ${showSemanticTypes ? semanticColor : color}10; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
+        const displayColor = showSemanticTypes ? semanticColor : color;
+        underlineStyle = `color: ${displayColor}; border-bottom: 2px dashed ${displayColor}; cursor: pointer; background-color: ${hexToRgba(displayColor, 0.06)}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
       } else {
-        underlineStyle = `color: ${color}; border-bottom: 2px solid ${color}; cursor: pointer; background-color: ${color}10; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
+        underlineStyle = `color: ${color}; border-bottom: 2px solid ${color}; cursor: pointer; background-color: ${hexToRgba(color, 0.06)}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
       }
       const escapedText = escapeHtml(termPos.actualText);
       html += `<span class="term-highlight" style="${underlineStyle}" data-term-start="${termPos.start}" data-term-end="${termPos.end}" data-term-class="${termPos.term.classification}" data-term-text="${escapeHtml(termPos.term.text)}">${escapedText}</span>`;
@@ -711,9 +726,13 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
         }} onBlur={e => {
           setIsEditing(false);
           setIsComposing(false);
-          setTimeout(() => {
-            e.currentTarget.innerHTML = renderContentWithUnderlines();
-          }, 100);
+          // Use requestAnimationFrame for safer DOM updates
+          requestAnimationFrame(() => {
+            // Check if element still exists before setting innerHTML
+            if (e.currentTarget && document.contains(e.currentTarget)) {
+              e.currentTarget.innerHTML = renderContentWithUnderlines();
+            }
+          });
         }} onKeyUp={saveCursorPosition} onClick={saveCursorPosition} onCompositionStart={() => {
           // Pause state updates while user composes non-roman characters
           setIsComposing(true);
