@@ -65,7 +65,7 @@ export const FloatingBackground: React.FC = () => {
         fontWeight: fontWeights[Math.floor(Math.random() * fontWeights.length)],
         fontStyle: fontStyles[Math.floor(Math.random() * fontStyles.length)],
         fontVariant: fontVariants[Math.floor(Math.random() * fontVariants.length)],
-        animationDelay: Math.random() * 10,
+        animationDelay: 0,
         speed: 50 + Math.random() * 20,
         direction: leftToRight ? 'ltr' : 'rtl'
       });

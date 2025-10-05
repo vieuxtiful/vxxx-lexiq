@@ -76,10 +76,10 @@ const Auth = () => {
       {/* Auth content */}
       <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
         <div className="animate-fade-in">
-          <Card className="w-full max-w-[540px] shadow-lexiq border-border/40 backdrop-blur-sm bg-card/95">
+          <Card className="w-full max-w-[610px] shadow-lexiq border-border/40 backdrop-blur-sm bg-card/95">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center mb-2">
-            <img src={lexiqLogo} alt="LexiQ Logo" className="h-16 hover-scale light-sweep-logo" />
+            <img src={lexiqLogo} alt="LexiQ Logo" className="h-16 hover-scale light-sweep-logo-signin" />
           </div>
           <CardDescription className="text-base mt-2">
             LQA. Simple.
@@ -176,6 +176,13 @@ const Auth = () => {
           </Tabs>
         </CardContent>
       </Card>
+      
+      {/* Copyright Footer */}
+      <div className="text-center mt-6">
+        <p className="text-sm text-muted-foreground/60">
+          © LexiQ Development Team
+        </p>
+      </div>
         </div>
       </div>
     </div>
