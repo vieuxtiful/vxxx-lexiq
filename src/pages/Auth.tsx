@@ -94,7 +94,7 @@ const Auth = () => {
             
             <TabsContent value="signin">
               <form onSubmit={handleSignIn} className="space-y-4 px-0">
-                <div className="space-y-2 mx-0 px-[10px]">
+                <div className="space-y-2">
                   <Label htmlFor="signin-email">Email</Label>
                   <Input id="signin-email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
                 </div>
