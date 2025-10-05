@@ -291,6 +291,26 @@ All colors MUST be HSL.
       stroke-dashoffset: 0;
     }
   }
+
+  /* Modern loading animations for Start QA button */
+  @keyframes gradient-x {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .animate-gradient-x {
+    background-size: 200% 200%;
+    animation: gradient-x 3s ease infinite;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
+  }
 }
 
 @keyframes slide-left-to-right {

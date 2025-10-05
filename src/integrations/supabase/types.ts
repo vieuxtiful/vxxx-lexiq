@@ -25,6 +25,7 @@ export type Database = {
           processing_time: number | null
           project_id: string
           statistics: Json | null
+          translation_content: string | null
           translation_file_id: string | null
           user_id: string
         }
@@ -38,6 +39,7 @@ export type Database = {
           processing_time?: number | null
           project_id: string
           statistics?: Json | null
+          translation_content?: string | null
           translation_file_id?: string | null
           user_id: string
         }
@@ -51,6 +53,7 @@ export type Database = {
           processing_time?: number | null
           project_id?: string
           statistics?: Json | null
+          translation_content?: string | null
           translation_file_id?: string | null
           user_id?: string
         }

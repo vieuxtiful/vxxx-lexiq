@@ -15,6 +15,7 @@ export interface AnalysisSession {
   domain: string;
   analyzed_terms: any;
   statistics: any;
+  translation_content?: string; // Full translation text for auto-restore
   processing_time?: number | null;
   created_at: string;
 }
@@ -28,6 +29,7 @@ export const useAnalysisSession = () => {
     language: string,
     domain: string,
     analysisResult: AnalysisResult,
+    translationContent: string, // Add full translation content
     translationFileId?: string,
     glossaryFileId?: string,
     processingTime?: number
@@ -42,6 +44,7 @@ export const useAnalysisSession = () => {
         domain,
         analyzed_terms: JSON.parse(JSON.stringify(analysisResult.terms)),
         statistics: JSON.parse(JSON.stringify(analysisResult.statistics)),
+        translation_content: translationContent, // Store full content for auto-restore
         processing_time: processingTime || null,
       };
 

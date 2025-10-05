@@ -82,8 +82,9 @@ serve(async (req) => {
   try {
     const { translationContent, glossaryContent, language, domain, checkGrammar = false } = await req.json() as AnalysisRequest;
 
-    console.log(`Starting analysis: language=${language}, domain=${domain}, checkGrammar=${checkGrammar}`);
-    console.log(`Translation length: ${translationContent.length}, Glossary length: ${glossaryContent.length}`);
+    console.log('=== Edge Function: Starting Analysis ===');
+    console.log(`Parameters: language=${language}, domain=${domain}, checkGrammar=${checkGrammar}`);
+    console.log(`Content sizes: Translation=${translationContent.length} chars, Glossary=${glossaryContent.length} chars`);
 
     // Enhanced validation with better error messages
     if (translationContent.length > 15000) {
@@ -420,7 +421,20 @@ CRITICAL REQUIREMENTS:
       }
     }
 
-    console.log(`Analysis complete: ${analysisResult.terms.length} terms, quality score: ${analysisResult.statistics.qualityScore}`);
+    // Log analysis completion with classification breakdown
+    const classificationBreakdown = analysisResult.terms.reduce((acc: any, term: any) => {
+      acc[term.classification] = (acc[term.classification] || 0) + 1;
+      return acc;
+    }, {});
+    
+    const spellCount = analysisResult.terms.filter((t: any) => t.classification === 'spelling').length;
+    const grammarCount = analysisResult.terms.filter((t: any) => t.classification === 'grammar').length;
+    
+    console.log('=== Edge Function: Analysis Complete ===');
+    console.log(`Total terms analyzed: ${analysisResult.terms.length}`);
+    console.log('Classification breakdown:', classificationBreakdown);
+    console.log(`Spelling issues: ${spellCount}, Grammar issues: ${grammarCount}`);
+    console.log(`Quality score: ${analysisResult.statistics.qualityScore}`);
 
     return new Response(
       JSON.stringify(analysisResult),

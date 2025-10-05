@@ -16,7 +16,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import { 
   Upload, FileText, Play, TrendingUp, CheckCircle, 
   AlertCircle, BarChart3, Activity, BookOpen, Zap, ArrowLeft,
-  Globe, Building, Download, Undo2, Redo2, Database, Save, User, LogOut
+  Globe, Building, Download, Undo2, Redo2, Database, Save, User, LogOut, RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useChunkedAnalysis } from '@/hooks/useChunkedAnalysis';
@@ -109,7 +109,7 @@ export function EnhancedMainInterface({
   const { currentFullText } = useAnalysisEngine();
   const { user, signOut } = useAuth();
   const { currentProject, requiresProjectSetup, setRequiresProjectSetup, createProject } = useProject();
-  const { saveAnalysisSession } = useAnalysisSession();
+  const { saveAnalysisSession, getProjectSessions } = useAnalysisSession();
   const { processFile } = useFileProcessor();
   const { logAnalysis, logFileUpload, logProjectCreated, logSessionRestored } = useAuditLog();
   const [translationFileId, setTranslationFileId] = useState<string | null>(null);
@@ -198,6 +198,44 @@ export function EnhancedMainInterface({
       }
     }
   }, []);
+
+  // Auto-load most recent session when returning to a project
+  React.useEffect(() => {
+    const autoLoadRecentSession = async () => {
+      // Only auto-load if we have a project, no current content, and user is authenticated
+      if (currentProject && user && !currentContent && !isAnalyzing && !analysisComplete) {
+        try {
+          const sessions = await getProjectSessions(currentProject.id);
+          if (sessions.length > 0) {
+            const mostRecentSession = sessions[0]; // Already sorted by created_at DESC
+            
+            // Only load if session has translation content
+            if (mostRecentSession.translation_content) {
+              setCurrentContent(mostRecentSession.translation_content);
+              setAnalysisResults({
+                terms: mostRecentSession.analyzed_terms,
+                statistics: mostRecentSession.statistics,
+              });
+              setAnalysisComplete(true);
+              
+              toast({
+                title: "Session Restored",
+                description: "Your most recent analysis has been auto-loaded.",
+              });
+              
+              // Log the auto-restore
+              await logSessionRestored(mostRecentSession.id);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to auto-load recent session:', error);
+          // Don't show error toast to avoid annoying users
+        }
+      }
+    };
+
+    autoLoadRecentSession();
+  }, [currentProject, user, currentContent, isAnalyzing, analysisComplete, getProjectSessions, toast, logSessionRestored]);
 
   // Auto-save functionality
   React.useEffect(() => {
@@ -390,6 +428,10 @@ export function EnhancedMainInterface({
   };
 
   const runEnhancedAnalysis = async () => {
+    console.log('=== Starting Enhanced Analysis ===');
+    console.log('Spell Checker: Enabled by default in prompt');
+    console.log('Grammar Checker:', grammarCheckingEnabled ? 'ENABLED' : 'DISABLED');
+    
     // Check if we have either a file or manually entered text
     const hasTranslation = translationFile || (textManuallyEntered && currentContent.length > 0);
     
@@ -418,6 +460,14 @@ export function EnhancedMainInterface({
       const translationContent = translationFile ? await translationFile.text() : currentContent;
       const glossaryContent = await glossaryFile.text();
       
+      console.log('Calling analyzeWithChunking with:', {
+        translationLength: translationContent.length,
+        glossaryLength: glossaryContent.length,
+        language: selectedLanguage,
+        domain: selectedDomain,
+        checkGrammar: grammarCheckingEnabled
+      });
+      
       const result = await analyzeWithChunking(
         translationContent,
         glossaryContent,
@@ -427,6 +477,36 @@ export function EnhancedMainInterface({
       );
 
       if (result) {
+        // Log specific spell/grammar issues for verification
+        const spellTerms = result.terms.filter((t: any) => t.classification === 'spelling');
+        const grammarTerms = result.terms.filter((t: any) => t.classification === 'grammar');
+        
+        console.log('Analysis completed. Results:', {
+          totalTerms: result.statistics.totalTerms,
+          spellingIssues: spellTerms.length,
+          grammarIssues: grammarTerms.length,
+          termsByClassification: result.terms.reduce((acc: any, term: any) => {
+            acc[term.classification] = (acc[term.classification] || 0) + 1;
+            return acc;
+          }, {})
+        });
+        
+        console.log('Spelling issues found:', spellTerms.length);
+        console.log('Grammar issues found:', grammarTerms.length);
+        
+        if (spellTerms.length > 0) {
+          console.log('Sample spelling issues:', spellTerms.slice(0, 3).map((t: any) => ({
+            text: t.text,
+            suggestions: t.suggestions
+          })));
+        }
+        
+        if (grammarTerms.length > 0 && grammarCheckingEnabled) {
+          console.log('Sample grammar issues:', grammarTerms.slice(0, 3).map((t: any) => ({
+            text: t.text,
+            grammar_issues: t.grammar_issues
+          })));
+        }
         const processingTime = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : undefined;
         
         setAnalysisResults(result);
@@ -444,6 +524,7 @@ export function EnhancedMainInterface({
               selectedLanguage,
               selectedDomain,
               result,
+              translationContent, // Add full translation content
               translationFileId || undefined,
               glossaryFileId || undefined,
               processingTime
@@ -623,6 +704,15 @@ export function EnhancedMainInterface({
 
   // Handle session restoration from history
   const handleRestoreSession = useCallback((session: AnalysisSession) => {
+    // Use the stored translation content if available, otherwise fall back to terms text
+    if (session.translation_content) {
+      setCurrentContent(session.translation_content);
+    } else if (session.analyzed_terms && Array.isArray(session.analyzed_terms) && session.analyzed_terms.length > 0) {
+      // Fallback: reconstruct from terms (existing behavior)
+      const fullText = session.analyzed_terms.map((t: any) => t.text).join(' ');
+      setCurrentContent(fullText);
+    }
+    
     setAnalysisResults({
       terms: session.analyzed_terms,
       statistics: session.statistics,
@@ -630,12 +720,11 @@ export function EnhancedMainInterface({
     setAnalysisComplete(true);
     setActiveMainTab('edit');
     
-    // Extract first term's text as preview content if available
-    if (session.analyzed_terms && Array.isArray(session.analyzed_terms) && session.analyzed_terms.length > 0) {
-      const fullText = session.analyzed_terms.map((t: any) => t.text).join(' ');
-      setCurrentContent(fullText);
-    }
-  }, []);
+    toast({
+      title: "Session Restored",
+      description: "Analysis session has been loaded.",
+    });
+  }, [toast]);
 
   // Handle project setup completion
   const handleProjectSetupComplete = async (
@@ -1030,15 +1119,43 @@ export function EnhancedMainInterface({
                       <Button
                         onClick={runEnhancedAnalysis}
                         disabled={(!translationFile && !textManuallyEntered) || !glossaryFile || isAnalyzing}
-                        className="w-full"
+                        className="w-full relative overflow-hidden transition-all duration-300"
                       >
-                        <Play className="h-4 w-4 mr-2" />
-                        {isAnalyzing ? 'Analyzing...' : 'Start QA'}
+                        {isAnalyzing ? (
+                          <div className="flex items-center justify-center w-full">
+                            {/* Animated gradient background */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary-glow to-primary animate-gradient-x"></div>
+                            
+                            {/* Shimmer overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+                            
+                            {/* Content */}
+                            <div className="relative z-10 flex items-center">
+                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                              Analyzing...
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center">
+                            <Play className="h-4 w-4 mr-2" />
+                            Start QA
+                          </div>
+                        )}
                       </Button>
 
                       {isAnalyzing && (
                         <div className="space-y-1">
-                          <Progress value={engineProgress} className="h-2" />
+                          {/* Enhanced Progress Bar */}
+                          <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-primary to-primary-glow transition-all duration-500 ease-out relative"
+                              style={{ width: `${engineProgress}%` }}
+                            >
+                              {/* Progress bar shimmer */}
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+                            </div>
+                          </div>
+                          
                           {totalChunks > 1 && (
                             <p className="text-xs text-muted-foreground text-center">
                               Processing chunk {currentChunk} of {totalChunks}

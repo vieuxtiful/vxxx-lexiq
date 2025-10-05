@@ -485,14 +485,20 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
             </div>
             
             <div className="flex items-center gap-4">
-              {/* Grammar Checking Toggle */}
+              {/* Grammar Checking Toggle - Enhanced */}
               <div className="flex items-center space-x-2">
                 <Switch
                   id="grammar-check"
                   checked={grammarCheckingEnabled}
-                  onCheckedChange={onGrammarCheckingToggle}
+                  onCheckedChange={(enabled) => {
+                    console.log('Grammar checking toggled:', enabled);
+                    onGrammarCheckingToggle?.(enabled);
+                  }}
                 />
-                <Label htmlFor="grammar-check" className="text-sm">Grammar Check</Label>
+                <Label htmlFor="grammar-check" className="text-sm flex items-center gap-1">
+                  <Zap className="h-3 w-3" />
+                  Grammar Check {grammarCheckingEnabled ? '(ON)' : '(OFF)'}
+                </Label>
               </div>
               
               {/* Semantic Types Toggle */}
