@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useChunkedAnalysis } from '@/hooks/useChunkedAnalysis';
 import { useAnalysisEngine } from '@/hooks/useAnalysisEngine';
 import { useAuth } from '@/hooks/useAuth';
+import { analysisCache } from '@/lib/analysisCache';
 import { useProject } from '@/contexts/ProjectContext';
 import { useAnalysisSession, AnalysisSession } from '@/hooks/useAnalysisSession';
 import { useFileProcessor } from '@/hooks/useFileProcessor';
@@ -99,6 +100,15 @@ export function EnhancedMainInterface({
   const [savedVersions, setSavedVersions] = useState<SavedVersion[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
+  
+  // Smart reanalysis state
+  const [lastAnalyzedContent, setLastAnalyzedContent] = useState('');
+  const [lastAnalysisParams, setLastAnalysisParams] = useState({
+    language: '',
+    domain: '',
+    grammarChecking: false,
+    glossaryContent: ''
+  });
   
   const translationInputRef = useRef<HTMLInputElement>(null);
   const glossaryInputRef = useRef<HTMLInputElement>(null);
@@ -509,6 +519,19 @@ export function EnhancedMainInterface({
         }
         const processingTime = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : undefined;
         
+        // Store last analyzed content and parameters for smart reanalysis
+        setLastAnalyzedContent(translationContent);
+        setLastAnalysisParams({
+          language: selectedLanguage,
+          domain: selectedDomain,
+          grammarChecking: grammarCheckingEnabled,
+          glossaryContent
+        });
+        
+        // Cache the result
+        const cacheKey = analysisCache.generateKey(translationContent, selectedLanguage, selectedDomain, grammarCheckingEnabled);
+        analysisCache.set(cacheKey, result, translationContent);
+        
         setAnalysisResults(result);
         setAnalysisComplete(true);
         setCurrentContent(translationContent);
@@ -565,7 +588,7 @@ export function EnhancedMainInterface({
           title: "No Glossary",
           description: "Please upload a glossary file for re-analysis",
           variant: "destructive",
-          duration: Infinity, // Persist until dismissed
+          duration: Infinity,
         });
         setNoGlossaryWarningShown(true);
       }
@@ -575,6 +598,84 @@ export function EnhancedMainInterface({
     try {
       const glossaryContent = await glossaryFile.text();
       
+      // Check for exact cache hit first
+      const cacheKey = analysisCache.generateKey(content, selectedLanguage, selectedDomain, grammarCheckingEnabled);
+      const cachedResult = analysisCache.get(cacheKey);
+      
+      if (cachedResult) {
+        console.log('Exact cache hit - using cached results');
+        setAnalysisResults(cachedResult);
+        setLastAnalyzedContent(content);
+        setLastAnalysisParams({
+          language: selectedLanguage,
+          domain: selectedDomain,
+          grammarChecking: grammarCheckingEnabled,
+          glossaryContent
+        });
+        
+        toast({
+          title: "Re-analysis Complete (Cached)",
+          description: "Using cached analysis results",
+        });
+        return;
+      }
+
+      // Check if we can use partial analysis
+      if (lastAnalyzedContent && analysisResults) {
+        const changes = analysisCache.calculateContentChanges(content, lastAnalyzedContent);
+        
+        console.log(`Content changes: ${changes.percentChanged.toFixed(1)}% changed`);
+        
+        // If less than 30% changed and we have cached terms, try partial analysis
+        if (changes.percentChanged < 30 && changes.changedSegments.length > 0) {
+          try {
+            console.log('Attempting partial re-analysis of changed segments');
+            
+            // Analyze only the changed segments
+            const changedContent = changes.changedSegments.map(seg => seg.content).join('\n');
+            const partialResult = await analyzeWithChunking(
+              changedContent,
+              glossaryContent,
+              selectedLanguage,
+              selectedDomain,
+              grammarCheckingEnabled
+            );
+
+            if (partialResult) {
+              // Merge the partial results with existing analysis
+              const mergedResults = analysisCache.mergeAnalysisResults(
+                analysisResults, 
+                partialResult.terms, 
+                changes
+              );
+              
+              // Cache the merged results
+              analysisCache.set(cacheKey, mergedResults, content);
+              
+              setAnalysisResults(mergedResults);
+              setLastAnalyzedContent(content);
+              setLastAnalysisParams({
+                language: selectedLanguage,
+                domain: selectedDomain,
+                grammarChecking: grammarCheckingEnabled,
+                glossaryContent
+              });
+              
+              toast({
+                title: "Partial Re-analysis Complete",
+                description: `Analyzed ${changes.changedSegments.length} changed segments`,
+              });
+              return;
+            }
+          } catch (partialError) {
+            console.warn('Partial analysis failed, falling back to full analysis:', partialError);
+            // Continue with full analysis
+          }
+        }
+      }
+
+      // Fallback to full analysis
+      console.log('Performing full re-analysis');
       const result = await analyzeWithChunking(
         content,
         glossaryContent,
@@ -584,17 +685,30 @@ export function EnhancedMainInterface({
       );
 
       if (result) {
+        // Cache the new results
+        analysisCache.set(cacheKey, result, content);
+        
         setAnalysisResults(result);
-        setCurrentContent(content);
-        addToHistory(content, result);
+        setLastAnalyzedContent(content);
+        setLastAnalysisParams({
+          language: selectedLanguage,
+          domain: selectedDomain,
+          grammarChecking: grammarCheckingEnabled,
+          glossaryContent
+        });
         
         toast({
           title: "Re-analysis Complete",
-          description: "Content re-analyzed successfully",
+          description: "Content fully re-analyzed",
         });
       }
     } catch (error) {
       console.error('Re-analysis failed:', error);
+      toast({
+        title: "Re-analysis Failed",
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: "destructive",
+      });
     }
   };
 

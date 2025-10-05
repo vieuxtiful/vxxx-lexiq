@@ -161,8 +161,8 @@ export const useAnalysisEngine = () => {
       // ENHANCE CONTEXT: Process the results to improve context fields
       const enhancedResult = enhanceAnalysisContext(result, translationContent);
 
-      // Cache the enhanced result
-      analysisCache.set(cacheKey, enhancedResult);
+      // Cache the enhanced result with content hash
+      analysisCache.set(cacheKey, enhancedResult, translationContent);
 
       // Set progress to 100 and keep it visible briefly
       setProgress(100);

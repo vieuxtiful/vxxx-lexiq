@@ -557,6 +557,57 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
               )}
             </div>
           )}
+
+          {/* NEW LOCATION: Semantic Types Legend - Now directly under category badges */}
+          {showLegend && showSemanticTypes && flaggedTerms.length > 0 && (
+            <div className="mt-2 flex items-center gap-3 pb-2 border-b text-xs">
+              {/* Dynamically generate legend from actual flagged terms */}
+              {Array.from(new Set(
+                flaggedTerms
+                  .filter(t => t.semantic_type?.semantic_type)
+                  .map(t => t.semantic_type!.semantic_type)
+              )).map(type => {
+                const term = flaggedTerms.find(t => t.semantic_type?.semantic_type === type);
+                const color = getSemanticTypeColor(term?.semantic_type);
+                
+                // Priority: 1) Classification, 2) Semantic Type, 3) Display Name
+                let displayName = '';
+                
+                // First priority: Classification (Entity, Event, etc.)
+                if (term?.semantic_type?.ui_information?.category) {
+                  displayName = term.semantic_type.ui_information.category;
+                }
+                // First fallback: AI's semantic type
+                else if (type) {
+                  displayName = type;
+                }
+                // Second fallback: Display name
+                else if (term?.semantic_type?.ui_information?.display_name) {
+                  const rawDisplayName = term.semantic_type.ui_information.display_name;
+                  if (
+                    typeof rawDisplayName === 'string' && 
+                    rawDisplayName.length > 0 &&
+                    !rawDisplayName.includes('[Max depth')
+                  ) {
+                    displayName = rawDisplayName;
+                  }
+                }
+
+                // Capitalize first letter
+                displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
+                
+                return (
+                  <div key={type} className="flex items-center gap-1">
+                    <span 
+                      className="w-2 h-2 rounded-full" 
+                      style={{ backgroundColor: color }}
+                    />
+                    <span className="text-muted-foreground">{displayName}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardHeader>
         
         <CardContent className="flex-1 overflow-auto relative">
@@ -613,58 +664,9 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
             </div>
           )}
 
-          {/* Character Counter and Legend */}
-          <div className="text-xs mt-2 flex items-center justify-between">
-            {showLegend && showSemanticTypes && (
-              <div className="flex items-center gap-3">
-                {/* Dynamically generate legend from actual flagged terms */}
-                {Array.from(new Set(
-                  flaggedTerms
-                    .filter(t => t.semantic_type?.semantic_type)
-                    .map(t => t.semantic_type!.semantic_type)
-                )).map(type => {
-                  const term = flaggedTerms.find(t => t.semantic_type?.semantic_type === type);
-                  const color = getSemanticTypeColor(term?.semantic_type);
-                  
-                  // Priority: 1) Classification, 2) Semantic Type, 3) Display Name
-                  let displayName = '';
-                  
-                  // First priority: Classification (Entity, Event, etc.)
-                  if (term?.semantic_type?.ui_information?.category) {
-                    displayName = term.semantic_type.ui_information.category;
-                  }
-                  // First fallback: AI's semantic type
-                  else if (type) {
-                    displayName = type;
-                  }
-                  // Second fallback: Display name
-                  else if (term?.semantic_type?.ui_information?.display_name) {
-                    const rawDisplayName = term.semantic_type.ui_information.display_name;
-                    if (
-                      typeof rawDisplayName === 'string' && 
-                      rawDisplayName.length > 0 &&
-                      !rawDisplayName.includes('[Max depth')
-                    ) {
-                      displayName = rawDisplayName;
-                    }
-                  }
-
-                  // Capitalize first letter
-                  displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
-                  
-                  return (
-                    <div key={type} className="flex items-center gap-1">
-                      <span 
-                        className="w-2 h-2 rounded-full" 
-                        style={{ backgroundColor: color }}
-                      />
-                      <span className="text-muted-foreground">{displayName}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            <span className={`font-mono ml-auto ${
+          {/* Character Counter ONLY (legend moved above) */}
+          <div className="text-xs mt-2 flex justify-end">
+            <span className={`font-mono ${
               content.length > 45000 ? 'text-red-600 dark:text-red-400' : 
               content.length > 35000 ? 'text-yellow-600 dark:text-yellow-400' : 
               'text-green-600 dark:text-green-400'
