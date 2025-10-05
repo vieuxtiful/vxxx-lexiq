@@ -29,6 +29,18 @@ const Auth = () => {
   // Password validation for signup
   const passwordValidation = activeTab === 'signup' ? validatePassword(password) : null;
 
+  // Force light mode on auth page
+  useEffect(() => {
+    document.documentElement.classList.remove('dark');
+    return () => {
+      // Restore dark mode preference when leaving auth page
+      const savedDarkMode = localStorage.getItem('lexiq-dark-mode');
+      if (savedDarkMode === 'true') {
+        document.documentElement.classList.add('dark');
+      }
+    };
+  }, []);
+
   // Redirect if already authenticated
   useEffect(() => {
     if (user) {
