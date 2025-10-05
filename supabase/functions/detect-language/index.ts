@@ -37,7 +37,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a language detection expert. Analyze the text and return ONLY valid JSON (no markdown, no code blocks, no additional text). The response must be parseable by JSON.parse(). Format exactly as: {"language":"en","confidence":0.95,"suggestions":[{"language":"en","confidence":0.95},{"language":"es","confidence":0.03}]}'
+            content: 'You are a language detection expert. Analyze the text and determine: 1) PRIMARY language (ISO 639-1), 2) Confidence (0-1), 3) If mixed-language, identify secondary language. For mixed content, assign PRIMARY to whichever has more structural/grammatical elements (not just technical terms). Return ONLY valid JSON (no markdown, no code blocks): {"language":"en","confidence":0.65,"isMixed":false,"secondaryLanguage":null,"suggestions":[{"language":"en","confidence":0.65}]}'
           },
           {
             role: 'user',

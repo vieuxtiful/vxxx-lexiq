@@ -278,23 +278,14 @@ CRITICAL REQUIREMENTS:
     let analysisResult;
     let cleanContent = content.trim();
     
-    // Remove markdown code blocks if present
+    // Remove markdown code blocks if present (robust approach)
     if (cleanContent.startsWith('```')) {
       console.log("Detected markdown code block, stripping...");
-      // Find the first newline after the opening ```
-      const firstNewline = cleanContent.indexOf('\n');
-      if (firstNewline !== -1) {
-        cleanContent = cleanContent.substring(firstNewline + 1);
-      }
-      
-      // Remove the closing ```
-      const lastTripleBacktick = cleanContent.lastIndexOf('```');
-      if (lastTripleBacktick !== -1) {
-        cleanContent = cleanContent.substring(0, lastTripleBacktick);
-      }
-      
-      cleanContent = cleanContent.trim();
+      cleanContent = cleanContent.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '');
     }
+    
+    // Remove any leading/trailing whitespace and quotes
+    cleanContent = cleanContent.trim().replace(/^["']|["']$/g, '');
     
     // SOLUTION 1: Enhanced JSON sanitization to handle malformed AI responses
     console.log("Applying comprehensive JSON sanitization...");

@@ -90,19 +90,39 @@ export async function detectLanguage(text: string): Promise<LanguageDetectionRes
  * This is a simple client-side fallback that doesn't require AI
  */
 export function detectLanguageSimple(text: string): string {
-  // Simple heuristic-based detection
-  const sample = text.slice(0, 500);
-
-  // Check for specific character ranges
+  const sample = text.slice(0, 500).toLowerCase();
+  
+  // Check for specific character ranges (non-Latin scripts)
   if (/[\u4e00-\u9fff]/.test(sample)) return 'zh'; // Chinese
   if (/[\u3040-\u309f\u30a0-\u30ff]/.test(sample)) return 'ja'; // Japanese
   if (/[\uac00-\ud7af]/.test(sample)) return 'ko'; // Korean
+  if (/[\u0400-\u04ff]/.test(sample)) return 'ru'; // Russian
   if (/[\u0600-\u06ff]/.test(sample)) return 'ar'; // Arabic
-  if (/[\u0590-\u05ff]/.test(sample)) return 'he'; // Hebrew
-  if (/[\u0400-\u04ff]/.test(sample)) return 'ru'; // Cyrillic (Russian)
   if (/[\u0e00-\u0e7f]/.test(sample)) return 'th'; // Thai
+  if (/[\u0590-\u05ff]/.test(sample)) return 'he'; // Hebrew
   if (/[\u0900-\u097f]/.test(sample)) return 'hi'; // Hindi
-
+  
+  // Detect Latin-script languages by common words/patterns
+  // German indicators
+  const germanPatterns = /\b(das|die|der|und|ist|sind|mit|für|auf|bei|von|zu|den|dem|des|ein|eine|einem|eines)\b/g;
+  const germanMatches = (sample.match(germanPatterns) || []).length;
+  
+  // French indicators
+  const frenchPatterns = /\b(le|la|les|un|une|des|et|est|sont|dans|pour|avec|sur|par|ce|cette|qui|que)\b/g;
+  const frenchMatches = (sample.match(frenchPatterns) || []).length;
+  
+  // Spanish indicators
+  const spanishPatterns = /\b(el|la|los|las|un|una|y|es|son|en|con|por|para|de|del|que|está|están)\b/g;
+  const spanishMatches = (sample.match(spanishPatterns) || []).length;
+  
+  // Determine language by highest match count
+  const maxMatches = Math.max(germanMatches, frenchMatches, spanishMatches);
+  if (maxMatches >= 3) { // Need at least 3 matches to be confident
+    if (germanMatches === maxMatches) return 'de';
+    if (frenchMatches === maxMatches) return 'fr';
+    if (spanishMatches === maxMatches) return 'es';
+  }
+  
   // Default to English for Latin scripts
   return 'en';
 }
@@ -145,18 +165,21 @@ export async function validateContentLanguage(
       isMatch
     });
     
-    // Show dialog for mismatches with reasonable confidence (>0.6)
-    // Only auto-proceed if match OR confidence is very low (<0.6)
-    const canProceed = isMatch || confidence < 0.6;
+    // Show dialog for mismatches with reasonable confidence (>0.5)
+    // Only auto-proceed if match OR confidence is very low (<0.5)
+    const isMixedContent = !isMatch && confidence >= 0.4 && confidence < 0.6;
+    const canProceed = isMatch || confidence < 0.5;
 
     let message = '';
     if (!isMatch) {
-      if (confidence >= 0.9) {
-        message = `Strong mismatch detected: Expected ${getLanguageName(expectedLanguage)}, but content appears to be ${getLanguageName(detectedLang)} (${(confidence * 100).toFixed(0)}% confidence)`;
-      } else if (confidence >= 0.7) {
-        message = `Possible mismatch: Expected ${getLanguageName(expectedLanguage)}, detected ${getLanguageName(detectedLang)} (${(confidence * 100).toFixed(0)}% confidence)`;
+      if (isMixedContent) {
+        message = `Mixed language content detected (${(confidence * 100).toFixed(0)}% confidence). Expected ${getLanguageName(expectedLanguage)}, but detected ${getLanguageName(detectedLang)}. The content may contain multiple languages or technical terms, which can affect translation quality.`;
+      } else if (confidence >= 0.8) {
+        message = `High confidence (${(confidence * 100).toFixed(0)}%) that content is in ${getLanguageName(detectedLang)}, but expected ${getLanguageName(expectedLanguage)}. This may affect translation quality.`;
+      } else if (confidence >= 0.6) {
+        message = `Medium confidence (${(confidence * 100).toFixed(0)}%) that content is in ${getLanguageName(detectedLang)}. Expected ${getLanguageName(expectedLanguage)}. You may proceed with caution.`;
       } else {
-        message = `Language unclear. Expected ${getLanguageName(expectedLanguage)}, detected ${getLanguageName(detectedLang)} (low confidence: ${(confidence * 100).toFixed(0)}%)`;
+        message = `Low confidence (${(confidence * 100).toFixed(0)}%) in language detection. Expected ${getLanguageName(expectedLanguage)}. The content language is unclear.`;
       }
     }
 
