@@ -1395,7 +1395,7 @@ export function EnhancedMainInterface({
                           <Progress value={analysisResults.statistics.qualityScore} className="h-2" />
                         </div>
                         
-                        <div className={`bg-gradient-to-r ${getGradientColor(validPercentage)} p-3 rounded-md text-white dark:brightness-75`}>
+                        <div className={`bg-gradient-to-r ${getGradientColor(validPercentage)} p-3 rounded-md text-white dark:brightness-90`}>
                           <div className="text-xs opacity-90">Validated Terms</div>
                           <div className="text-2xl font-bold">
                             {analysisResults.statistics.validTerms}/{analysisResults.statistics.totalTerms}
