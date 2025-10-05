@@ -270,7 +270,10 @@ CRITICAL REQUIREMENTS:
 2. ALL text output (suggestions, rationale, context) MUST be in ${language}
 3. Return valid JSON with exact field names above
 4. Provide specific, actionable suggestions in ${language}
-5. Include semantic type for every term`;
+5. Include semantic type for every term
+6. CRITICAL: Check EACH occurrence of a word independently - if "an" appears 5 times and only 1 is incorrect (e.g., "an process" vs "an element"), ONLY flag the incorrect instance with its specific character position
+7. Grammar/spelling errors must include EXACT character positions - do not flag all instances of a word if only one instance is wrong
+8. Context matters: "an element" is correct, "an process" is incorrect - analyze each occurrence separately`;
 
     // Call Lovable AI with timeout
     const controller = new AbortController();
