@@ -103,7 +103,7 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
           <div className="flex justify-center mb-6">
             <img src={lexiqQLogo} alt="LexiQ Q Logo" className="h-auto w-auto max-w-[120px] light-sweep-logo" />
           </div>
-          <h1 className="text-4xl font-bold text-foreground mb-4">
+          <h1 className="text-4xl text-foreground mb-4 font-semibold">
             My Projects
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">Select a working project, or start anew!</p>
