@@ -90,40 +90,50 @@ export async function detectLanguage(text: string): Promise<LanguageDetectionRes
  * This is a simple client-side fallback that doesn't require AI
  */
 export function detectLanguageSimple(text: string): string {
-  const sample = text.slice(0, 500).toLowerCase();
+  if (!text || text.length < 10) return 'en';
   
-  // Check for specific character ranges (non-Latin scripts)
-  if (/[\u4e00-\u9fff]/.test(sample)) return 'zh'; // Chinese
-  if (/[\u3040-\u309f\u30a0-\u30ff]/.test(sample)) return 'ja'; // Japanese
-  if (/[\uac00-\ud7af]/.test(sample)) return 'ko'; // Korean
-  if (/[\u0400-\u04ff]/.test(sample)) return 'ru'; // Russian
-  if (/[\u0600-\u06ff]/.test(sample)) return 'ar'; // Arabic
-  if (/[\u0e00-\u0e7f]/.test(sample)) return 'th'; // Thai
-  if (/[\u0590-\u05ff]/.test(sample)) return 'he'; // Hebrew
-  if (/[\u0900-\u097f]/.test(sample)) return 'hi'; // Hindi
+  const cleanText = text.toLowerCase().replace(/[^\w\s]/g, ' ');
   
-  // Detect Latin-script languages by common words/patterns
-  // German indicators
-  const germanPatterns = /\b(das|die|der|und|ist|sind|mit|für|auf|bei|von|zu|den|dem|des|ein|eine|einem|eines)\b/g;
-  const germanMatches = (sample.match(germanPatterns) || []).length;
-  
-  // French indicators
-  const frenchPatterns = /\b(le|la|les|un|une|des|et|est|sont|dans|pour|avec|sur|par|ce|cette|qui|que)\b/g;
-  const frenchMatches = (sample.match(frenchPatterns) || []).length;
-  
-  // Spanish indicators
-  const spanishPatterns = /\b(el|la|los|las|un|una|y|es|son|en|con|por|para|de|del|que|está|están)\b/g;
-  const spanishMatches = (sample.match(spanishPatterns) || []).length;
-  
-  // Determine language by highest match count
-  const maxMatches = Math.max(germanMatches, frenchMatches, spanishMatches);
-  if (maxMatches >= 3) { // Need at least 3 matches to be confident
-    if (germanMatches === maxMatches) return 'de';
-    if (frenchMatches === maxMatches) return 'fr';
-    if (spanishMatches === maxMatches) return 'es';
+  // Check for Japanese characters
+  if (/[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/.test(text)) {
+    return 'ja';
   }
   
-  // Default to English for Latin scripts
+  // Weighted language patterns
+  const patterns = {
+    de: {
+      words: /\b(der|die|das|und|ist|mit|für|auf|eine?|nicht|sich|auch|werden?|haben?|sein|werden|können|sollen|müssen)\b/g,
+      endings: /\b\w*(ung|keit|schaft|lich|ig|isch)\b/g,
+      chars: /ä|ö|ü|ß/g,
+      weight: 1.0
+    },
+    en: {
+      words: /\b(the|and|is|with|for|on|an?|not|also|will|have|be|can|should|must|would|could)\b/g,
+      endings: /\b\w*(ing|tion|ly|al|ic|ive|ous)\b/g,
+      chars: /[^a-z]/g,
+      weight: 1.0
+    }
+  };
+  
+  let scores = { de: 0, en: 0 };
+  const words = cleanText.split(/\s+/).filter(w => w.length > 2);
+  
+  Object.entries(patterns).forEach(([lang, pattern]) => {
+    const wordMatches = cleanText.match(pattern.words) || [];
+    const endingMatches = cleanText.match(pattern.endings) || [];
+    const charMatches = cleanText.match(pattern.chars) || [];
+    
+    scores[lang] = (wordMatches.length * 2 + endingMatches.length * 1.5 + charMatches.length) * pattern.weight;
+  });
+  
+  // Normalize by word count
+  Object.keys(scores).forEach(lang => {
+    scores[lang] = scores[lang] / Math.max(1, words.length);
+  });
+  
+  if (scores.de > 0.1 && scores.de > scores.en) return 'de';
+  if (scores.en > 0.1 && scores.en > scores.de) return 'en';
+  
   return 'en';
 }
 
@@ -165,10 +175,19 @@ export async function validateContentLanguage(
       isMatch
     });
     
-    // Show dialog for mismatches with reasonable confidence (>0.5)
-    // Only auto-proceed if match OR confidence is very low (<0.5)
+    // Fixed logic: Only bypass if confidence is very low (<0.3) or if it matches
+    // This ensures mismatches with confidence >= 0.3 trigger the dialog
     const isMixedContent = !isMatch && confidence >= 0.4 && confidence < 0.6;
-    const canProceed = isMatch || confidence < 0.5;
+    const canProceed = isMatch || confidence < 0.3;
+    
+    console.log('🚦 Validation decision:', {
+      isMatch,
+      confidence,
+      canProceed,
+      reason: canProceed ? 
+        (isMatch ? 'Language matches' : 'Detection confidence too low (<0.3)') :
+        'Language mismatch detected with sufficient confidence'
+    });
 
     let message = '';
     if (!isMatch) {

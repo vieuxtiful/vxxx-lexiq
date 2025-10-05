@@ -222,6 +222,15 @@ export function EnhancedMainInterface({
     onCancel: () => void;
   } | null>(null);
 
+  // Real-time validation state
+  const [realTimeValidation, setRealTimeValidation] = useState<{
+    isOpen: boolean;
+    validation: any;
+    expectedLanguage: string;
+    onContinue: () => void;
+    onCancel: () => void;
+  } | null>(null);
+
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
   // Use current project's language and domain
@@ -336,24 +345,70 @@ export function EnhancedMainInterface({
     }
   }, [isDarkMode]);
 
-  // Real-time language detection for editor content
+  // Real-time language validation with blocking
   useEffect(() => {
-    if (!currentProject || !currentContent.trim() || currentContent.length < 50) return;
+    if (!currentProject || !currentContent.trim() || currentContent.length < 30) {
+      if (realTimeValidation?.isOpen) {
+        setRealTimeValidation(null);
+      }
+      return;
+    }
 
     const timeoutId = setTimeout(async () => {
       try {
-        const detectedLang = detectLanguageSimple(currentContent);
-        if (detectedLang !== currentProject.language) {
-          // Show subtle indicator (logged for now)
-          console.log(`🌍 Real-time detection: ${getLanguageName(detectedLang)} detected (Expected: ${getLanguageName(currentProject.language)})`);
+        console.log('🌍 Real-time language detection triggered:', {
+          contentLength: currentContent.length,
+          expectedLanguage: currentProject.language
+        });
+
+        const validationResult = await validateContentLanguage(currentContent, currentProject.language);
+        
+        if (!validationResult.canProceed) {
+          console.log('🚨 Real-time validation blocking user:', {
+            detected: validationResult.detectedLanguage,
+            expected: currentProject.language,
+            confidence: validationResult.validation.confidence
+          });
+          
+          // Show blocking dialog
+          setRealTimeValidation({
+            isOpen: true,
+            validation: validationResult.validation,
+            expectedLanguage: currentProject.language,
+            onContinue: () => {
+              setRealTimeValidation(null);
+              console.log('✅ Real-time validation override by user');
+              setTimeout(() => {
+                toast({
+                  title: "Language mismatch content allowed",
+                  description: `Detected: ${getLanguageName(validationResult.detectedLanguage)} | Expected: ${getLanguageName(currentProject.language)}`,
+                  variant: "destructive",
+                  duration: 3000
+                });
+              }, 500);
+            },
+            onCancel: () => {
+              setRealTimeValidation(null);
+              setCurrentContent('');
+              console.log('❌ Real-time validation - content cleared by user');
+              toast({
+                title: "Content cleared",
+                description: "Due to language mismatch",
+                variant: "default",
+                duration: 3000
+              });
+            }
+          });
+        } else if (realTimeValidation?.isOpen) {
+          setRealTimeValidation(null);
         }
       } catch (error) {
-        // Silent fail for real-time detection
+        console.error('Real-time language detection error:', error);
       }
-    }, 2000); // Debounce 2 seconds
+    }, 1500); // 1.5 second debounce (more sensitive)
 
     return () => clearTimeout(timeoutId);
-  }, [currentContent, currentProject]);
+  }, [currentContent, currentProject, toast]);
 
   // Consolidated session loading with proper priority and race condition prevention
   React.useEffect(() => {
@@ -1786,7 +1841,19 @@ export function EnhancedMainInterface({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Language Validation Dialog */}
+      {/* Real-time Language Validation Dialog (Blocking) */}
+      {realTimeValidation && (
+        <LanguageMismatchDialog
+          isOpen={realTimeValidation.isOpen}
+          onClose={() => setRealTimeValidation(null)}
+          onCancel={realTimeValidation.onCancel}
+          onContinue={realTimeValidation.onContinue}
+          validation={realTimeValidation.validation}
+          contentType="translation"
+        />
+      )}
+
+      {/* Analysis-time Language Validation Dialog */}
       {languageValidation && (
         <LanguageMismatchDialog
           isOpen={languageValidation.isOpen}
