@@ -696,7 +696,8 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
           setHoveredTerm(null);
           setTooltipPosition(null);
         }}>
-              <div className="bg-popover border-2 border-primary rounded-lg shadow-xl p-4 max-w-md">
+              <div className="tooltip-gradient-border">
+                <div className="bg-popover rounded-lg shadow-xl p-4 max-w-md">
                 <div className="space-y-3">
                   {/* Enhanced Header */}
                   <div className="flex items-center justify-between gap-2 pb-2 border-b">
@@ -780,6 +781,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                     Appears {hoveredTerm.hits} time{hoveredTerm.hits !== 1 ? 's' : ''} in document
                   </div>
                 </div>
+              </div>
               </div>
             </div>}
 

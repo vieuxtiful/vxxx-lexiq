@@ -369,6 +369,48 @@ All colors MUST be HSL.
     box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
     transform: translateY(-1px);
   }
+
+  /* Tooltip gradient border with flare effect */
+  @keyframes tooltip-flare {
+    0% {
+      background-position: 0% 50%;
+    }
+    100% {
+      background-position: 200% 50%;
+    }
+  }
+
+  .tooltip-gradient-border {
+    position: relative;
+    background: linear-gradient(135deg, #00a0e3, #009944);
+    padding: 2px;
+    border-radius: 0.5rem;
+  }
+
+  .tooltip-gradient-border::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 0.5rem;
+    padding: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      transparent 30%,
+      rgba(255, 255, 255, 0.8) 50%,
+      transparent 70%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: tooltip-flare 4s linear infinite;
+    pointer-events: none;
+  }
 }
 
 @keyframes slide-left-to-right {
