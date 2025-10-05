@@ -138,7 +138,7 @@ export const QAChatPanel: React.FC<QAChatPanelProps> = ({ analysisContext }) => 
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
             size="icon"
-            className="h-[50px] w-[50px] flex-shrink-0"
+            className="h-[50px] w-[50px] flex-shrink-0 bg-[#10b981] hover:bg-[#059669] text-white"
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
