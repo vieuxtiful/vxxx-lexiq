@@ -505,7 +505,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CardTitle className="text-lg flex items-center gap-2">
-                <span>Translation Manager</span>
+                <span>Term Validator</span>
                 <div className="flex items-center gap-2 text-sm">
                   <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
                     <Globe className="h-3 w-3" />
