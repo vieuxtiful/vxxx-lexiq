@@ -24,7 +24,7 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
   userProjects,
   loading
 }) => {
-  const { deleteProject } = useProject();
+  const { deleteProject, refreshProjects } = useProject();
   const { signOut } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,6 +54,8 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
     setDeletingId(projectId);
     try {
       await deleteProject(projectId);
+      // Explicitly refresh the projects list to update the UI
+      await refreshProjects();
       toast({
         title: "Project deleted",
         description: `"${projectName}" has been deleted`,
