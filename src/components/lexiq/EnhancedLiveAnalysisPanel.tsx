@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CheckCircle, AlertCircle, XCircle, Zap, BookOpen, Palette, Check, RefreshCw, Globe, Building, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { formatSemanticType } from '@/utils/semanticTypeFormatter';
 interface FlaggedTerm {
   text: string;
   start: number;
@@ -629,8 +630,8 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
               }
             }
 
-            // Capitalize first letter
-            displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
+            // Proper title case with abbreviation handling
+            displayName = formatSemanticType(displayName);
             return <div key={type} className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full" style={{
                 backgroundColor: color
@@ -732,7 +733,11 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                   }}></div>
                         <span className="text-sm font-medium">
                           {/* Priority: 1) Classification, 2) Semantic Type, 3) Display Name */}
-                          {hoveredTerm.semantic_type.ui_information.category ? hoveredTerm.semantic_type.ui_information.category.charAt(0).toUpperCase() + hoveredTerm.semantic_type.ui_information.category.slice(1).toLowerCase() : hoveredTerm.semantic_type.semantic_type ? hoveredTerm.semantic_type.semantic_type.charAt(0).toUpperCase() + hoveredTerm.semantic_type.semantic_type.slice(1).toLowerCase() : hoveredTerm.semantic_type.ui_information.display_name}
+                          {formatSemanticType(
+                            hoveredTerm.semantic_type.ui_information.category || 
+                            hoveredTerm.semantic_type.semantic_type || 
+                            hoveredTerm.semantic_type.ui_information.display_name
+                          )}
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
