@@ -21,7 +21,7 @@ export const SimplifiedStatisticsPanel: React.FC<SimplifiedStatisticsPanelProps>
   return (
     <div className="space-y-6">
       {/* Key Metrics Grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -71,6 +71,36 @@ export const SimplifiedStatisticsPanel: React.FC<SimplifiedStatisticsPanelProps>
           <CardContent>
             <div className="text-2xl font-bold">{statistics.totalTerms}</div>
             <div className="text-xs text-muted-foreground mt-1">Analyzed</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              Spelling Issues
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{statistics.spellingIssues ?? 0}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {(statistics.spellingIssues ?? 0) === 0 ? 'Perfect' : 'Needs review'}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-purple-600" />
+              Grammar Issues
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{statistics.grammarIssues ?? 0}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {(statistics.grammarIssues ?? 0) === 0 ? 'Perfect' : 'Needs attention'}
+            </div>
           </CardContent>
         </Card>
       </div>

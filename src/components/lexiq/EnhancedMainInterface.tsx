@@ -117,7 +117,8 @@ export function EnhancedMainInterface({
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [engineReady, setEngineReady] = useState(true);
   const [activeMainTab, setActiveMainTab] = useState('edit');
-  const [grammarCheckingEnabled, setGrammarCheckingEnabled] = useState(false);
+  const [grammarCheckingEnabled, setGrammarCheckingEnabled] = useState(true);
+  const [spellingCheckingEnabled, setSpellingCheckingEnabled] = useState(true);
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [currentContent, setCurrentContent] = useState('');
   const [translationFileUploaded, setTranslationFileUploaded] = useState(false);
@@ -161,6 +162,7 @@ export function EnhancedMainInterface({
     language: '',
     domain: '',
     grammarChecking: false,
+    spellingChecking: true,
     glossaryContent: ''
   });
   const [isReanalyzing, setIsReanalyzing] = useState(false);
@@ -511,6 +513,7 @@ export function EnhancedMainInterface({
                 language: validSession.language,
                 domain: validSession.domain,
                 grammarChecking: grammarCheckingEnabled,
+                spellingChecking: spellingCheckingEnabled,
                 glossaryContent: ''
               });
               // Clear unsaved changes flag since we're loading saved data
@@ -935,6 +938,7 @@ export function EnhancedMainInterface({
           language: selectedLanguage,
           domain: selectedDomain,
           grammarChecking: grammarCheckingEnabled,
+          spellingChecking: spellingCheckingEnabled,
           glossaryContent
         });
 
@@ -1020,6 +1024,7 @@ export function EnhancedMainInterface({
           language: selectedLanguage,
           domain: selectedDomain,
           grammarChecking: grammarCheckingEnabled,
+          spellingChecking: spellingCheckingEnabled,
           glossaryContent
         });
         toast({
@@ -1060,6 +1065,7 @@ export function EnhancedMainInterface({
                 language: selectedLanguage,
                 domain: selectedDomain,
                 grammarChecking: grammarCheckingEnabled,
+                spellingChecking: spellingCheckingEnabled,
                 glossaryContent
               });
               toast({
@@ -1098,6 +1104,7 @@ export function EnhancedMainInterface({
           language: selectedLanguage,
           domain: selectedDomain,
           grammarChecking: grammarCheckingEnabled,
+          spellingChecking: spellingCheckingEnabled,
           glossaryContent
         });
         toast({
@@ -1272,6 +1279,7 @@ export function EnhancedMainInterface({
       language: session.language,
       domain: session.domain,
       grammarChecking: grammarCheckingEnabled,
+      spellingChecking: spellingCheckingEnabled,
       glossaryContent: ''
     });
     console.log('✅ Session restoration complete - reanalysis state initialized');
@@ -1713,7 +1721,7 @@ export function EnhancedMainInterface({
                     {/* Editor Panel */}
                     <ResizablePanel defaultSize={65} minSize={30}>
                       <div className="h-full overflow-auto p-4">
-                        <EnhancedLiveAnalysisPanel content={currentContent} flaggedTerms={analysisResults?.terms ? transformAnalyzedTermsToFlagged(analysisResults.terms) : []} onContentChange={handleContentChange} onReanalyze={() => handleReanalyze()} isReanalyzing={isReanalyzing} grammarCheckingEnabled={grammarCheckingEnabled} onGrammarCheckingToggle={setGrammarCheckingEnabled} selectedLanguage={selectedLanguage} selectedDomain={selectedDomain} onValidateTerm={handleValidateTerm} originalAnalyzedContent={originalAnalyzedContent} />
+                        <EnhancedLiveAnalysisPanel content={currentContent} flaggedTerms={analysisResults?.terms ? transformAnalyzedTermsToFlagged(analysisResults.terms) : []} onContentChange={handleContentChange} onReanalyze={() => handleReanalyze()} isReanalyzing={isReanalyzing} grammarCheckingEnabled={grammarCheckingEnabled} onGrammarCheckingToggle={setGrammarCheckingEnabled} spellingCheckingEnabled={spellingCheckingEnabled} onSpellingCheckingToggle={setSpellingCheckingEnabled} selectedLanguage={selectedLanguage} selectedDomain={selectedDomain} onValidateTerm={handleValidateTerm} originalAnalyzedContent={originalAnalyzedContent} />
                       </div>
                     </ResizablePanel>
 

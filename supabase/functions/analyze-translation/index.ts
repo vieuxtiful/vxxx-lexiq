@@ -468,11 +468,27 @@ CRITICAL REQUIREMENTS:
     ).length;
     const termsWithoutColors = analysisResult.terms.length - termsWithColors;
 
+    // Validate and fix statistics counts
+    const actualSpellingCount = analysisResult.terms.filter((t: any) => t.classification === 'spelling').length;
+    const actualGrammarCount = analysisResult.terms.filter((t: any) => t.classification === 'grammar').length;
+
+    if (actualSpellingCount !== (analysisResult.statistics.spellingIssues ?? 0)) {
+      console.warn(`⚠️ Spelling count mismatch: statistics=${analysisResult.statistics.spellingIssues}, actual=${actualSpellingCount}`);
+      analysisResult.statistics.spellingIssues = actualSpellingCount;
+    }
+
+    if (actualGrammarCount !== (analysisResult.statistics.grammarIssues ?? 0)) {
+      console.warn(`⚠️ Grammar count mismatch: statistics=${analysisResult.statistics.grammarIssues}, actual=${actualGrammarCount}`);
+      analysisResult.statistics.grammarIssues = actualGrammarCount;
+    }
+
     console.log('=== Edge Function: Analysis Complete ===');
     console.log(`Total terms analyzed: ${analysisResult.terms.length}`);
     console.log('Classification breakdown:', classificationBreakdown);
-    console.log(`Spelling issues: ${spellCount}, Grammar issues: ${grammarCount}`);
-    console.log(`Quality score: ${analysisResult.statistics.qualityScore}`);
+    console.log(`📊 Statistics breakdown:
+  - Terminology: ${analysisResult.statistics.validTerms} valid, ${analysisResult.statistics.reviewTerms} review, ${analysisResult.statistics.criticalTerms} critical
+  - Language: ${analysisResult.statistics.spellingIssues} spelling, ${analysisResult.statistics.grammarIssues} grammar
+  - Quality Score: ${analysisResult.statistics.qualityScore.toFixed(2)}`);
     console.log(`Semantic types: ${termsWithColors} with colors, ${termsWithoutColors} without colors`);
 
     if (termsWithoutColors > 0) {

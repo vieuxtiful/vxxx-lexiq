@@ -36,7 +36,7 @@ export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ st
       </div>
 
       {/* Key Metrics Grid */}
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid md:grid-cols-6 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -86,6 +86,36 @@ export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ st
           <CardContent>
             <div className="text-3xl font-bold">{totalTerms}</div>
             <div className="text-xs text-muted-foreground mt-1">Analyzed</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              Spelling Issues
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-red-600">{statistics.spellingIssues ?? 0}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {(statistics.spellingIssues ?? 0) === 0 ? 'Perfect' : 'Needs review'}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-purple-600" />
+              Grammar Issues
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-purple-600">{statistics.grammarIssues ?? 0}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {(statistics.grammarIssues ?? 0) === 0 ? 'Perfect' : 'Needs attention'}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -141,6 +171,70 @@ export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ st
             <Progress value={criticalPercentage} className="h-3 bg-red-100" />
             <p className="text-xs text-muted-foreground">
               Significant deviations from glossary or potential translation errors. Immediate attention required.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Language Quality Analysis */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Language Quality Analysis
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Spelling Issues */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <span className="font-medium">Spelling Issues</span>
+              </div>
+              <span className="text-sm font-mono">{statistics.spellingIssues ?? 0}</span>
+            </div>
+            <Progress 
+              value={totalTerms > 0 ? ((statistics.spellingIssues ?? 0) / totalTerms) * 100 : 0} 
+              className="h-3 bg-red-100" 
+            />
+            <p className="text-xs text-muted-foreground">
+              Detected misspellings or typos in the translation text. These affect readability and professionalism.
+            </p>
+          </div>
+
+          {/* Grammar Issues */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-purple-600" />
+                <span className="font-medium">Grammar Issues</span>
+              </div>
+              <span className="text-sm font-mono">{statistics.grammarIssues ?? 0}</span>
+            </div>
+            <Progress 
+              value={totalTerms > 0 ? ((statistics.grammarIssues ?? 0) / totalTerms) * 100 : 0} 
+              className="h-3 bg-purple-100" 
+            />
+            <p className="text-xs text-muted-foreground">
+              Grammar rule violations including subject-verb agreement, tense consistency, and sentence structure issues.
+            </p>
+          </div>
+
+          {/* Language Quality Score */}
+          <div className="pt-4 border-t">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">Language Correctness Score</span>
+              <span className="text-lg font-bold">
+                {(10 - ((statistics.spellingIssues ?? 0) * 0.3 + (statistics.grammarIssues ?? 0) * 0.2)).toFixed(1)}/10
+              </span>
+            </div>
+            <Progress 
+              value={((10 - ((statistics.spellingIssues ?? 0) * 0.3 + (statistics.grammarIssues ?? 0) * 0.2)) / 10) * 100} 
+              className="h-2" 
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              Composite score reflecting spelling and grammar accuracy. Perfect score is 10.0.
             </p>
           </div>
         </CardContent>

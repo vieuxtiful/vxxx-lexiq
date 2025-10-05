@@ -50,6 +50,8 @@ interface EnhancedLiveAnalysisPanelProps {
   // New props for enhanced functionality
   grammarCheckingEnabled?: boolean;
   onGrammarCheckingToggle?: (enabled: boolean) => void;
+  spellingCheckingEnabled?: boolean;
+  onSpellingCheckingToggle?: (enabled: boolean) => void;
   selectedLanguage?: string;
   selectedDomain?: string;
   onValidateTerm?: (term: FlaggedTerm) => void;
@@ -117,6 +119,8 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   glossaryContent = '',
   grammarCheckingEnabled = false,
   onGrammarCheckingToggle,
+  spellingCheckingEnabled = true,
+  onSpellingCheckingToggle,
   selectedLanguage = 'en',
   selectedDomain = 'general',
   onValidateTerm,
@@ -550,17 +554,73 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
             </div>
             
             <div className="flex items-center gap-4">
-              {/* Grammar Checking Toggle - Enhanced */}
-              <div className="flex items-center space-x-2">
-                <Switch id="grammar-check" checked={grammarCheckingEnabled} onCheckedChange={enabled => {
-                console.log('Grammar checking toggled:', enabled);
-                onGrammarCheckingToggle?.(enabled);
-              }} />
-                <Label htmlFor="grammar-check" className="text-sm flex items-center gap-1">
-                  <Zap className="h-3 w-3" />
-                  Grammar Check {grammarCheckingEnabled ? '(ON)' : '(OFF)'}
-                </Label>
-              </div>
+              {/* Terminology Analysis - Always On */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center space-x-2 opacity-60 cursor-not-allowed">
+                      <Switch id="terminology-check" checked={true} disabled />
+                      <Label htmlFor="terminology-check" className="text-sm flex items-center gap-1">
+                        <BookOpen className="h-3 w-3" />
+                        Terminology
+                      </Label>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Terminology analysis is always enabled</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              {/* Spelling Check Toggle */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center space-x-2">
+                      <Switch 
+                        id="spelling-check" 
+                        checked={spellingCheckingEnabled ?? true} 
+                        onCheckedChange={enabled => {
+                          console.log('Spelling checking toggled:', enabled);
+                          onSpellingCheckingToggle?.(enabled);
+                        }} 
+                      />
+                      <Label htmlFor="spelling-check" className="text-sm flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        Spelling {(spellingCheckingEnabled ?? true) ? '(ON)' : '(OFF)'}
+                      </Label>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Analyzes entire text for spelling errors</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              {/* Grammar Check Toggle */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center space-x-2">
+                      <Switch 
+                        id="grammar-check" 
+                        checked={grammarCheckingEnabled} 
+                        onCheckedChange={enabled => {
+                          console.log('Grammar checking toggled:', enabled);
+                          onGrammarCheckingToggle?.(enabled);
+                        }} 
+                      />
+                      <Label htmlFor="grammar-check" className="text-sm flex items-center gap-1">
+                        <Zap className="h-3 w-3" />
+                        Grammar {grammarCheckingEnabled ? '(ON)' : '(OFF)'}
+                      </Label>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Analyzes entire text for grammar issues</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               
               {/* Semantic Types Toggle */}
               <div className="flex items-center space-x-2">

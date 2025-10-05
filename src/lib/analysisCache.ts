@@ -69,9 +69,9 @@ class AnalysisCache {
   }
 
   // Generate cache key from analysis parameters
-  generateKey(content: string, language: string, domain: string, checkGrammar: boolean = false): string {
+  generateKey(content: string, language: string, domain: string, checkGrammar: boolean = false, checkSpelling: boolean = true): string {
     const hash = AnalysisCache.simpleHash(content);
-    return `analysis:${hash}:${language}:${domain}:${checkGrammar}`;
+    return `analysis:${hash}:${language}:${domain}:${checkGrammar ? 'g' : 'ng'}:${checkSpelling ? 's' : 'ns'}`;
   }
 
   // Calculate changes between two content versions

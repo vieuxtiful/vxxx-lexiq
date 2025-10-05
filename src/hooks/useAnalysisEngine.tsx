@@ -42,6 +42,8 @@ export interface AnalysisStatistics {
   validTerms: number;
   reviewTerms: number;
   criticalTerms: number;
+  spellingIssues: number;
+  grammarIssues: number;
   qualityScore: number;
   confidenceMin: number;
   confidenceMax: number;

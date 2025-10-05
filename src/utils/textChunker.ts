@@ -154,9 +154,20 @@ export const calculateStatistics = (terms: AnalyzedTerm[]): AnalysisStatistics =
   const validTerms = terms.filter(t => t.classification === 'valid').length;
   const reviewTerms = terms.filter(t => t.classification === 'review').length;
   const criticalTerms = terms.filter(t => t.classification === 'critical').length;
+  const spellingIssues = terms.filter(t => t.classification === 'spelling').length;
+  const grammarIssues = terms.filter(t => t.classification === 'grammar').length;
   
-  const totalScore = terms.reduce((sum, term) => sum + term.score, 0);
-  const qualityScore = terms.length > 0 ? (totalScore / terms.length) : 0;
+  // Enhanced quality score calculation
+  // Terminology issues have higher weight (60%), language issues have lower weight (40%)
+  const terminologyTotal = validTerms + reviewTerms + criticalTerms;
+  const terminologyScore = terminologyTotal > 0 
+    ? ((validTerms * 10 + reviewTerms * 5) / terminologyTotal) 
+    : 10;
+  
+  const languageScore = 10 - (spellingIssues * 0.3 + grammarIssues * 0.2);
+  const clampedLanguageScore = Math.max(0, Math.min(10, languageScore));
+  
+  const qualityScore = (terminologyScore * 0.6 + clampedLanguageScore * 0.4);
   
   const scores = terms.map(t => t.score);
   const confidenceMin = scores.length > 0 ? Math.min(...scores) : 0;
@@ -170,6 +181,8 @@ export const calculateStatistics = (terms: AnalyzedTerm[]): AnalysisStatistics =
     validTerms,
     reviewTerms,
     criticalTerms,
+    spellingIssues,
+    grammarIssues,
     qualityScore,
     confidenceMin,
     confidenceMax,
