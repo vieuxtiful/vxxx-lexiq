@@ -120,7 +120,7 @@ export function EnhancedMainInterface({
   const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const { toast } = useToast();
-  const { analyzeWithChunking, isAnalyzing: engineAnalyzing, progress: engineProgress, currentChunk, totalChunks } = useChunkedAnalysis();
+  const { analyzeWithChunking, cancelAnalysis, isAnalyzing: engineAnalyzing, progress: engineProgress, currentChunk, totalChunks } = useChunkedAnalysis();
   const { currentFullText } = useAnalysisEngine();
   const { user, signOut } = useAuth();
   const { setSelectedProject } = useAuthFlow();
@@ -1331,7 +1331,7 @@ export function EnhancedMainInterface({
                       </Button>
 
                       {isAnalyzing && (
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                           {/* Enhanced Progress Bar */}
                           <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden">
                             <div 
@@ -1348,6 +1348,16 @@ export function EnhancedMainInterface({
                               Processing chunk {currentChunk} of {totalChunks}
                             </p>
                           )}
+
+                          {/* Cancel Button */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={cancelAnalysis}
+                            className="w-full"
+                          >
+                            Cancel Analysis
+                          </Button>
                         </div>
                       )}
                     </CardContent>

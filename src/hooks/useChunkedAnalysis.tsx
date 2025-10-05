@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAnalysisEngine, AnalysisResult, AnalyzedTerm } from './useAnalysisEngine';
 import { chunkText, mergeChunkedAnalysis, calculateStatistics } from '@/utils/textChunker';
 import { useToast } from './use-toast';
@@ -10,6 +10,17 @@ export const useChunkedAnalysis = () => {
   const [progress, setProgress] = useState(0);
   const [currentChunk, setCurrentChunk] = useState(0);
   const [totalChunks, setTotalChunks] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const cancelAnalysis = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      toast({
+        title: "Analysis cancelled",
+        description: "The analysis has been stopped.",
+      });
+    }
+  };
 
   const analyzeWithChunking = async (
     content: string,
@@ -24,6 +35,7 @@ export const useChunkedAnalysis = () => {
     }
 
     // Content is large - use chunking
+    abortControllerRef.current = new AbortController();
     setIsAnalyzing(true);
     setProgress(0);
 
@@ -40,6 +52,11 @@ export const useChunkedAnalysis = () => {
       const MAX_RETRIES = 3;
 
       for (let i = 0; i < chunks.length; i++) {
+        // Check if cancelled
+        if (abortControllerRef.current?.signal.aborted) {
+          throw new Error('Analysis cancelled by user');
+        }
+
         setCurrentChunk(i + 1);
         setProgress(((i + 1) / chunks.length) * 100);
 
@@ -50,6 +67,11 @@ export const useChunkedAnalysis = () => {
 
         // Retry logic with exponential backoff
         for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+          // Check if cancelled before retry
+          if (abortControllerRef.current?.signal.aborted) {
+            throw new Error('Analysis cancelled by user');
+          }
+
           try {
             if (attempt > 0) {
               const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
@@ -131,12 +153,14 @@ export const useChunkedAnalysis = () => {
       setIsAnalyzing(false);
       setCurrentChunk(0);
       setTotalChunks(0);
+      abortControllerRef.current = null;
       setTimeout(() => setProgress(0), 100);
     }
   };
 
   return { 
     analyzeWithChunking, 
+    cancelAnalysis,
     isAnalyzing, 
     progress,
     currentChunk,
