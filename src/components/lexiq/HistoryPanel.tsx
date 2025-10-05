@@ -58,11 +58,49 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ onRestoreSession }) 
     }
   };
 
+  // Timestamp formatting utilities
+  const formatSessionTimestamp = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) {
+      return 'Just now';
+    } else if (diffMins < 60) {
+      return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+    } else if (diffHours < 24) {
+      return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+    } else if (diffDays < 7) {
+      return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    } else {
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    }
+  };
+
+  const formatFullDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
   const handleRestore = (session: AnalysisSession) => {
     onRestoreSession(session);
     toast({
       title: "Session Restored",
-      description: `Loaded analysis from ${new Date(session.created_at).toLocaleDateString()}`,
+      description: `Loaded analysis from ${formatSessionTimestamp(session.created_at)} (${formatFullDateTime(session.created_at)})`,
     });
   };
 
@@ -146,7 +184,9 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ onRestoreSession }) 
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="w-4 h-4" />
-                    <span>{new Date(session.created_at).toLocaleDateString()}</span>
+                    <span title={formatFullDateTime(session.created_at)}>
+                      {formatSessionTimestamp(session.created_at)}
+                    </span>
                     <span>•</span>
                     <Badge variant="outline" className="text-xs">
                       {session.language.toUpperCase()}
@@ -161,7 +201,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ onRestoreSession }) 
                       variant="ghost"
                       size="sm"
                       onClick={() => handleRestore(session)}
-                      title="Restore session"
+                      title={`Restore session from ${formatFullDateTime(session.created_at)}`}
                       className="h-8 w-8 p-0"
                     >
                       <Download className="w-4 h-4" />

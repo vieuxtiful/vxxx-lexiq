@@ -45,6 +45,7 @@ interface EnhancedLiveAnalysisPanelProps {
   flaggedTerms: FlaggedTerm[];
   onContentChange: (content: string) => void;
   onReanalyze?: (content: string) => void;
+  isReanalyzing?: boolean;
   glossaryContent?: string;
   // New props for enhanced functionality
   grammarCheckingEnabled?: boolean;
@@ -59,6 +60,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   flaggedTerms,
   onContentChange,
   onReanalyze,
+  isReanalyzing = false,
   glossaryContent = '',
   grammarCheckingEnabled = false,
   onGrammarCheckingToggle,
@@ -476,10 +478,15 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                   variant="outline"
                   size="sm"
                   onClick={() => onReanalyze(content)}
+                  disabled={isReanalyzing}
                   className="h-6 text-xs gap-1.5 px-2"
                 >
-                  <RefreshCw className="h-3 w-3" />
-                  Reanalyze
+                  {isReanalyzing ? (
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3" />
+                  )}
+                  {isReanalyzing ? 'Reanalyzing...' : 'Reanalyze'}
                 </Button>
               )}
             </div>

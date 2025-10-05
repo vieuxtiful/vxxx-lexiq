@@ -109,6 +109,7 @@ export function EnhancedMainInterface({
     grammarChecking: false,
     glossaryContent: ''
   });
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
   
   const translationInputRef = useRef<HTMLInputElement>(null);
   const glossaryInputRef = useRef<HTMLInputElement>(null);
@@ -595,15 +596,24 @@ export function EnhancedMainInterface({
       return;
     }
 
+    setIsReanalyzing(true);
     try {
       const glossaryContent = await glossaryFile.text();
       
-      // Check for exact cache hit first
+      // Generate cache key for current content
       const cacheKey = analysisCache.generateKey(content, selectedLanguage, selectedDomain, grammarCheckingEnabled);
+      
+      console.log('=== Smart Reanalysis Debug ===');
+      console.log('Cache Key:', cacheKey);
+      console.log('Current Content Length:', content.length);
+      console.log('Last Analyzed Content Length:', lastAnalyzedContent?.length || 0);
+      console.log('Has Analysis Results:', !!analysisResults);
+      
+      // Check for exact cache hit first
       const cachedResult = analysisCache.get(cacheKey);
       
       if (cachedResult) {
-        console.log('Exact cache hit - using cached results');
+        console.log('✅ Exact cache hit - using cached results');
         setAnalysisResults(cachedResult);
         setLastAnalyzedContent(content);
         setLastAnalysisParams({
@@ -615,24 +625,28 @@ export function EnhancedMainInterface({
         
         toast({
           title: "Re-analysis Complete (Cached)",
-          description: "Using cached analysis results",
+          description: "Using cached analysis results - no changes detected",
         });
         return;
       }
 
-      // Check if we can use partial analysis
-      if (lastAnalyzedContent && analysisResults) {
+      console.log('❌ No exact cache hit, checking for partial analysis...');
+
+      // Check if we can use partial analysis - ensure we have both previous content and results
+      if (lastAnalyzedContent && lastAnalyzedContent.length > 0 && analysisResults) {
         const changes = analysisCache.calculateContentChanges(content, lastAnalyzedContent);
         
-        console.log(`Content changes: ${changes.percentChanged.toFixed(1)}% changed`);
+        console.log(`📊 Content changes: ${changes.percentChanged.toFixed(1)}% changed, ${changes.changedSegments.length} segments`);
         
         // If less than 30% changed and we have cached terms, try partial analysis
         if (changes.percentChanged < 30 && changes.changedSegments.length > 0) {
           try {
-            console.log('Attempting partial re-analysis of changed segments');
+            console.log('🔄 Attempting partial re-analysis of changed segments');
             
-            // Analyze only the changed segments
+            // Analyze only the changed segments (but use full glossary for context)
             const changedContent = changes.changedSegments.map(seg => seg.content).join('\n');
+            console.log(`📝 Analyzing ${changedContent.length} characters of changed content`);
+            
             const partialResult = await analyzeWithChunking(
               changedContent,
               glossaryContent,
@@ -641,13 +655,17 @@ export function EnhancedMainInterface({
               grammarCheckingEnabled
             );
 
-            if (partialResult) {
+            if (partialResult && partialResult.terms.length > 0) {
+              console.log(`✅ Partial analysis successful: ${partialResult.terms.length} terms found`);
+              
               // Merge the partial results with existing analysis
               const mergedResults = analysisCache.mergeAnalysisResults(
                 analysisResults, 
                 partialResult.terms, 
                 changes
               );
+              
+              console.log(`🔄 Merged results: ${mergedResults.terms.length} total terms`);
               
               // Cache the merged results
               analysisCache.set(cacheKey, mergedResults, content);
@@ -663,19 +681,27 @@ export function EnhancedMainInterface({
               
               toast({
                 title: "Partial Re-analysis Complete",
-                description: `Analyzed ${changes.changedSegments.length} changed segments`,
+                description: `Analyzed ${changes.changedSegments.length} changed segments (${changes.percentChanged.toFixed(1)}% change)`,
               });
               return;
+            } else {
+              console.warn('⚠️ Partial analysis returned no terms, falling back to full analysis');
             }
           } catch (partialError) {
-            console.warn('Partial analysis failed, falling back to full analysis:', partialError);
+            console.warn('❌ Partial analysis failed, falling back to full analysis:', partialError);
             // Continue with full analysis
           }
+        } else {
+          console.log(`📈 Change threshold exceeded (${changes.percentChanged.toFixed(1)}% > 30%), using full analysis`);
         }
+      } else {
+        console.log('ℹ️ No previous analysis state available, using full analysis');
+        if (!lastAnalyzedContent) console.log('  - lastAnalyzedContent is empty');
+        if (!analysisResults) console.log('  - analysisResults is empty');
       }
 
       // Fallback to full analysis
-      console.log('Performing full re-analysis');
+      console.log('🔄 Performing full re-analysis');
       const result = await analyzeWithChunking(
         content,
         glossaryContent,
@@ -685,6 +711,8 @@ export function EnhancedMainInterface({
       );
 
       if (result) {
+        console.log(`✅ Full re-analysis complete: ${result.terms.length} terms`);
+        
         // Cache the new results
         analysisCache.set(cacheKey, result, content);
         
@@ -699,16 +727,18 @@ export function EnhancedMainInterface({
         
         toast({
           title: "Re-analysis Complete",
-          description: "Content fully re-analyzed",
+          description: `Content fully re-analyzed (${result.terms.length} terms)`,
         });
       }
     } catch (error) {
-      console.error('Re-analysis failed:', error);
+      console.error('❌ Re-analysis failed:', error);
       toast({
         title: "Re-analysis Failed",
         description: error instanceof Error ? error.message : 'Unknown error',
         variant: "destructive",
       });
+    } finally {
+      setIsReanalyzing(false);
     }
   };
 
@@ -818,15 +848,22 @@ export function EnhancedMainInterface({
 
   // Handle session restoration from history
   const handleRestoreSession = useCallback((session: AnalysisSession) => {
+    console.log('🔄 Restoring analysis session:', session.id);
+    
     // Use the stored translation content if available, otherwise fall back to terms text
+    let restoredContent = '';
     if (session.translation_content) {
-      setCurrentContent(session.translation_content);
+      restoredContent = session.translation_content;
+      console.log('✅ Using stored translation content:', restoredContent.length, 'chars');
     } else if (session.analyzed_terms && Array.isArray(session.analyzed_terms) && session.analyzed_terms.length > 0) {
       // Fallback: reconstruct from terms (existing behavior)
       const fullText = session.analyzed_terms.map((t: any) => t.text).join(' ');
-      setCurrentContent(fullText);
+      restoredContent = fullText;
+      console.log('⚠️ Reconstructed content from terms:', restoredContent.length, 'chars');
     }
     
+    // Set the main content and analysis results
+    setCurrentContent(restoredContent);
     setAnalysisResults({
       terms: session.analyzed_terms,
       statistics: session.statistics,
@@ -834,11 +871,48 @@ export function EnhancedMainInterface({
     setAnalysisComplete(true);
     setActiveMainTab('edit');
     
+    // CRITICAL: Initialize reanalysis state with restored data
+    setLastAnalyzedContent(restoredContent);
+    setLastAnalysisParams({
+      language: session.language,
+      domain: session.domain,
+      grammarChecking: grammarCheckingEnabled,
+      glossaryContent: ''
+    });
+    
+    console.log('✅ Session restoration complete - reanalysis state initialized');
+    
+    // Helper function to format timestamp with relative time
+    const formatSessionTimestamp = (dateString: string) => {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) {
+        return 'Just now';
+      } else if (diffMins < 60) {
+        return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+      } else if (diffHours < 24) {
+        return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+      } else if (diffDays < 7) {
+        return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+      } else {
+        return date.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+      }
+    };
+    
     toast({
       title: "Session Restored",
-      description: "Analysis session has been loaded.",
+      description: `Your analysis from ${formatSessionTimestamp(session.created_at)} has been loaded.`,
     });
-  }, [toast]);
+  }, [grammarCheckingEnabled, toast]);
 
   // Handle project setup completion
   const handleProjectSetupComplete = async (
@@ -1321,6 +1395,7 @@ export function EnhancedMainInterface({
                           flaggedTerms={analysisResults?.terms ? transformAnalyzedTermsToFlagged(analysisResults.terms) : []}
                           onContentChange={handleContentChange}
                           onReanalyze={handleReanalyze}
+                          isReanalyzing={isReanalyzing}
                           grammarCheckingEnabled={grammarCheckingEnabled}
                           onGrammarCheckingToggle={setGrammarCheckingEnabled}
                           selectedLanguage={selectedLanguage}

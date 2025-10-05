@@ -80,67 +80,142 @@ class AnalysisCache {
       return { added: [], removed: [], modified: [], percentChanged: 0, changedSegments: [] };
     }
 
-    // Simple line-based diff for initial implementation
-    const newLines = newContent.split('\n');
-    const oldLines = oldContent.split('\n');
+    // Use a more robust diffing approach - paragraph and sentence based
+    const newParagraphs = newContent.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+    const oldParagraphs = oldContent.split(/\n\s*\n/).filter(p => p.trim().length > 0);
     
     const added: string[] = [];
     const removed: string[] = [];
     const modified: string[] = [];
     const changedSegments: ContentChange['changedSegments'] = [];
 
-    // Simple line comparison
-    const maxLines = Math.max(newLines.length, oldLines.length);
-    let changedLines = 0;
+    // Compare paragraphs first (more accurate for structured content)
+    const maxParagraphs = Math.max(newParagraphs.length, oldParagraphs.length);
+    let changedParagraphs = 0;
 
-    for (let i = 0; i < maxLines; i++) {
-      const newLine = newLines[i] || '';
-      const oldLine = oldLines[i] || '';
+    for (let i = 0; i < maxParagraphs; i++) {
+      const newPara = newParagraphs[i] || '';
+      const oldPara = oldParagraphs[i] || '';
 
-      if (newLine !== oldLine) {
-        changedLines++;
+      if (newPara !== oldPara) {
+        changedParagraphs++;
         
-        if (!oldLine && newLine) {
-          added.push(newLine);
-          changedSegments.push({
-            start: newContent.indexOf(newLine),
-            end: newContent.indexOf(newLine) + newLine.length,
-            content: newLine,
-            type: 'added'
-          });
-        } else if (oldLine && !newLine) {
-          removed.push(oldLine);
+        if (!oldPara && newPara) {
+          // New paragraph added
+          added.push(newPara);
+          const start = newContent.indexOf(newPara);
+          if (start !== -1) {
+            changedSegments.push({
+              start,
+              end: start + newPara.length,
+              content: newPara,
+              type: 'added'
+            });
+          }
+        } else if (oldPara && !newPara) {
+          // Paragraph removed
+          removed.push(oldPara);
         } else {
-          modified.push(newLine);
-          changedSegments.push({
-            start: newContent.indexOf(newLine),
-            end: newContent.indexOf(newLine) + newLine.length,
-            content: newLine,
-            type: 'modified'
-          });
+          // Paragraph modified - do sentence-level diff within paragraph
+          modified.push(newPara);
+          const start = newContent.indexOf(newPara);
+          if (start !== -1) {
+            changedSegments.push({
+              start,
+              end: start + newPara.length,
+              content: newPara,
+              type: 'modified'
+            });
+          }
+          
+          // Additional: Check for sentence-level changes within modified paragraphs
+          const newSentences = newPara.split(/[.!?]+/).filter(s => s.trim().length > 0);
+          const oldSentences = oldPara.split(/[.!?]+/).filter(s => s.trim().length > 0);
+          
+          const maxSentences = Math.max(newSentences.length, oldSentences.length);
+          for (let j = 0; j < maxSentences; j++) {
+            const newSentence = newSentences[j] || '';
+            const oldSentence = oldSentences[j] || '';
+            
+            if (newSentence.trim() !== oldSentence.trim()) {
+              // Sentence changed - add as individual segment for more granular analysis
+              const sentenceStart = newContent.indexOf(newSentence);
+              if (sentenceStart !== -1) {
+                changedSegments.push({
+                  start: sentenceStart,
+                  end: sentenceStart + newSentence.length,
+                  content: newSentence,
+                  type: 'modified'
+                });
+              }
+            }
+          }
         }
       }
     }
 
-    const percentChanged = (changedLines / maxLines) * 100;
+    // Calculate percentage changed based on character difference for more accuracy
+    const totalChars = Math.max(newContent.length, oldContent.length);
+    const charDiff = this.calculateCharacterDifference(newContent, oldContent);
+    const percentChanged = totalChars > 0 ? (charDiff / totalChars) * 100 : 0;
+
+    console.log(`📊 Change detection: ${changedParagraphs}/${maxParagraphs} paragraphs changed, ${percentChanged.toFixed(1)}% character difference`);
 
     return { added, removed, modified, percentChanged, changedSegments };
   }
 
+  // Helper method for character-level difference calculation
+  private calculateCharacterDifference(str1: string, str2: string): number {
+    const len1 = str1.length;
+    const len2 = str2.length;
+    
+    // Simple Levenshtein-like difference calculation
+    let diff = Math.abs(len1 - len2);
+    const minLen = Math.min(len1, len2);
+    
+    for (let i = 0; i < minLen; i++) {
+      if (str1[i] !== str2[i]) {
+        diff++;
+      }
+    }
+    
+    return diff;
+  }
+
   // Merge analysis results
   mergeAnalysisResults(existingResults: any, newTerms: any[], changes: ContentChange): any {
-    // Remove terms from changed/removed segments
+    if (!existingResults || !existingResults.terms) {
+      console.warn('⚠️ No existing results to merge with');
+      return { terms: newTerms, statistics: this.calculateMergedStatistics(newTerms) };
+    }
+
+    console.log(`🔄 Merging: ${existingResults.terms.length} existing terms + ${newTerms.length} new terms`);
+
+    // Remove terms from changed/removed segments with fuzzy matching
     const filteredTerms = existingResults.terms.filter((term: any) => {
-      return !changes.changedSegments.some(segment => 
-        term.startPosition >= segment.start && term.endPosition <= segment.end
-      );
+      // Check if term is in a changed segment
+      const inChangedSegment = changes.changedSegments.some(segment => {
+        // Use fuzzy position matching - allow small offsets for minor edits
+        const termMid = (term.startPosition + term.endPosition) / 2;
+        return termMid >= segment.start && termMid <= segment.end;
+      });
+      
+      if (inChangedSegment) {
+        console.log(`🗑️ Removing term from changed segment: "${term.text}"`);
+      }
+      
+      return !inChangedSegment;
     });
+
+    console.log(`📊 After filtering: ${filteredTerms.length} terms remain from original`);
 
     // Add new terms
     const mergedTerms = [...filteredTerms, ...newTerms];
 
     // Update statistics
     const statistics = this.calculateMergedStatistics(mergedTerms);
+
+    console.log(`✅ Final merged: ${mergedTerms.length} total terms`);
 
     return {
       terms: mergedTerms,
