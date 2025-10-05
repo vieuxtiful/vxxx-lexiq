@@ -1587,16 +1587,16 @@ export function EnhancedMainInterface({
                           showUploadIconTransition ? (
                             <CheckCircle className="h-4 w-4 text-success flex-shrink-0 ml-2 animate-in fade-in" />
                           ) : (
-                            <Upload className="h-4 w-4 text-success flex-shrink-0 ml-2 rotate-180 animate-in fade-in" />
+                            <Upload className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0 ml-2 rotate-180 animate-in fade-in" />
                           )
                         ) : translationFileUploaded ? (
                           showTranslationCheckmark ? (
                             <CheckCircle className="h-4 w-4 text-success flex-shrink-0 ml-2 animate-in fade-in" />
                           ) : (
-                            <Upload className="h-4 w-4 text-success flex-shrink-0 ml-2 rotate-180 animate-in fade-in" />
+                            <Upload className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0 ml-2 rotate-180 animate-in fade-in" />
                           )
                         ) : (
-                          <Upload className="h-4 w-4 flex-shrink-0 ml-2" />
+                          <Upload className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0 ml-2" />
                         )}
                       </div>
                       <p className="text-[10px] text-muted-foreground px-1">
@@ -1626,10 +1626,10 @@ export function EnhancedMainInterface({
                           showGlossaryCheckmark ? (
                             <CheckCircle className="h-4 w-4 text-success flex-shrink-0 ml-2 animate-in fade-in" />
                           ) : (
-                            <Upload className="h-4 w-4 text-success flex-shrink-0 ml-2 rotate-180 animate-in fade-in" />
+                            <Upload className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0 ml-2 rotate-180 animate-in fade-in" />
                           )
                         ) : (
-                          <Upload className="h-4 w-4 flex-shrink-0 ml-2" />
+                          <Upload className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0 ml-2" />
                         )}
                       </div>
                       <p className="text-[10px] text-muted-foreground px-1">

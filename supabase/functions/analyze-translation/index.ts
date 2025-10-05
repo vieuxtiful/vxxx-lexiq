@@ -137,12 +137,25 @@ LANGUAGE COMPLIANCE RULES:
 - NEVER suggest English terms for ${language} content
 - If glossary has multiple languages, prioritize ${language} terms
 
-SEMANTIC TYPES (assign to every term):
-- Entity: People, places, organizations, objects (#2196F3)
-- Action: Verbs, processes, operations (#4CAF50)
-- Quality: Adjectives, properties, attributes (#FF9800)
-- Concept: Abstract ideas, principles (#9C27B0)
-- Technical: Technical terms, jargon (#00BCD4)
+SEMANTIC TYPES - MANDATORY FOR EVERY TERM:
+Assign ONE type to EVERY analyzed term. MUST include ui_information with color_code.
+
+- Entity: People, places, organizations, objects
+  → ui_information: { "category": "Entity", "color_code": "#2196F3", "display_name": "Entity", "description": "Named entities" }
+
+- Action: Verbs, processes, operations
+  → ui_information: { "category": "Action", "color_code": "#4CAF50", "display_name": "Action", "description": "Actions and processes" }
+
+- Quality: Adjectives, properties, attributes
+  → ui_information: { "category": "Quality", "color_code": "#FF9800", "display_name": "Quality", "description": "Qualities and attributes" }
+
+- Concept: Abstract ideas, principles
+  → ui_information: { "category": "Concept", "color_code": "#9C27B0", "display_name": "Concept", "description": "Abstract concepts" }
+
+- Technical: Technical terms, jargon
+  → ui_information: { "category": "Technical", "color_code": "#00BCD4", "display_name": "Technical", "description": "Technical terminology" }
+
+CRITICAL: Every term MUST have semantic_type.ui_information.color_code. NO EXCEPTIONS.
 
 REQUIRED JSON FORMAT (all text in ${language}):
 {
@@ -360,6 +373,34 @@ CRITICAL REQUIREMENTS:
           semantic_type: term.semantic_type || term.sem_type || undefined
         };
       });
+
+      // Fallback: Ensure all terms have ui_information with color_code
+      const colorMap: Record<string, { color: string; category: string; description: string }> = {
+        'entity': { color: '#2196F3', category: 'Entity', description: 'Named entities' },
+        'action': { color: '#4CAF50', category: 'Action', description: 'Actions and processes' },
+        'quality': { color: '#FF9800', category: 'Quality', description: 'Qualities and attributes' },
+        'concept': { color: '#9C27B0', category: 'Concept', description: 'Abstract concepts' },
+        'technical': { color: '#00BCD4', category: 'Technical', description: 'Technical terminology' },
+      };
+
+      analysisResult.terms = analysisResult.terms.map((term: any) => {
+        // If semantic_type exists but ui_information is missing or incomplete
+        if (term.semantic_type && (!term.semantic_type.ui_information || !term.semantic_type.ui_information.color_code)) {
+          const typeKey = term.semantic_type.semantic_type?.toLowerCase() || 'concept';
+          const colorInfo = colorMap[typeKey] || colorMap['concept'];
+          
+          console.log(`⚠️ Missing ui_information for term "${term.text}" - applying fallback color: ${colorInfo.color}`);
+          
+          term.semantic_type.ui_information = {
+            category: colorInfo.category,
+            color_code: colorInfo.color,
+            description: colorInfo.description,
+            display_name: colorInfo.category
+          };
+        }
+        
+        return term;
+      });
       
     } catch (parseError) {
       console.error("Initial parse failed, attempting aggressive cleanup...");
@@ -421,11 +462,22 @@ CRITICAL REQUIREMENTS:
     const spellCount = analysisResult.terms.filter((t: any) => t.classification === 'spelling').length;
     const grammarCount = analysisResult.terms.filter((t: any) => t.classification === 'grammar').length;
     
+    // Log semantic type color status
+    const termsWithColors = analysisResult.terms.filter((t: any) => 
+      t.semantic_type?.ui_information?.color_code
+    ).length;
+    const termsWithoutColors = analysisResult.terms.length - termsWithColors;
+
     console.log('=== Edge Function: Analysis Complete ===');
     console.log(`Total terms analyzed: ${analysisResult.terms.length}`);
     console.log('Classification breakdown:', classificationBreakdown);
     console.log(`Spelling issues: ${spellCount}, Grammar issues: ${grammarCount}`);
     console.log(`Quality score: ${analysisResult.statistics.qualityScore}`);
+    console.log(`Semantic types: ${termsWithColors} with colors, ${termsWithoutColors} without colors`);
+
+    if (termsWithoutColors > 0) {
+      console.warn(`⚠️ ${termsWithoutColors} terms are missing color codes - fallback colors applied`);
+    }
 
     return new Response(
       JSON.stringify(analysisResult),
