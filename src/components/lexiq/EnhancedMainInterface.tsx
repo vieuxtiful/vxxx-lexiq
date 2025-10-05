@@ -215,11 +215,30 @@ export function EnhancedMainInterface({
     }
   }, []);
 
-  // Auto-load most recent session when returning to a project
+  // Auto-load most recent saved version when returning to a project
   React.useEffect(() => {
-    const autoLoadRecentSession = async () => {
+    const autoLoadRecentVersion = async () => {
       // Only auto-load if we have a project, no current content, and user is authenticated
       if (currentProject && user && !currentContent && !isAnalyzing && !analysisComplete) {
+        // First, check for saved versions (user's explicit saves)
+        if (savedVersions.length > 0) {
+          const mostRecentVersion = savedVersions[0]; // Already sorted by timestamp DESC
+          
+          console.log('Auto-loading most recent saved version:', mostRecentVersion.name);
+          setCurrentContent(mostRecentVersion.content);
+          
+          // If the version had analysis, we don't have it saved, so user will need to re-analyze
+          // This is by design since savedVersions only store content, not full analysis
+          
+          toast({
+            title: "Version Restored",
+            description: `Loaded "${mostRecentVersion.name}" (${mostRecentVersion.wordCount} words)`,
+          });
+          
+          return; // Don't proceed to database session loading
+        }
+        
+        // Fallback: load from database sessions if no saved versions
         try {
           const sessions = await getProjectSessions(currentProject.id);
           if (sessions.length > 0) {
@@ -227,6 +246,7 @@ export function EnhancedMainInterface({
             
             // Only load if session has translation content
             if (mostRecentSession.translation_content) {
+              console.log('Auto-loading most recent database session');
               setCurrentContent(mostRecentSession.translation_content);
               setAnalysisResults({
                 terms: mostRecentSession.analyzed_terms,
@@ -250,8 +270,8 @@ export function EnhancedMainInterface({
       }
     };
 
-    autoLoadRecentSession();
-  }, [currentProject, user, currentContent, isAnalyzing, analysisComplete, getProjectSessions, toast, logSessionRestored]);
+    autoLoadRecentVersion();
+  }, [currentProject, user, currentContent, isAnalyzing, analysisComplete, savedVersions, getProjectSessions, toast, logSessionRestored]);
 
   // Auto-save functionality
   React.useEffect(() => {
