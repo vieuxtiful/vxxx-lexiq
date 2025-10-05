@@ -125,6 +125,10 @@ export function EnhancedMainInterface({
   const [showUploadIconTransition, setShowUploadIconTransition] = useState(false);
   const [noGlossaryWarningShown, setNoGlossaryWarningShown] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  // Drag and drop states
+  const [isDraggingTranslation, setIsDraggingTranslation] = useState(false);
+  const [isDraggingGlossary, setIsDraggingGlossary] = useState(false);
 
   // Track previous project to detect changes
   const [previousProjectId, setPreviousProjectId] = useState<string | null>(null);
@@ -515,9 +519,57 @@ export function EnhancedMainInterface({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleUndo, handleRedo]);
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'translation' | 'glossary') => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  // Drag and drop handlers
+  const handleDragOver = (e: React.DragEvent, type: 'translation' | 'glossary') => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (type === 'translation' && !textManuallyEntered) {
+      setIsDraggingTranslation(true);
+    } else if (type === 'glossary') {
+      setIsDraggingGlossary(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent, type: 'translation' | 'glossary') => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (type === 'translation') {
+      setIsDraggingTranslation(false);
+    } else {
+      setIsDraggingGlossary(false);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent, type: 'translation' | 'glossary') => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (type === 'translation') {
+      setIsDraggingTranslation(false);
+    } else {
+      setIsDraggingGlossary(false);
+    }
+
+    // Don't allow translation file drop if text was manually entered
+    if (type === 'translation' && textManuallyEntered) {
+      toast({
+        title: "Cannot Upload",
+        description: "Clear the text in the editor first to upload a file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const files = e.dataTransfer.files;
+    if (files.length === 0) return;
+
+    const file = files[0];
+    
+    // Process the dropped file
+    await processDroppedFile(file, type);
+  };
+
+  const processDroppedFile = async (file: File, type: 'translation' | 'glossary') => {
     const validation = validateFile(file);
     if (!validation.valid) {
       toast({
@@ -590,6 +642,7 @@ export function EnhancedMainInterface({
         // Continue even if upload fails - file content is already loaded
       }
     }
+    
     if (type === 'translation') {
       setTranslationFile(file);
       setTranslationFileUploaded(true);
@@ -600,12 +653,18 @@ export function EnhancedMainInterface({
     } else {
       setGlossaryFile(file);
       setGlossaryFileUploaded(true);
-      setNoGlossaryWarningShown(false); // Reset warning when glossary is uploaded
+      setNoGlossaryWarningShown(false);
       toast({
         title: "Glossary Uploaded",
         description: `${file.name} uploaded successfully`
       });
     }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'translation' | 'glossary') => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await processDroppedFile(file, type);
   };
   const runEnhancedAnalysis = async () => {
     console.log('=== Starting Enhanced Analysis ===');
@@ -1292,11 +1351,30 @@ export function EnhancedMainInterface({
                   {/* Compact File Upload */}
                   <Card>
                     <CardContent className="pt-4 space-y-3">
-                      <div onClick={() => !textManuallyEntered && translationInputRef.current?.click()} className={`flex items-center justify-between p-3 rounded-md border-2 border-dashed transition-all ${textManuallyEntered ? 'border-success bg-success/5 cursor-not-allowed opacity-60' : translationFile ? 'border-success bg-success/5 cursor-pointer hover:border-primary hover:bg-primary/5' : 'border-border cursor-pointer hover:border-primary hover:bg-primary/5'}`}>
+                      <div 
+                        onClick={() => !textManuallyEntered && translationInputRef.current?.click()} 
+                        onDragOver={(e) => handleDragOver(e, 'translation')}
+                        onDragLeave={(e) => handleDragLeave(e, 'translation')}
+                        onDrop={(e) => handleDrop(e, 'translation')}
+                        className={`flex items-center justify-between p-3 rounded-md border-2 border-dashed transition-all ${
+                          textManuallyEntered 
+                            ? 'border-success bg-success/5 cursor-not-allowed opacity-60' 
+                            : isDraggingTranslation
+                              ? 'border-primary bg-primary/20 scale-105'
+                              : translationFile 
+                                ? 'border-success bg-success/5 cursor-pointer hover:border-primary hover:bg-primary/5' 
+                                : 'border-border cursor-pointer hover:border-primary hover:bg-primary/5'
+                        }`}>
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <img src={translationIcon} alt="Translation" className="h-4 w-4 flex-shrink-0" />
                           <span className="text-xs truncate">
-                            {textManuallyEntered ? 'Text Inserted!' : translationFile ? translationFile.name : 'Translation File'}
+                            {isDraggingTranslation 
+                              ? 'Drop file here...' 
+                              : textManuallyEntered 
+                                ? 'Text Inserted!' 
+                                : translationFile 
+                                  ? translationFile.name 
+                                  : 'Translation File'}
                           </span>
                         </div>
                         {textManuallyEntered ? showUploadIconTransition ? <CheckCircle className="h-4 w-4 text-success flex-shrink-0 ml-2 animate-in fade-in" /> : <Upload className="h-4 w-4 text-success flex-shrink-0 ml-2 rotate-180 animate-in fade-in" /> : translationFileUploaded ? <CheckCircle className="h-4 w-4 text-success flex-shrink-0 ml-2" /> : <Upload className="h-4 w-4 flex-shrink-0 ml-2" />}
@@ -1306,11 +1384,22 @@ export function EnhancedMainInterface({
                       </p>
                       <input ref={translationInputRef} type="file" onChange={e => handleFileUpload(e, 'translation')} className="hidden" accept=".txt,.docx,.json,.csv,.xml,.po,.tmx,.xliff,.xlf" />
 
-                      <div onClick={() => glossaryInputRef.current?.click()} className={`flex items-center justify-between p-3 rounded-md border-2 border-dashed cursor-pointer transition-all hover:border-primary hover:bg-primary/5 ${glossaryFile ? 'border-success bg-success/5' : 'border-border'}`}>
+                      <div 
+                        onClick={() => glossaryInputRef.current?.click()} 
+                        onDragOver={(e) => handleDragOver(e, 'glossary')}
+                        onDragLeave={(e) => handleDragLeave(e, 'glossary')}
+                        onDrop={(e) => handleDrop(e, 'glossary')}
+                        className={`flex items-center justify-between p-3 rounded-md border-2 border-dashed cursor-pointer transition-all ${
+                          isDraggingGlossary
+                            ? 'border-primary bg-primary/20 scale-105 hover:border-primary hover:bg-primary/20'
+                            : glossaryFile 
+                              ? 'border-success bg-success/5 hover:border-primary hover:bg-primary/5' 
+                              : 'border-border hover:border-primary hover:bg-primary/5'
+                        }`}>
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <img src={glossaryIcon} alt="Glossary" className="h-4 w-4 flex-shrink-0" />
                           <span className="text-xs truncate">
-                            {glossaryFile ? glossaryFile.name : 'Glossary File'}
+                            {isDraggingGlossary ? 'Drop file here...' : glossaryFile ? glossaryFile.name : 'Glossary File'}
                           </span>
                         </div>
                         {glossaryFileUploaded ? <CheckCircle className="h-4 w-4 text-success flex-shrink-0 ml-2" /> : <Upload className="h-4 w-4 flex-shrink-0 ml-2" />}
