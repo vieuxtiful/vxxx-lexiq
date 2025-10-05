@@ -161,6 +161,18 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   const [isComposing, setIsComposing] = useState(false);
   const warningShownRef = useRef(false);
   const semanticTypesJustEnabledRef = useRef(false);
+  const [hasContentChanged, setHasContentChanged] = useState(false);
+  const [lastEditedContent, setLastEditedContent] = useState('');
+
+  // Track content changes for reanalyze button
+  useEffect(() => {
+    if (originalAnalyzedContent && content !== originalAnalyzedContent) {
+      setHasContentChanged(true);
+      setLastEditedContent(content);
+    } else {
+      setHasContentChanged(false);
+    }
+  }, [content, originalAnalyzedContent]);
 
   // Auto-enable legend ONLY when semantic types are first enabled
   useEffect(() => {
@@ -561,8 +573,12 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                 {showTermStatus ? 'Hide Term Status' : 'Show Term Status'}
               </Button>
               
-              {/* Manual reanalysis button */}
-              {onReanalyze && content.trim().length > 0 && isEditing && <Button variant="outline" size="sm" onClick={() => onReanalyze(content)} disabled={isReanalyzing} className="h-6 text-xs gap-1.5 px-2">
+              {/* Reanalyze button - shown when content has changed from original analyzed content */}
+              {onReanalyze && hasContentChanged && content.trim().length > 0 && originalAnalyzedContent && <Button variant="outline" size="sm" onClick={() => {
+                  onReanalyze(content);
+                  setHasContentChanged(false);
+                  setLastEditedContent('');
+                }} disabled={isReanalyzing} className="h-6 text-xs gap-1.5 px-2">
                   {isReanalyzing ? <RefreshCw className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                   {isReanalyzing ? 'Reanalyzing...' : 'Reanalyze'}
                 </Button>}

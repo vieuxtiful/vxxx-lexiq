@@ -116,6 +116,7 @@ ANALYSIS CONTEXT:
 - Target Language: ${language}
 - Domain: ${domain}
 - Grammar Checking: ${checkGrammar ? 'ENABLED' : 'DISABLED'}
+- Spelling Checking: ${checkSpelling ? 'ENABLED' : 'DISABLED'}
 
 GLOSSARY TERMS (authoritative reference):
 ${glossaryContent}
@@ -123,17 +124,74 @@ ${glossaryContent}
 TRANSLATION TEXT TO ANALYZE:
 ${translationContent}
 
-CLASSIFICATION RULES (STRICT ENFORCEMENT):
+CLASSIFICATION HIERARCHY (STRICT PRIORITY ORDER):
+When a term matches multiple classifications, assign the HIGHEST priority classification:
 
-1. VALID (green): Exact glossary match (case-insensitive for Latin scripts, exact for CJK)
-2. REVIEW (yellow): Fuzzy match (plurals, conjugations, minor variations)  
-3. CRITICAL (red): Inconsistent with glossary OR significantly better alternative exists
-${checkSpelling ? '4. SPELLING: Obvious typos/misspellings (ONLY if checkSpelling=true)' : ''}
-${checkGrammar ? '5. GRAMMAR: Grammar issues (subject-verb agreement, tense errors, etc.) (ONLY if checkGrammar=true)' : ''}
+${checkSpelling ? 'PRIORITY 1 - SPELLING:\n  - Obvious typos, misspellings\n  - Non-existent words not in standard dictionaries\n  - Character transpositions, missing/extra letters\n  - Incorrect plurals that create non-existent words\n' : ''}
+${checkGrammar ? 'PRIORITY 2 - GRAMMAR:\n  - Incorrect pluralizations of mass nouns (e.g., "quenchings" → "quenching")\n  - Subject-verb agreement errors\n  - Tense inconsistencies\n  - Article misuse\n  - Preposition errors\n  - Wrong word forms even if term appears in glossary\n' : ''}
+PRIORITY 3 - CRITICAL:
+  - Terms completely inconsistent with glossary
+  - Significantly better alternatives exist
+  - Context-inappropriate terminology
+
+PRIORITY 4 - REVIEW:
+  - Valid variations (conjugations of count nouns, declensions)
+  - Acceptable synonyms requiring review
+  - Minor stylistic improvements
+
+PRIORITY 5 - VALID:
+  - Exact glossary matches
+  - Correct usage
+
+⚠️ CRITICAL RULES:
+- If a term appears in the glossary BUT is used incorrectly (wrong form, wrong context), it is GRAMMAR or CRITICAL, NOT REVIEW
+- "quenchings" is GRAMMAR (incorrect mass noun plural), NOT REVIEW
+- Mass nouns (quenching, tempering, information, equipment) do NOT pluralize - flag additions of "-s" as GRAMMAR errors
+
+${checkGrammar ? `
+GRAMMAR DETECTION RULES (when checkGrammar=true):
+
+Mass Nouns (No Plural Forms):
+- "quenching" → ❌ "quenchings" (GRAMMAR ERROR - mass noun cannot be pluralized)
+- "tempering" → ❌ "temperings" (GRAMMAR ERROR - mass noun cannot be pluralized)
+- "information" → ❌ "informations" (GRAMMAR ERROR - mass noun cannot be pluralized)
+- "equipment" → ❌ "equipments" (GRAMMAR ERROR - mass noun cannot be pluralized)
+
+Process Nouns:
+- Check if adding "-s" creates a non-standard form
+- Verify pluralization against domain-specific usage
+
+For each grammar error, provide:
+- The incorrect form used
+- The correct form
+- Clear explanation of why it's incorrect (e.g., "mass noun - cannot be pluralized")
+- Severity level (medium/high for mass noun errors)
+` : ''}
+
+${checkSpelling ? `
+SPELLING VALIDATION (when checkSpelling=true):
+- Check EVERY word against standard ${language} dictionaries
+- Flag words that are:
+  * Non-existent in standard dictionaries
+  * Character transpositions (e.g., "teh" → "the")
+  * Missing/extra letters (e.g., "temperture" → "temperature")
+  * Typos that create plausible-looking but incorrect words
+  
+- DO NOT flag:
+  * Proper nouns
+  * Domain-specific technical terms in the glossary
+  * Correct variations of glossary terms
+
+- For each spelling error:
+  * Provide the misspelled word
+  * Suggest the correct spelling
+  * Character positions
+  * Brief explanation
+` : ''}
 
 LANGUAGE CHECK PARAMETERS:
-- checkSpelling: ${checkSpelling} - ${checkSpelling ? 'Flag spelling issues' : 'DO NOT flag spelling issues'}
-- checkGrammar: ${checkGrammar} - ${checkGrammar ? 'Flag grammar issues' : 'DO NOT flag grammar issues'}
+- checkSpelling: ${checkSpelling} - ${checkSpelling ? 'Flag spelling issues with PRIORITY 1' : 'DO NOT flag spelling issues'}
+- checkGrammar: ${checkGrammar} - ${checkGrammar ? 'Flag grammar issues with PRIORITY 2' : 'DO NOT flag grammar issues'}
 
 LANGUAGE COMPLIANCE RULES:
 - ALL suggestions MUST be in ${language}

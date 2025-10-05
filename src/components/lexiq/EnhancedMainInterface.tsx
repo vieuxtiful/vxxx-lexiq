@@ -684,6 +684,10 @@ export function EnhancedMainInterface({
       setHistoryIndex(prev => prev - 1);
       setCurrentContent(previousState.content);
       setAnalysisResults(previousState.analysisResults);
+      
+      // Trigger reanalysis button visibility update
+      // The EnhancedLiveAnalysisPanel will detect the content change
+      console.log('Undo: content changed, reanalyze button state will update');
     }
   }, [historyIndex, history]);
 
@@ -694,6 +698,10 @@ export function EnhancedMainInterface({
       setHistoryIndex(prev => prev + 1);
       setCurrentContent(nextState.content);
       setAnalysisResults(nextState.analysisResults);
+      
+      // Trigger reanalysis button visibility update
+      // The EnhancedLiveAnalysisPanel will detect the content change
+      console.log('Redo: content changed, reanalyze button state will update');
     }
   }, [historyIndex, history]);
 
