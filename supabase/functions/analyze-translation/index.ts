@@ -128,7 +128,7 @@ CLASSIFICATION HIERARCHY (STRICT PRIORITY ORDER):
 When a term matches multiple classifications, assign the HIGHEST priority classification:
 
 ${checkSpelling ? 'PRIORITY 1 - SPELLING:\n  - Obvious typos, misspellings\n  - Non-existent words not in standard dictionaries\n  - Character transpositions, missing/extra letters\n  - Incorrect plurals that create non-existent words\n' : ''}
-${checkGrammar ? 'PRIORITY 2 - GRAMMAR:\n  - Incorrect pluralizations of mass nouns (e.g., "quenchings" → "quenching")\n  - Subject-verb agreement errors\n  - Tense inconsistencies\n  - Article misuse\n  - Preposition errors\n  - Wrong word forms even if term appears in glossary\n' : ''}
+${checkGrammar ? 'PRIORITY 2 - GRAMMAR:\n  - Subject-verb agreement errors (singular/plural mismatch)\n  - Article-noun number agreement (a/an + plural noun)\n  - Incorrect pluralizations of mass nouns (e.g., "quenchings" → "quenching")\n  - Tense inconsistencies\n  - Article misuse (a/an/the)\n  - Preposition errors\n  - Wrong word forms even if term appears in glossary\n' : ''}
 PRIORITY 3 - CRITICAL:
   - Terms completely inconsistent with glossary
   - Significantly better alternatives exist
@@ -151,6 +151,22 @@ PRIORITY 5 - VALID:
 ${checkGrammar ? `
 GRAMMAR DETECTION RULES (when checkGrammar=true):
 
+Subject-Verb Agreement:
+- SINGULAR subjects take SINGULAR verbs: "The control IS" (not "are")
+- PLURAL subjects take PLURAL verbs: "The processes ARE" (not "is")
+- ❌ "The careful control of these thermal processes ARE paramount" → GRAMMAR ERROR
+- ✅ "The careful control of these thermal processes IS paramount" → CORRECT
+- ❌ "The process involve multiple steps" → GRAMMAR ERROR  
+- ✅ "The process involves multiple steps" → CORRECT
+
+Article-Noun Number Agreement:
+- "a/an" (singular articles) must be followed by SINGULAR nouns
+- ❌ "a solutions treatment" → GRAMMAR ERROR (singular article + plural noun)
+- ✅ "a solution treatment" → CORRECT
+- ❌ "an processes" → GRAMMAR ERROR
+- ✅ "a process" → CORRECT
+- Note: "the" can be used with both singular and plural
+
 Mass Nouns (No Plural Forms):
 - "quenching" → ❌ "quenchings" (GRAMMAR ERROR - mass noun cannot be pluralized)
 - "tempering" → ❌ "temperings" (GRAMMAR ERROR - mass noun cannot be pluralized)
@@ -161,11 +177,19 @@ Process Nouns:
 - Check if adding "-s" creates a non-standard form
 - Verify pluralization against domain-specific usage
 
+Detection Instructions:
+- For subject-verb disagreement: identify the TRUE subject (ignore prepositional phrases)
+  * "The control [of these processes]" - subject is "control" (singular)
+  * "The steps [in the process]" - subject is "steps" (plural)
+- For article-noun disagreement: check the IMMEDIATE noun after "a/an"
+  * "a solutions treatment" - "solutions" is incorrect
+  * "a solution treatment" - "solution" is correct
+  
 For each grammar error, provide:
-- The incorrect form used
-- The correct form
-- Clear explanation of why it's incorrect (e.g., "mass noun - cannot be pluralized")
-- Severity level (medium/high for mass noun errors)
+- The incorrect form used (e.g., "control... are", "a solutions")
+- The correct form (e.g., "control... is", "a solution")
+- Clear explanation of why it's incorrect (e.g., "singular subject requires singular verb", "singular article must be followed by singular noun")
+- Severity level: HIGH for subject-verb and article-noun errors, MEDIUM/HIGH for mass noun errors
 ` : ''}
 
 ${checkSpelling ? `
