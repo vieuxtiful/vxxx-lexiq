@@ -159,6 +159,10 @@ export const useAnalysisEngine = () => {
 
       if (error) {
         console.error('Response error:', error);
+        // Check if this is a text limit error (400 status)
+        if (error.message?.includes('too large') || error.message?.includes('15,000 characters')) {
+          throw new Error('Text exceeds the 15,000 character limit. Please split your content into smaller sections or use smaller files.');
+        }
         throw new Error(error.message || 'Analysis failed');
       }
 
@@ -168,6 +172,13 @@ export const useAnalysisEngine = () => {
 
       // Check if data contains an error field
       if (data.error) {
+        // Enhanced error messages for specific scenarios
+        if (data.error.includes('too large') || data.error.includes('15,000 characters')) {
+          throw new Error('Text exceeds the 15,000 character limit. Please split your content into smaller sections or use smaller files.');
+        }
+        if (data.error.includes('truncated')) {
+          throw new Error('Analysis response was too large and got truncated. Please use smaller files or analyze in sections (500-1000 words recommended).');
+        }
         throw new Error(data.error);
       }
 
