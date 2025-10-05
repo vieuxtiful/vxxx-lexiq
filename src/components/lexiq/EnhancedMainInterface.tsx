@@ -127,6 +127,7 @@ export function EnhancedMainInterface({
   const [showGlossaryCheckmark, setShowGlossaryCheckmark] = useState(false);
   const [noGlossaryWarningShown, setNoGlossaryWarningShown] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   
   // Drag and drop states
   const [isDraggingTranslation, setIsDraggingTranslation] = useState(false);
@@ -258,6 +259,15 @@ export function EnhancedMainInterface({
       setShowProjectSetup(true);
     }
   }, [requiresProjectSetup, user]);
+
+  // Dark mode effect
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
 
   // Consolidated session loading with proper priority and race condition prevention
   React.useEffect(() => {
@@ -1535,6 +1545,14 @@ export function EnhancedMainInterface({
                   <div className="flex items-center justify-between px-6 py-3 border-b bg-card/50">
                     <h3 className="text-lg font-semibold">Editor</h3>
                     <div className="flex items-center gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setIsDarkMode(!isDarkMode)} 
+                        className="h-6 text-xs text-muted-foreground hover:text-foreground px-2"
+                      >
+                        {isDarkMode ? 'Disable Dark Mode' : 'Enable Dark Mode'}
+                      </Button>
                       <Button variant="ghost" size="sm" onClick={handleUndo} disabled={historyIndex <= 0} title="Undo (Ctrl+Z)">
                         <Undo2 className="h-4 w-4" />
                       </Button>
