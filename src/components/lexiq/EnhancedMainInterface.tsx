@@ -100,6 +100,7 @@ export function EnhancedMainInterface({
   const [savedVersions, setSavedVersions] = useState<SavedVersion[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
+  const [showQuitDialog, setShowQuitDialog] = useState(false);
   
   // Smart reanalysis state
   const [lastAnalyzedContent, setLastAnalyzedContent] = useState('');
@@ -1052,7 +1053,13 @@ export function EnhancedMainInterface({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6">
               <button
-                onClick={onReturnToWelcome}
+                onClick={() => {
+                  if (currentContent.trim() && hasUnsavedChanges) {
+                    setShowQuitDialog(true);
+                  } else {
+                    onReturnToWelcome?.();
+                  }
+                }}
                 className="cursor-pointer transition-transform hover:scale-105"
                 title="Return to welcome screen"
               >
@@ -1069,18 +1076,6 @@ export function EnhancedMainInterface({
             </div>
             
             <div className="flex items-center space-x-4">
-              {/* Language and Domain Indicators */}
-              <div className="flex items-center gap-2">
-                <Globe className="h-4 w-4 text-muted-foreground" />
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                  {getSelectedLanguageInfo()?.flag} {getSelectedLanguageInfo()?.label}
-                </Badge>
-                <Building className="h-4 w-4 text-muted-foreground" />
-                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                  {getSelectedDomainInfo()?.icon} {getSelectedDomainInfo()?.label}
-                </Badge>
-              </div>
-              
               {/* Save Button */}
               <Button 
                 variant="outline" 
@@ -1531,6 +1526,24 @@ export function EnhancedMainInterface({
               setShowSignOutDialog(false);
             }}>
               Sign Out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Quit Confirmation Dialog */}
+      <AlertDialog open={showQuitDialog} onOpenChange={setShowQuitDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Quit to Welcome Screen</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to quit? Any unsaved work will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={onReturnToWelcome}>
+              Quit
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

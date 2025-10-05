@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { CheckCircle, AlertCircle, XCircle, Zap, BookOpen, Palette, Check, RefreshCw } from 'lucide-react';
+import { CheckCircle, AlertCircle, XCircle, Zap, BookOpen, Palette, Check, RefreshCw, Globe, Building } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface FlaggedTerm {
@@ -452,12 +452,14 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CardTitle className="text-lg flex items-center gap-2">
-                <span>Translation</span>
-                <div className="flex items-center gap-2 text-xs">
-                  <Badge variant="outline" className="text-blue-600 border-blue-500">
+                <span>Editor</span>
+                <div className="flex items-center gap-2 text-sm">
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
+                    <Globe className="h-3 w-3" />
                     {selectedLanguage.toUpperCase()}
                   </Badge>
-                  <Badge variant="outline" className="text-purple-600 border-purple-500">
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 flex items-center gap-1">
+                    <Building className="h-3 w-3" />
                     {selectedDomain}
                   </Badge>
                 </div>
@@ -775,7 +777,9 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                   {hoveredTerm.rationale && (
                     <div>
                       <div className="text-xs text-muted-foreground mb-1">Analysis:</div>
-                      <div className="text-xs bg-muted p-2 rounded">{hoveredTerm.rationale}</div>
+                      <div className="text-xs bg-muted p-2 rounded">
+                        {hoveredTerm.rationale.replace(/([,.])(\S)/g, '$1 $2')}
+                      </div>
                     </div>
                   )}
                   

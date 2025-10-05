@@ -6,20 +6,53 @@ export const useEditedTerms = (originalTerms: AnalyzedTerm[]) => {
   const deduplicatedTerms = useMemo(() => {
     const termMap = new Map<string, AnalyzedTerm>();
     
-    // Helper function to normalize spacing after punctuation
-    const normalizeSpacing = (text: string) => {
-      return text.replace(/([.,;:!?])(\S)/g, '$1 $2');
+    // Enhanced function to normalize and stem terms
+    const normalizeTermText = (text: string) => {
+      // First normalize spacing
+      let normalized = text.toLowerCase().trim();
+      normalized = normalized.replace(/([.,;:!?])(\S)/g, '$1 $2');
+      
+      // Simple stemming for common English patterns
+      normalized = normalized
+        // Remove common plural suffixes
+        .replace(/(?<=[bcdfghjklmnpqrstvwxz])s\b/g, '')
+        .replace(/ies\b/g, 'y')
+        .replace(/(?<=[aeiou])es\b/g, '')
+        // Remove common tense suffixes
+        .replace(/(?<=[bcdfghjklmnpqrstvwxyz])ed\b/g, '')
+        .replace(/(?<=[bcdfghjklmnpqrstvwxyz])ing\b/g, '')
+        .replace(/(?<=[aeiou])d\b/g, '');
+      
+      // Handle common irregular plurals
+      const irregularPlurals: Record<string, string> = {
+        'people': 'person',
+        'children': 'child',
+        'men': 'man', 
+        'women': 'woman',
+        'teeth': 'tooth',
+        'feet': 'foot',
+        'mice': 'mouse',
+        'geese': 'goose'
+      };
+      
+      Object.entries(irregularPlurals).forEach(([plural, singular]) => {
+        if (normalized === plural) {
+          normalized = singular;
+        }
+      });
+      
+      return normalized;
     };
     
     originalTerms.forEach(term => {
-      const normalizedText = term.text.toLowerCase().trim();
+      const normalizedText = normalizeTermText(term.text);
       
       if (!termMap.has(normalizedText)) {
         // Extract full sentence for context
         const context = term.context || '';
         const sentenceMatch = context.match(/[^.!?]*[.!?]/);
         const fullSentence = sentenceMatch ? sentenceMatch[0].trim() : context;
-        const normalizedContext = normalizeSpacing(fullSentence);
+        const normalizedContext = fullSentence.replace(/([.,;:!?])(\S)/g, '$1 $2');
         
         termMap.set(normalizedText, {
           ...term,
@@ -27,9 +60,17 @@ export const useEditedTerms = (originalTerms: AnalyzedTerm[]) => {
           frequency: 1
         });
       } else {
-        // Increment frequency for duplicate terms
+        // Increment frequency for duplicate terms and merge data
         const existingTerm = termMap.get(normalizedText)!;
         existingTerm.frequency += 1;
+        
+        // Use the longer context if available
+        if (term.context && term.context.length > (existingTerm.context?.length || 0)) {
+          const context = term.context || '';
+          const sentenceMatch = context.match(/[^.!?]*[.!?]/);
+          const fullSentence = sentenceMatch ? sentenceMatch[0].trim() : context;
+          existingTerm.context = fullSentence.replace(/([.,;:!?])(\S)/g, '$1 $2');
+        }
       }
     });
     
