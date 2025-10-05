@@ -1332,21 +1332,23 @@ export function EnhancedMainInterface({
 
                       {isAnalyzing && (
                         <div className="space-y-2">
-                          {/* Enhanced Progress Bar */}
-                          <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-gradient-to-r from-primary to-primary-glow transition-all duration-500 ease-out relative"
-                              style={{ width: `${engineProgress}%` }}
-                            >
-                              {/* Progress bar shimmer */}
-                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
-                            </div>
-                          </div>
-                          
+                          {/* Enhanced Progress Bar - only for chunked analysis */}
                           {totalChunks > 1 && (
-                            <p className="text-xs text-muted-foreground text-center">
-                              Processing chunk {currentChunk} of {totalChunks}
-                            </p>
+                            <>
+                              <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-primary to-primary-glow transition-all duration-500 ease-out relative"
+                                  style={{ width: `${engineProgress}%` }}
+                                >
+                                  {/* Progress bar shimmer */}
+                                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+                                </div>
+                              </div>
+                              
+                              <p className="text-xs text-muted-foreground text-center">
+                                Processing chunk {currentChunk} of {totalChunks}
+                              </p>
+                            </>
                           )}
 
                           {/* Cancel Button */}
