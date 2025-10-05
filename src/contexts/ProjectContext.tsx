@@ -27,7 +27,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [requiresProjectSetup, setRequiresProjectSetup] = useState(false);
   const { toast } = useToast();
 
-  // Load current project from localStorage
+  // Load current project from localStorage WITH VALIDATION
   useEffect(() => {
     if (!user) {
       setCurrentProjectState(null);
@@ -38,26 +38,43 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     if (projectsLoading) return;
 
-    // Try to restore last used project
+    // Try to restore last used project WITH VALIDATION
     const savedProjectId = localStorage.getItem('lexiq-current-project-id');
     if (savedProjectId && projects.length > 0) {
       const savedProject = projects.find(p => p.id === savedProjectId);
       if (savedProject) {
+        console.log('✅ Restoring validated project from localStorage:', savedProject.name);
         setCurrentProjectState(savedProject);
         setRequiresProjectSetup(false);
         setLoading(false);
         return;
+      } else {
+        // Project was deleted or doesn't exist - clear invalid reference
+        console.log('🚨 Invalid project ID in localStorage, clearing:', savedProjectId);
+        localStorage.removeItem('lexiq-current-project-id');
+        // Clear all project-specific sessions for invalid project
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith(`lexiq-session-${savedProjectId}`)) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
       }
     }
 
     // If no saved project or projects exist, use first project
     if (projects.length > 0) {
-      setCurrentProjectState(projects[0]);
-      localStorage.setItem('lexiq-current-project-id', projects[0].id);
+      const firstProject = projects[0];
+      console.log('📁 Using first project:', firstProject.name);
+      setCurrentProjectState(firstProject);
+      localStorage.setItem('lexiq-current-project-id', firstProject.id);
       setRequiresProjectSetup(false);
       setLoading(false);
     } else {
-      // No projects - show setup wizard instead of auto-creating
+      // No projects - show setup wizard
+      console.log('📝 No projects found, showing setup wizard');
       setCurrentProjectState(null);
       setRequiresProjectSetup(true);
       setLoading(false);
@@ -107,28 +124,18 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const clearProjectData = () => {
-    console.log('Clearing all project data...');
+    console.log('🧹 Clearing all project data...');
     
-    // Clear all state
+    // Clear current state
     setCurrentProjectState(null);
     
-    // Clear localStorage/sessionStorage
-    localStorage.removeItem('lexiq-session');
+    // Clear localStorage - be more specific about what we clear
     localStorage.removeItem('lexiq-current-project-id');
-    localStorage.removeItem('lexiq-saved-versions');
+    
+    // Only clear session storage, not all lexiq- keys
     sessionStorage.removeItem('editedTerms');
     
-    // Clear any other project-specific storage
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('lexiq-')) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach(key => localStorage.removeItem(key));
-    
-    console.log('Project data cleared successfully');
+    console.log('✅ Project data cleared successfully');
   };
 
   const deleteProject = async (id: string): Promise<void> => {

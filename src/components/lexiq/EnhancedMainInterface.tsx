@@ -95,6 +95,9 @@ export function EnhancedMainInterface({
   // Track previous project to detect changes
   const [previousProjectId, setPreviousProjectId] = useState<string | null>(null);
   
+  // Track loading state to prevent race conditions
+  const [isLoadingSession, setIsLoadingSession] = useState(false);
+  
   // Undo/Redo history
   const [history, setHistory] = useState<HistoryState[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -136,9 +139,15 @@ export function EnhancedMainInterface({
   const selectedLanguage = currentProject?.language || 'en';
   const selectedDomain = currentProject?.domain || 'general';
 
-  // Comprehensive reset function
+  // Comprehensive reset function - project-aware
   const resetMainWindowState = useCallback(() => {
-    console.log('Resetting Main Window state for new project...');
+    if (!currentProject) return;
+    
+    console.log('🔄 Resetting Main Window state for project:', currentProject.name);
+    
+    // Clear project-specific localStorage
+    const sessionKey = `lexiq-session-${currentProject.id}`;
+    localStorage.removeItem(sessionKey);
     
     // Reset all state variables
     setTranslationFile(null);
@@ -159,12 +168,10 @@ export function EnhancedMainInterface({
     setActiveMainTab('edit');
     setTranslationFileId(null);
     setGlossaryFileId(null);
+    setIsLoadingSession(false);
     
-    // Clear localStorage session
-    localStorage.removeItem('lexiq-session');
-    
-    console.log('Main Window state reset complete');
-  }, []);
+    console.log('✅ Main Window state reset complete');
+  }, [currentProject]);
 
   // Reset all state when project changes
   useEffect(() => {
@@ -182,103 +189,139 @@ export function EnhancedMainInterface({
     }
   }, [requiresProjectSetup, user]);
 
-  // Load saved state and versions on mount
+  // Consolidated session loading with proper priority and race condition prevention
   React.useEffect(() => {
-    const savedState = localStorage.getItem('lexiq-session');
-    if (savedState) {
-      try {
-        const parsed = JSON.parse(savedState);
-        if (parsed.currentContent) {
-          setCurrentContent(parsed.currentContent);
-          setTextManuallyEntered(parsed.textManuallyEntered || false);
-          if (parsed.analysisResults) {
-            setAnalysisResults(parsed.analysisResults);
-            setAnalysisComplete(true);
-          }
-          if (parsed.activeMainTab) {
-            setActiveMainTab(parsed.activeMainTab);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load saved state:', error);
-      }
-    }
+    const loadUserSession = async () => {
+      if (!currentProject || !user || isLoadingSession) return;
+      
+      setIsLoadingSession(true);
+      console.log('🔄 Starting session load for project:', currentProject.name);
 
-    // Load saved versions
-    const savedVersionsData = localStorage.getItem('lexiq-saved-versions');
-    if (savedVersionsData) {
       try {
-        setSavedVersions(JSON.parse(savedVersionsData));
-      } catch (error) {
-        console.error('Failed to load saved versions:', error);
-      }
-    }
-  }, []);
-
-  // Auto-load most recent saved version when returning to a project
-  React.useEffect(() => {
-    const autoLoadRecentVersion = async () => {
-      // Only auto-load if we have a project, no current content, and user is authenticated
-      if (currentProject && user && !currentContent && !isAnalyzing && !analysisComplete) {
-        // First, check for saved versions (user's explicit saves)
-        if (savedVersions.length > 0) {
-          const mostRecentVersion = savedVersions[0]; // Already sorted by timestamp DESC
-          
-          console.log('Auto-loading most recent saved version:', mostRecentVersion.name);
-          setCurrentContent(mostRecentVersion.content);
-          
-          // If the version had analysis, we don't have it saved, so user will need to re-analyze
-          // This is by design since savedVersions only store content, not full analysis
-          
-          toast({
-            title: "Version Restored",
-            description: `Loaded "${mostRecentVersion.name}" (${mostRecentVersion.wordCount} words)`,
-          });
-          
-          return; // Don't proceed to database session loading
+        // 1. FIRST: Check if we already have content (prevent overwrite)
+        if (currentContent.trim()) {
+          console.log('📝 Content already exists, skipping auto-load');
+          setIsLoadingSession(false);
+          return;
         }
+
+        // 2. Check localStorage session (project-specific)
+        const sessionKey = `lexiq-session-${currentProject.id}`;
+        const savedState = localStorage.getItem(sessionKey);
         
-        // Fallback: load from database sessions if no saved versions
-        try {
-          const sessions = await getProjectSessions(currentProject.id);
-          if (sessions.length > 0) {
-            const mostRecentSession = sessions[0]; // Already sorted by created_at DESC
+        if (savedState) {
+          try {
+            const parsed = JSON.parse(savedState);
+            console.log('📁 Found localStorage session');
             
-            // Only load if session has translation content
-            if (mostRecentSession.translation_content) {
-              console.log('Auto-loading most recent database session');
-              setCurrentContent(mostRecentSession.translation_content);
+            // Validate this session belongs to current project
+            if (parsed.currentContent) {
+              setCurrentContent(parsed.currentContent);
+              setTextManuallyEntered(parsed.textManuallyEntered || false);
+              if (parsed.analysisResults) {
+                setAnalysisResults(parsed.analysisResults);
+                setAnalysisComplete(true);
+              }
+              if (parsed.activeMainTab) {
+                setActiveMainTab(parsed.activeMainTab);
+              }
+              
+              console.log('✅ Loaded from localStorage session');
+              setIsLoadingSession(false);
+              return; // Stop here if we loaded from localStorage
+            }
+          } catch (error) {
+            console.error('❌ Failed to parse localStorage session:', error);
+            localStorage.removeItem(sessionKey); // Clear corrupted data
+          }
+        }
+
+        // 3. Check saved versions (project-specific)
+        const versionsKey = `lexiq-saved-versions-${currentProject.id}`;
+        const savedVersionsData = localStorage.getItem(versionsKey);
+        
+        if (savedVersionsData) {
+          try {
+            const versions = JSON.parse(savedVersionsData);
+            setSavedVersions(versions);
+            
+            if (versions.length > 0 && !currentContent.trim()) {
+              const mostRecentVersion = versions[0];
+              console.log('📚 Loading most recent saved version:', mostRecentVersion.name);
+              setCurrentContent(mostRecentVersion.content);
+              
+              toast({
+                title: "Version Restored",
+                description: `Loaded "${mostRecentVersion.name}" (${mostRecentVersion.wordCount} words)`,
+              });
+              
+              setIsLoadingSession(false);
+              return; // Stop here if we loaded a saved version
+            }
+          } catch (error) {
+            console.error('❌ Failed to load saved versions:', error);
+            localStorage.removeItem(versionsKey);
+          }
+        }
+
+        // 4. FINALLY: Load from database (only if nothing else available)
+        if (!currentContent.trim()) {
+          console.log('🗄️ Checking database for sessions...');
+          const sessions = await getProjectSessions(currentProject.id);
+          
+          if (sessions.length > 0) {
+            // Find the most recent session that has content
+            const validSession = sessions.find(session => 
+              session.translation_content && session.translation_content.trim().length > 0
+            );
+            
+            if (validSession) {
+              console.log('✅ Loading database session:', validSession.id);
+              setCurrentContent(validSession.translation_content);
               setAnalysisResults({
-                terms: mostRecentSession.analyzed_terms,
-                statistics: mostRecentSession.statistics,
+                terms: validSession.analyzed_terms,
+                statistics: validSession.statistics,
               });
               setAnalysisComplete(true);
               
-              toast({
-                title: "Session Restored",
-                description: "Your most recent analysis has been auto-loaded.",
+              // Initialize reanalysis state
+              setLastAnalyzedContent(validSession.translation_content);
+              setLastAnalysisParams({
+                language: validSession.language,
+                domain: validSession.domain,
+                grammarChecking: grammarCheckingEnabled,
+                glossaryContent: ''
               });
               
-              // Log the auto-restore
-              await logSessionRestored(mostRecentSession.id);
+              toast({
+                title: "Session Restored",
+                description: "Your most recent analysis has been loaded.",
+              });
+              
+              await logSessionRestored(validSession.id);
             }
           }
-        } catch (error) {
-          console.error('Failed to auto-load recent session:', error);
-          // Don't show error toast to avoid annoying users
         }
+      } catch (error) {
+        console.error('❌ Session loading failed:', error);
+      } finally {
+        setIsLoadingSession(false);
       }
     };
 
-    autoLoadRecentVersion();
-  }, [currentProject, user, currentContent, isAnalyzing, analysisComplete, savedVersions, getProjectSessions, toast, logSessionRestored]);
+    loadUserSession();
+  }, [currentProject, user]); // Only depend on project and user changes
 
-  // Auto-save functionality
+  // Auto-save functionality - project-specific
   React.useEffect(() => {
+    if (!currentProject) return;
+
     if (autoSaveIntervalRef.current) {
       clearInterval(autoSaveIntervalRef.current);
     }
 
+    const sessionKey = `lexiq-session-${currentProject.id}`;
+    
     autoSaveIntervalRef.current = setInterval(() => {
       if (currentContent || analysisResults) {
         const stateToSave = {
@@ -286,18 +329,19 @@ export function EnhancedMainInterface({
           analysisResults,
           textManuallyEntered,
           activeMainTab,
+          projectId: currentProject.id, // Add project ID for validation
           timestamp: new Date().toISOString()
         };
-        localStorage.setItem('lexiq-session', JSON.stringify(stateToSave));
+        localStorage.setItem(sessionKey, JSON.stringify(stateToSave));
       }
-    }, 5000); // Auto-save every 5 seconds
+    }, 5000);
 
     return () => {
       if (autoSaveIntervalRef.current) {
         clearInterval(autoSaveIntervalRef.current);
       }
     };
-  }, [currentContent, analysisResults, textManuallyEntered, activeMainTab]);
+  }, [currentContent, analysisResults, textManuallyEntered, activeMainTab, currentProject]);
 
   const languages = [
     { value: 'en', label: 'English', flag: '🇺🇸' },
@@ -822,9 +866,9 @@ export function EnhancedMainInterface({
     });
   };
 
-  // Save version functionality
+  // Save version functionality - project-specific
   const handleSaveVersion = useCallback(() => {
-    if (!currentContent.trim()) {
+    if (!currentProject || !currentContent.trim()) {
       toast({
         title: "Cannot save",
         description: "No content to save",
@@ -841,18 +885,22 @@ export function EnhancedMainInterface({
       name: `Version ${savedVersions.length + 1}`,
       wordCount,
       hasAnalysis: analysisComplete,
+      projectId: currentProject.id, // Add project reference
     };
 
-    const updatedVersions = [newVersion, ...savedVersions].slice(0, 20); // Keep max 20 versions
+    const updatedVersions = [newVersion, ...savedVersions].slice(0, 20);
     setSavedVersions(updatedVersions);
-    localStorage.setItem('lexiq-saved-versions', JSON.stringify(updatedVersions));
+    
+    const versionsKey = `lexiq-saved-versions-${currentProject.id}`;
+    localStorage.setItem(versionsKey, JSON.stringify(updatedVersions));
+    
     setHasUnsavedChanges(false);
 
     toast({
       title: "Version saved",
       description: `Saved as "${newVersion.name}" with ${wordCount} words`,
     });
-  }, [currentContent, savedVersions, analysisComplete, toast]);
+  }, [currentContent, savedVersions, analysisComplete, toast, currentProject]);
 
   const handleLoadVersion = useCallback((version: SavedVersion) => {
     setCurrentContent(version.content);
@@ -864,14 +912,19 @@ export function EnhancedMainInterface({
   }, [toast]);
 
   const handleDeleteVersion = useCallback((id: string) => {
+    if (!currentProject) return;
+    
     const updatedVersions = savedVersions.filter(v => v.id !== id);
     setSavedVersions(updatedVersions);
-    localStorage.setItem('lexiq-saved-versions', JSON.stringify(updatedVersions));
+    
+    const versionsKey = `lexiq-saved-versions-${currentProject.id}`;
+    localStorage.setItem(versionsKey, JSON.stringify(updatedVersions));
+    
     toast({
       title: "Version deleted",
       description: "Version removed from history",
     });
-  }, [savedVersions, toast]);
+  }, [savedVersions, toast, currentProject]);
 
   // Handle session restoration from history
   const handleRestoreSession = useCallback((session: AnalysisSession) => {

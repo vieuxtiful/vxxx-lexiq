@@ -18,6 +18,7 @@ export interface SavedVersion {
   name: string;
   wordCount: number;
   hasAnalysis: boolean;
+  projectId?: string; // Optional for backward compatibility
 }
 
 interface SaveVersionsDialogProps {
