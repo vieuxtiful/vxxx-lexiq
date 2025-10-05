@@ -1,3 +1,4 @@
+// Phase 8 - Enhanced Main Interface with AuthFlow integration
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { detectLanguageSimple } from '@/lib/languageDetector';
 import { Button } from '@/components/ui/button';
