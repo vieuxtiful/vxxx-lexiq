@@ -17,6 +17,8 @@ export interface LanguageValidationResult {
     detectedLanguage: string;
     confidence: number;
     message: string;
+    isMixed?: boolean;
+    secondaryLanguage?: string;
   };
 }
 
@@ -218,7 +220,9 @@ export async function validateContentLanguage(
         expectedLanguage,
         detectedLanguage: detectedLang,
         confidence,
-        message
+        message,
+        isMixed: isMixedContent,
+        secondaryLanguage: detection.secondaryLanguage
       }
     };
   } catch (error) {

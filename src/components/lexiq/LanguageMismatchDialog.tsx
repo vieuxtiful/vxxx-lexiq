@@ -25,6 +25,8 @@ interface LanguageMismatchDialogProps {
     detectedLanguage: string;
     confidence: number;
     message: string;
+    isMixed?: boolean;
+    secondaryLanguage?: string;
   };
   contentType?: 'file' | 'translation' | 'text';
   fileName?: string;
@@ -39,12 +41,17 @@ export const LanguageMismatchDialog: React.FC<LanguageMismatchDialogProps> = ({
   contentType = 'text',
   fileName
 }) => {
-  const { expectedLanguage, detectedLanguage, confidence, message } = validation;
+  const { expectedLanguage, detectedLanguage, confidence, message, isMixed, secondaryLanguage } = validation;
   const confidencePercent = Math.round(confidence * 100);
   
   // Determine severity based on confidence
   const isHighConfidence = confidence >= 0.9;
   const isMediumConfidence = confidence >= 0.7 && confidence < 0.9;
+  
+  // Build detected languages display
+  const detectedLanguagesDisplay = isMixed && secondaryLanguage
+    ? `${getLanguageName(detectedLanguage)}, ${getLanguageName(secondaryLanguage)}`
+    : getLanguageName(detectedLanguage);
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
@@ -77,13 +84,13 @@ export const LanguageMismatchDialog: React.FC<LanguageMismatchDialogProps> = ({
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <AlertTriangle className="h-4 w-4" />
-                  Detected Language
+                  Detected Language{isMixed ? 's' : ''}
                 </div>
                 <Badge 
                   variant={isHighConfidence ? 'destructive' : 'secondary'}
                   className="text-base"
                 >
-                  {getLanguageName(detectedLanguage)}
+                  {detectedLanguagesDisplay}
                 </Badge>
               </div>
             </div>
