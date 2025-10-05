@@ -392,8 +392,8 @@ export function EnhancedMainInterface({
               setCurrentContent('');
               console.log('❌ Real-time validation - content cleared by user');
               toast({
-                title: "Content cleared",
-                description: "Due to language mismatch",
+                title: "Content Cleared",
+                description: "Language mismatch detected",
                 variant: "default",
                 duration: 3000
               });
