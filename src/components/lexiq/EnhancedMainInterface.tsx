@@ -288,6 +288,9 @@ export function EnhancedMainInterface({
               if (parsed.analysisResults) {
                 setAnalysisResults(parsed.analysisResults);
                 setAnalysisComplete(true);
+                // Set the analyzed content to prevent "Content Modified" warnings
+                setOriginalAnalyzedContent(parsed.currentContent);
+                setLastAnalyzedContent(parsed.currentContent);
               }
               if (parsed.activeMainTab) {
                 setActiveMainTab(parsed.activeMainTab);
@@ -296,6 +299,8 @@ export function EnhancedMainInterface({
               if (parsed.editedTerms) {
                 sessionStorage.setItem('lexiq-edited-terms', JSON.stringify(parsed.editedTerms));
               }
+              // Clear unsaved changes flag since we're loading saved data
+              setHasUnsavedChanges(false);
               console.log('✅ Loaded from localStorage session (including edited terms)');
               setIsLoadingSession(false);
               return; // Stop here if we loaded from localStorage
@@ -317,6 +322,8 @@ export function EnhancedMainInterface({
               const mostRecentVersion = versions[0];
               console.log('📚 Loading most recent saved version:', mostRecentVersion.name);
               setCurrentContent(mostRecentVersion.content);
+              // Clear unsaved changes flag when loading a saved version
+              setHasUnsavedChanges(false);
               toast({
                 title: "Version Restored",
                 description: `Loaded "${mostRecentVersion.name}" (${mostRecentVersion.wordCount} words)`
@@ -346,14 +353,17 @@ export function EnhancedMainInterface({
               });
               setAnalysisComplete(true);
 
-              // Initialize reanalysis state
+              // Initialize reanalysis state and prevent "Content Modified" warnings
               setLastAnalyzedContent(validSession.translation_content);
+              setOriginalAnalyzedContent(validSession.translation_content);
               setLastAnalysisParams({
                 language: validSession.language,
                 domain: validSession.domain,
                 grammarChecking: grammarCheckingEnabled,
                 glossaryContent: ''
               });
+              // Clear unsaved changes flag since we're loading saved data
+              setHasUnsavedChanges(false);
               toast({
                 title: "Session Restored",
                 description: "Your most recent analysis has been loaded."
