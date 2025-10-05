@@ -14,7 +14,12 @@ export const useChunkedAnalysis = () => {
 
   const cancelAnalysis = () => {
     if (abortControllerRef.current) {
+      console.log('🛑 Cancelling analysis...');
       abortControllerRef.current.abort();
+      setIsAnalyzing(false);
+      setProgress(0);
+      setCurrentChunk(0);
+      setTotalChunks(0);
       toast({
         title: "Analysis cancelled",
         description: "The analysis has been stopped.",
@@ -84,7 +89,8 @@ export const useChunkedAnalysis = () => {
               glossary,
               language,
               domain,
-              checkGrammar
+              checkGrammar,
+              abortControllerRef.current.signal // Pass abort signal
             );
 
             if (analysis) {
@@ -143,11 +149,17 @@ export const useChunkedAnalysis = () => {
       return result;
     } catch (error) {
       console.error('Chunked analysis error:', error);
-      toast({
-        title: "Analysis failed",
-        description: error instanceof Error ? error.message : 'Unknown error during chunked analysis',
-        variant: "destructive",
-      });
+      
+      // Don't show error toast if it was a user cancellation
+      if (error instanceof Error && error.message.includes('cancelled by user')) {
+        console.log('Analysis was cancelled by user - no error toast needed');
+      } else {
+        toast({
+          title: "Analysis failed",
+          description: error instanceof Error ? error.message : 'Unknown error during chunked analysis',
+          variant: "destructive",
+        });
+      }
       return null;
     } finally {
       setIsAnalyzing(false);

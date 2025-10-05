@@ -64,7 +64,8 @@ export const useAnalysisEngine = () => {
     glossaryContent: string,
     language: string,
     domain: string,
-    checkGrammar: boolean = false
+    checkGrammar: boolean = false,
+    signal?: AbortSignal
   ): Promise<AnalysisResult | null> => {
     // Check cache first
     const cacheKey = analysisCache.generateKey(translationContent, language, domain, checkGrammar);
@@ -84,6 +85,11 @@ export const useAnalysisEngine = () => {
     setCurrentFullText(translationContent); // Store the full text for context enhancement
 
     try {
+      // Check if already cancelled
+      if (signal?.aborted) {
+        throw new Error('Analysis cancelled by user');
+      }
+
       // Simulate progress updates
       const progressInterval = setInterval(() => {
         setProgress(prev => Math.min(prev + 10, 90));
@@ -96,6 +102,11 @@ export const useAnalysisEngine = () => {
         setTimeout(() => reject(new Error('Analysis timeout after 2 minutes. Please try with a smaller text (500-1000 words) or simplify your glossary.')), 120000);
       });
 
+      // Add abort handling
+      const abortPromise = signal ? new Promise<never>((_, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('Analysis cancelled by user')), { once: true });
+      }) : Promise.race([]);
+
       const analysisPromise = supabase.functions.invoke('analyze-translation', {
         body: {
           translationContent,
@@ -106,7 +117,11 @@ export const useAnalysisEngine = () => {
         },
       });
 
-      const response = await Promise.race([analysisPromise, timeoutPromise]) as any;
+      const response = await Promise.race([
+        analysisPromise, 
+        timeoutPromise,
+        ...(signal ? [abortPromise] : [])
+      ]) as any;
 
       clearInterval(progressInterval);
       
