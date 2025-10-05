@@ -6,6 +6,7 @@ import { MessageSquare, Send, Loader2, Bot, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import qaIcon from '@/assets/qa-support-icon.png';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -75,7 +76,7 @@ export const QAChatPanel: React.FC<QAChatPanelProps> = ({ analysisContext }) => 
     <Card className="flex flex-col h-[400px]">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
-          <MessageSquare className="h-4 w-4" />
+          <img src={qaIcon} alt="QA Support" className="h-4 w-4" />
           QA Support
         </CardTitle>
       </CardHeader>

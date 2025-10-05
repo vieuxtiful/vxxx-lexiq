@@ -15,12 +15,18 @@ interface ProjectSelectionScreenProps {
   onCreateNewProject: () => void;
   userProjects: Project[];
   loading: boolean;
+  deletionState?: {
+    isDeleting: boolean;
+    deletingProjectId: string | null;
+    progress: number;
+  };
 }
 export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
   onProjectSelect,
   onCreateNewProject,
   userProjects,
-  loading
+  loading,
+  deletionState
 }) => {
   const {
     deleteProject,

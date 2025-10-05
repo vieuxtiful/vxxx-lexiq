@@ -15,6 +15,13 @@ interface ProjectContextType {
   refreshProjects: () => void;
   requiresProjectSetup: boolean;
   setRequiresProjectSetup: (value: boolean) => void;
+  // HYBRID: More granular deletion state
+  deletionState: {
+    isDeleting: boolean;
+    deletingProjectId: string | null;
+    progress: number;
+    optimisticProjects: Project[];
+  };
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -25,6 +32,15 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [currentProject, setCurrentProjectState] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [requiresProjectSetup, setRequiresProjectSetup] = useState(false);
+  
+  // HYBRID: Enhanced deletion state with optimistic updates
+  const [deletionState, setDeletionState] = useState({
+    isDeleting: false,
+    deletingProjectId: null as string | null,
+    progress: 0,
+    optimisticProjects: [] as Project[],
+  });
+  
   const { toast } = useToast();
 
   // Load current project from localStorage WITH VALIDATION
@@ -138,32 +154,130 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     console.log('✅ Project data cleared successfully');
   };
 
-  const deleteProject = async (id: string): Promise<void> => {
-    console.log('Deleting project:', id);
-    const result = await deleteProjectHook(id);
+  // HYBRID: Simulate deletion progress for better UX
+  const simulateProgress = () => {
+    setDeletionState(prev => ({ ...prev, progress: 0 }));
     
-    if (!result.error) {
-      console.log('Project deleted successfully');
+    const interval = setInterval(() => {
+      setDeletionState(prev => {
+        if (prev.progress >= 90) {
+          clearInterval(interval);
+          return { ...prev, progress: 90 };
+        }
+        return { ...prev, progress: prev.progress + 10 };
+      });
+    }, 200);
+    
+    return interval;
+  };
+
+  // ENHANCED: Optimistic deletion with progress tracking
+  const deleteProject = async (id: string): Promise<void> => {
+    console.log('🗑️ Starting optimistic project deletion:', id);
+    
+    const projectToDelete = projects.find(p => p.id === id);
+    if (!projectToDelete) {
+      toast({
+        title: "Project not found",
+        description: "The project you're trying to delete doesn't exist.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const isDeletingCurrentProject = currentProject?.id === id;
+    
+    // 1. Immediate optimistic state update
+    setDeletionState({
+      isDeleting: true,
+      deletingProjectId: id,
+      progress: 0,
+      optimisticProjects: projects.filter(p => p.id !== id),
+    });
+
+    // 2. Clear current project if it's being deleted
+    if (isDeletingCurrentProject) {
+      console.log('🧹 Immediately clearing current project state');
+      setCurrentProjectState(null);
+      localStorage.removeItem('lexiq-current-project-id');
+      localStorage.removeItem('lastProjectId');
+      sessionStorage.removeItem('editedTerms');
+    }
+
+    // 3. Set up progress simulation
+    const progressInterval = simulateProgress();
+
+    try {
+      // 4. Perform actual deletion
+      console.log('🔄 Executing project deletion...');
+      const result = await deleteProjectHook(id);
       
-      // IMPORTANT: Refresh projects list before checking state
+      if (result.error) {
+        console.error('❌ Failed to delete project:', result.error);
+        throw new Error(result.error);
+      }
+
+      console.log('✅ Project deleted successfully');
+      
+      // 5. Complete progress
+      setDeletionState(prev => ({ ...prev, progress: 100 }));
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // 6. Refresh projects list
+      console.log('🔄 Refreshing projects list...');
       await refreshProjects();
       
-      // If we deleted the current project, clear everything
-      if (currentProject?.id === id) {
-        console.log('Deleted current project, clearing all data');
-        clearProjectData();
+      toast({
+        title: "Project deleted",
+        description: `${projectToDelete.name} has been permanently removed`,
+      });
+      
+    } catch (error) {
+      console.error('❌ Error during project deletion:', error);
+      
+      // HYBRID: Rollback optimistic update on failure
+      setDeletionState({
+        isDeleting: false,
+        deletingProjectId: null,
+        progress: 0,
+        optimisticProjects: projects,
+      });
+      
+      // Restore current project if deletion failed
+      if (isDeletingCurrentProject && currentProject) {
+        setCurrentProjectState(currentProject);
+        localStorage.setItem('lexiq-current-project-id', currentProject.id);
       }
-    } else {
-      console.error('Failed to delete project:', result.error);
-      throw new Error('Failed to delete project');
+      
+      toast({
+        title: "Failed to delete project",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+      
+      throw error;
+    } finally {
+      clearInterval(progressInterval);
+      setDeletionState(prev => ({ 
+        ...prev, 
+        isDeleting: false, 
+        deletingProjectId: null,
+        progress: 0 
+      }));
     }
   };
+
+  // HYBRID: Get current projects (optimistic during deletion)
+  const currentProjects = deletionState.isDeleting 
+    ? deletionState.optimisticProjects 
+    : projects;
 
   return (
     <ProjectContext.Provider
       value={{
         currentProject,
-        projects,
+        projects: currentProjects,
         setCurrentProject,
         setCurrentProjectWithReset,
         createProject,
@@ -173,6 +287,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         refreshProjects,
         requiresProjectSetup,
         setRequiresProjectSetup,
+        deletionState,
       }}
     >
       {children}

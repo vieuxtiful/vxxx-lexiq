@@ -5,7 +5,7 @@ import Auth from '@/pages/Auth';
 import { ProjectSetupWizard } from './lexiq/ProjectSetupWizard';
 import { ProjectSelectionScreen } from './lexiq/ProjectSelectionScreen';
 import { EnhancedMainInterface } from './lexiq/EnhancedMainInterface';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
 
 export const AppRouter: React.FC = () => {
   const { 
@@ -17,7 +17,7 @@ export const AppRouter: React.FC = () => {
     moveToProjectCreation,
     refetchProjects 
   } = useAuthFlow();
-  const { createProject } = useProject();
+  const { createProject, deletionState } = useProject();
 
   const handleProjectSelect = (project: any) => {
     console.log('Project selected:', project.name);
@@ -25,13 +25,37 @@ export const AppRouter: React.FC = () => {
   };
 
   const handleCreateProject = async (name: string, language: string, domain: string) => {
-    console.log('Creating project:', { name, language, domain });
+    console.log('📝 Creating project:', { name, language, domain });
     const newProject = await createProject(name, language, domain);
     if (newProject) {
       await refetchProjects();
       setSelectedProject(newProject);
     }
   };
+
+  // HYBRID: Enhanced deletion loading state - only show for current project deletion
+  if (deletionState.isDeleting && selectedProject?.id === deletionState.deletingProjectId) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+            <Trash2 className="h-6 w-6 text-destructive absolute top-3 left-1/2 transform -translate-x-1/2" />
+          </div>
+          <p className="text-muted-foreground">Deleting project...</p>
+          <div className="w-48 h-2 bg-muted rounded-full mt-4 mx-auto overflow-hidden">
+            <div 
+              className="h-full bg-primary transition-all duration-300"
+              style={{ width: `${deletionState.progress}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            {deletionState.progress < 100 ? 'Cleaning up your data...' : 'Finalizing...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Show loading state
   if (currentState === 'checking' || loading) {
@@ -69,12 +93,27 @@ export const AppRouter: React.FC = () => {
         onCreateNewProject={moveToProjectCreation}
         userProjects={userProjects}
         loading={loading}
+        deletionState={deletionState}
       />
     );
   }
 
   // User has selected a project - show main interface
-  if (selectedProject) {
+  if (selectedProject && currentState === 'project_selected') {
+    // Verify the selected project still exists
+    const projectExists = userProjects.some(p => p.id === selectedProject.id);
+    
+    if (!projectExists) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-muted-foreground">Updating workspace...</p>
+          </div>
+        </div>
+      );
+    }
+    
     return <EnhancedMainInterface />;
   }
 
@@ -82,7 +121,8 @@ export const AppRouter: React.FC = () => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center">
-        <p className="text-muted-foreground">Something went wrong. Please refresh the page.</p>
+        <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+        <p className="text-muted-foreground">Initializing workspace...</p>
       </div>
     </div>
   );

@@ -35,6 +35,9 @@ import { AnalyticsDashboard } from './AnalyticsDashboard';
 import { ProjectSetupWizard } from './ProjectSetupWizard';
 import { validateFile } from '@/utils/fileValidation';
 import lexiqLogo from '@/assets/lexiq-team-logo.png';
+import glossaryIcon from '@/assets/glossary-icon.png';
+import translationIcon from '@/assets/translation-icon.png';
+import qaIcon from '@/assets/qa-support-icon.png';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 interface EnhancedMainInterfaceProps {
   onReturn?: () => void;
@@ -1291,7 +1294,7 @@ export function EnhancedMainInterface({
                     <CardContent className="pt-4 space-y-3">
                       <div onClick={() => !textManuallyEntered && translationInputRef.current?.click()} className={`flex items-center justify-between p-3 rounded-md border-2 border-dashed transition-all ${textManuallyEntered ? 'border-success bg-success/5 cursor-not-allowed opacity-60' : translationFile ? 'border-success bg-success/5 cursor-pointer hover:border-primary hover:bg-primary/5' : 'border-border cursor-pointer hover:border-primary hover:bg-primary/5'}`}>
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <FileText className="h-4 w-4 flex-shrink-0" />
+                          <img src={translationIcon} alt="Translation" className="h-4 w-4 flex-shrink-0" />
                           <span className="text-xs truncate">
                             {textManuallyEntered ? 'Text Inserted!' : translationFile ? translationFile.name : 'Translation File'}
                           </span>
@@ -1305,7 +1308,7 @@ export function EnhancedMainInterface({
 
                       <div onClick={() => glossaryInputRef.current?.click()} className={`flex items-center justify-between p-3 rounded-md border-2 border-dashed cursor-pointer transition-all hover:border-primary hover:bg-primary/5 ${glossaryFile ? 'border-success bg-success/5' : 'border-border'}`}>
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <BookOpen className="h-4 w-4 flex-shrink-0" />
+                          <img src={glossaryIcon} alt="Glossary" className="h-4 w-4 flex-shrink-0" />
                           <span className="text-xs truncate">
                             {glossaryFile ? glossaryFile.name : 'Glossary File'}
                           </span>
