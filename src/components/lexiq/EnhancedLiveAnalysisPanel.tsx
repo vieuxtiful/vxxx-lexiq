@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { CheckCircle, AlertCircle, XCircle, Zap, BookOpen, Palette, Check, RefreshCw, Globe, Building } from 'lucide-react';
+import { CheckCircle, AlertCircle, XCircle, Zap, BookOpen, Palette, Check, RefreshCw, Globe, Building, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface FlaggedTerm {
@@ -54,7 +54,70 @@ interface EnhancedLiveAnalysisPanelProps {
   selectedLanguage?: string;
   selectedDomain?: string;
   onValidateTerm?: (term: FlaggedTerm) => void;
+  originalAnalyzedContent?: string;
 }
+
+// Levenshtein distance-based similarity calculation
+const calculateLevenshteinSimilarity = (str1: string, str2: string): number => {
+  if (!str1 || !str2) return 0;
+  if (str1 === str2) return 1;
+  
+  // For very long texts, use a sampling approach to avoid performance issues
+  const MAX_LENGTH_FOR_DETAILED_CHECK = 10000;
+  let text1 = str1;
+  let text2 = str2;
+  
+  if (str1.length > MAX_LENGTH_FOR_DETAILED_CHECK || str2.length > MAX_LENGTH_FOR_DETAILED_CHECK) {
+    // Sample the beginning, middle, and end of the text for efficiency
+    const sampleSize = Math.min(3000, Math.min(str1.length, str2.length));
+    const start1 = str1.substring(0, sampleSize / 3);
+    const middle1 = str1.substring(Math.floor(str1.length / 2 - sampleSize / 6), Math.floor(str1.length / 2 + sampleSize / 6));
+    const end1 = str1.substring(str1.length - sampleSize / 3);
+    text1 = start1 + middle1 + end1;
+    
+    const start2 = str2.substring(0, sampleSize / 3);
+    const middle2 = str2.substring(Math.floor(str2.length / 2 - sampleSize / 6), Math.floor(str2.length / 2 + sampleSize / 6));
+    const end2 = str2.substring(str2.length - sampleSize / 3);
+    text2 = start2 + middle2 + end2;
+  }
+  
+  // Calculate Levenshtein distance
+  const track = Array(text2.length + 1).fill(null).map(() => 
+    Array(text1.length + 1).fill(null)
+  );
+  
+  for (let i = 0; i <= text1.length; i += 1) {
+    track[0][i] = i;
+  }
+  
+  for (let j = 0; j <= text2.length; j += 1) {
+    track[j][0] = j;
+  }
+  
+  for (let j = 1; j <= text2.length; j += 1) {
+    for (let i = 1; i <= text1.length; i += 1) {
+      const indicator = text1[i - 1] === text2[j - 1] ? 0 : 1;
+      track[j][i] = Math.min(
+        track[j][i - 1] + 1, // deletion
+        track[j - 1][i] + 1, // insertion
+        track[j - 1][i - 1] + indicator // substitution
+      );
+    }
+  }
+  
+  const distance = track[text2.length][text1.length];
+  const maxLength = Math.max(text1.length, text2.length);
+  
+  return maxLength === 0 ? 1 : 1 - (distance / maxLength);
+};
+
+const calculateContentSimilarity = (content1: string, content2: string): number => {
+  if (!content1 || !content2) return 0;
+  if (content1 === content2) return 1;
+  
+  // Use Levenshtein for more accurate similarity measurement
+  return calculateLevenshteinSimilarity(content1, content2);
+};
 
 export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps> = ({
   content,
@@ -68,6 +131,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   selectedLanguage = 'en',
   selectedDomain = 'general',
   onValidateTerm,
+  originalAnalyzedContent = '',
 }) => {
   const { toast } = useToast();
   const [hoveredTerm, setHoveredTerm] = useState<(FlaggedTerm & { position: { start: number; end: number } }) | null>(null);
@@ -96,6 +160,17 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
       semanticTypesJustEnabledRef.current = false;
     }
   }, [showSemanticTypes]);
+
+  // Enhanced content validation with better similarity checking
+  const isContentValid = () => {
+    if (!originalAnalyzedContent || !content) return false;
+    if (flaggedTerms.length === 0) return true; // No terms to validate
+    
+    const similarity = calculateContentSimilarity(content, originalAnalyzedContent);
+    console.log(`[LivePanel] Content similarity: ${(similarity * 100).toFixed(1)}%`);
+    
+    return similarity >= 0.9; // 90% similarity threshold
+  };
 
   // Save cursor position before any update
   const saveCursorPosition = () => {
@@ -463,6 +538,27 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                     <Building className="h-3 w-3" />
                     {selectedDomain}
                   </Badge>
+                  
+                  {/* Content validation warning with similarity percentage */}
+                  {flaggedTerms.length > 0 && !isContentValid() && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge variant="destructive" className="text-xs flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          Content Modified
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div className="max-w-xs">
+                          <p className="font-medium mb-1">Content has been modified</p>
+                          <p className="text-xs">
+                            The current text differs significantly from the analyzed version. 
+                            Click the re-analyze button to update the analysis.
+                          </p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </div>
               </CardTitle>
               

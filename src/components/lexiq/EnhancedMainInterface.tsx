@@ -69,7 +69,69 @@ interface HistoryState {
   timestamp: number;
 }
 
-export function EnhancedMainInterface({ 
+// Levenshtein distance-based similarity calculation for accurate content change detection
+const calculateLevenshteinSimilarity = (str1: string, str2: string): number => {
+  if (!str1 || !str2) return 0;
+  if (str1 === str2) return 1;
+  
+  // For very long texts, use a sampling approach to avoid performance issues
+  const MAX_LENGTH_FOR_DETAILED_CHECK = 10000;
+  let text1 = str1;
+  let text2 = str2;
+  
+  if (str1.length > MAX_LENGTH_FOR_DETAILED_CHECK || str2.length > MAX_LENGTH_FOR_DETAILED_CHECK) {
+    // Sample the beginning, middle, and end of the text for efficiency
+    const sampleSize = Math.min(3000, Math.min(str1.length, str2.length));
+    const start1 = str1.substring(0, sampleSize / 3);
+    const middle1 = str1.substring(Math.floor(str1.length / 2 - sampleSize / 6), Math.floor(str1.length / 2 + sampleSize / 6));
+    const end1 = str1.substring(str1.length - sampleSize / 3);
+    text1 = start1 + middle1 + end1;
+    
+    const start2 = str2.substring(0, sampleSize / 3);
+    const middle2 = str2.substring(Math.floor(str2.length / 2 - sampleSize / 6), Math.floor(str2.length / 2 + sampleSize / 6));
+    const end2 = str2.substring(str2.length - sampleSize / 3);
+    text2 = start2 + middle2 + end2;
+  }
+  
+  // Calculate Levenshtein distance
+  const track = Array(text2.length + 1).fill(null).map(() => 
+    Array(text1.length + 1).fill(null)
+  );
+  
+  for (let i = 0; i <= text1.length; i += 1) {
+    track[0][i] = i;
+  }
+  
+  for (let j = 0; j <= text2.length; j += 1) {
+    track[j][0] = j;
+  }
+  
+  for (let j = 1; j <= text2.length; j += 1) {
+    for (let i = 1; i <= text1.length; i += 1) {
+      const indicator = text1[i - 1] === text2[j - 1] ? 0 : 1;
+      track[j][i] = Math.min(
+        track[j][i - 1] + 1, // deletion
+        track[j - 1][i] + 1, // insertion
+        track[j - 1][i - 1] + indicator // substitution
+      );
+    }
+  }
+  
+  const distance = track[text2.length][text1.length];
+  const maxLength = Math.max(text1.length, text2.length);
+  
+  return maxLength === 0 ? 1 : 1 - (distance / maxLength);
+};
+
+const calculateContentSimilarity = (content1: string, content2: string): number => {
+  if (!content1 || !content2) return 0;
+  if (content1 === content2) return 1;
+  
+  // Use Levenshtein for more accurate similarity measurement
+  return calculateLevenshteinSimilarity(content1, content2);
+};
+
+export function EnhancedMainInterface({
   onReturn, 
   onReturnToWelcome,
   selectedLanguage: initialLanguage = 'en',
@@ -110,6 +172,7 @@ export function EnhancedMainInterface({
   
   // Smart reanalysis state
   const [lastAnalyzedContent, setLastAnalyzedContent] = useState('');
+  const [originalAnalyzedContent, setOriginalAnalyzedContent] = useState('');
   const [lastAnalysisParams, setLastAnalysisParams] = useState({
     language: '',
     domain: '',
@@ -605,6 +668,8 @@ export function EnhancedMainInterface({
         setAnalysisResults(result);
         setAnalysisComplete(true);
         setCurrentContent(translationContent);
+        setOriginalAnalyzedContent(translationContent);
+        setLastAnalyzedContent(translationContent);
         setAnalysisProgress(100);
         addToHistory(translationContent, result);
         
@@ -687,6 +752,7 @@ export function EnhancedMainInterface({
         console.log('✅ Exact cache hit - using cached results');
         setAnalysisResults(cachedResult);
         setLastAnalyzedContent(content);
+        setOriginalAnalyzedContent(content);
         setLastAnalysisParams({
           language: selectedLanguage,
           domain: selectedDomain,
@@ -743,6 +809,7 @@ export function EnhancedMainInterface({
               
               setAnalysisResults(mergedResults);
               setLastAnalyzedContent(content);
+              setOriginalAnalyzedContent(content);
               setLastAnalysisParams({
                 language: selectedLanguage,
                 domain: selectedDomain,
@@ -789,6 +856,7 @@ export function EnhancedMainInterface({
         
         setAnalysisResults(result);
         setLastAnalyzedContent(content);
+        setOriginalAnalyzedContent(content);
         setLastAnalysisParams({
           language: selectedLanguage,
           domain: selectedDomain,
@@ -815,15 +883,38 @@ export function EnhancedMainInterface({
 
   const handleContentChange = (content: string) => {
     setCurrentContent(content);
-    addToHistory(content, analysisResults);
     setHasUnsavedChanges(true);
+    
+    // Check if content has changed significantly from what was analyzed
+    if (analysisResults && originalAnalyzedContent) {
+      const similarity = calculateContentSimilarity(content, originalAnalyzedContent);
+      
+      console.log(`Content similarity: ${(similarity * 100).toFixed(1)}%`);
+      
+      // If content similarity is less than 80% (20% change), clear analysis
+      if (similarity < 0.8) {
+        console.log('Content changed significantly, clearing analysis results');
+        setAnalysisResults(null);
+        setAnalysisComplete(false);
+        setLastAnalyzedContent('');
+        setOriginalAnalyzedContent('');
+        
+        toast({
+          title: "Content changed significantly",
+          description: `Analysis results cleared (${(similarity * 100).toFixed(1)}% similarity). Click 'Start QA' to re-analyze the new content.`,
+          variant: "default",
+        });
+      }
+    }
+    
+    // Add to history (but don't clear analysis if it's just minor changes)
+    addToHistory(content, analysisResults);
     
     // Detect manual text entry
     if (content.length > 0 && !textManuallyEntered) {
       setTextManuallyEntered(true);
       setShowUploadIconTransition(true);
       
-      // After 2 seconds, transition icon
       setTimeout(() => {
         setShowUploadIconTransition(false);
       }, 2000);
@@ -1485,6 +1576,7 @@ export function EnhancedMainInterface({
                           selectedLanguage={selectedLanguage}
                           selectedDomain={selectedDomain}
                           onValidateTerm={handleValidateTerm}
+                          originalAnalyzedContent={originalAnalyzedContent}
                         />
                       </div>
                     </ResizablePanel>
