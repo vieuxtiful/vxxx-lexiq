@@ -10,6 +10,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
@@ -1054,7 +1055,7 @@ export function EnhancedMainInterface({
             <div className="flex items-center space-x-6">
               <button
                 onClick={() => {
-                  if (currentContent.trim() && hasUnsavedChanges) {
+                  if (currentContent.trim()) {
                     setShowQuitDialog(true);
                   } else {
                     onReturnToWelcome?.();
@@ -1085,16 +1086,6 @@ export function EnhancedMainInterface({
               >
                 <Save className="h-4 w-4" />
                 {hasUnsavedChanges ? 'Save*' : 'Versions'}
-              </Button>
-
-              {/* Sign Out Button */}
-              <Button
-                onClick={() => setShowSignOutDialog(true)}
-                variant="outline"
-                className="gap-2"
-              >
-                <LogOut className="h-4 w-4" />
-                Sign Out
               </Button>
 
               {/* Download Dropdown */}
@@ -1141,6 +1132,11 @@ export function EnhancedMainInterface({
                     <p className="text-sm font-medium">{user?.email}</p>
                     <p className="text-xs text-muted-foreground">Signed in</p>
                   </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setShowSignOutDialog(true)}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
