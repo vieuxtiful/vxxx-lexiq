@@ -117,8 +117,16 @@ export function EnhancedMainInterface({
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [engineReady, setEngineReady] = useState(true);
   const [activeMainTab, setActiveMainTab] = useState('edit');
-  const [grammarCheckingEnabled, setGrammarCheckingEnabled] = useState(true);
-  const [spellingCheckingEnabled, setSpellingCheckingEnabled] = useState(true);
+  const [grammarCheckingEnabled, setGrammarCheckingEnabled] = useState(() => {
+    // Load grammar checking preference from localStorage
+    const saved = localStorage.getItem('lexiq-grammar-checking');
+    return saved === null ? true : saved === 'true';
+  });
+  const [spellingCheckingEnabled, setSpellingCheckingEnabled] = useState(() => {
+    // Load spelling checking preference from localStorage
+    const saved = localStorage.getItem('lexiq-spelling-checking');
+    return saved === null ? true : saved === 'true';
+  });
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [currentContent, setCurrentContent] = useState('');
   const [translationFileUploaded, setTranslationFileUploaded] = useState(false);
@@ -356,6 +364,16 @@ export function EnhancedMainInterface({
       localStorage.setItem('lexiq-dark-mode', 'false');
     }
   }, [isDarkMode]);
+
+  // Persist grammar checking toggle state
+  useEffect(() => {
+    localStorage.setItem('lexiq-grammar-checking', String(grammarCheckingEnabled));
+  }, [grammarCheckingEnabled]);
+
+  // Persist spelling checking toggle state
+  useEffect(() => {
+    localStorage.setItem('lexiq-spelling-checking', String(spellingCheckingEnabled));
+  }, [spellingCheckingEnabled]);
 
   // Real-time language validation with blocking
   useEffect(() => {
