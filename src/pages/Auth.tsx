@@ -94,11 +94,11 @@ const Auth = () => {
             
             <TabsContent value="signin">
               <form onSubmit={handleSignIn} className="space-y-4 px-0">
-                <div className="space-y-2">
+                <div className="space-y-2 px-[10px]">
                   <Label htmlFor="signin-email">Email</Label>
                   <Input id="signin-email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 px-[10px]">
                   <Label htmlFor="signin-password">Password</Label>
                   <Input id="signin-password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
                 </div>
@@ -110,15 +110,15 @@ const Auth = () => {
             
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2">
+                <div className="space-y-2 px-[10px]">
                   <Label htmlFor="signup-name">Name</Label>
                   <Input id="signup-name" type="text" placeholder="Your name" value={name} onChange={e => setName(e.target.value)} />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 px-[10px]">
                   <Label htmlFor="signup-email">Email</Label>
                   <Input id="signup-email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 px-[10px]">
                   <Label htmlFor="signup-password">Password</Label>
                   <Input id="signup-password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} />
                   {passwordValidation && <PasswordStrengthIndicator password={password} requirements={passwordValidation.requirements} strength={passwordValidation.strength} />}
