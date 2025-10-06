@@ -418,12 +418,11 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   const hexToRgba = (hex: string, opacity: number) => {
     // Remove # if present
     hex = hex.replace('#', '');
-    
+
     // Parse hex values
     const r = parseInt(hex.substring(0, 2), 16);
     const g = parseInt(hex.substring(2, 4), 16);
     const b = parseInt(hex.substring(4, 6), 16);
-    
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
   };
   const renderContentWithUnderlines = () => {
@@ -575,26 +574,23 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
               
               {/* Reanalyze button - shown when content has changed from original analyzed content */}
               {onReanalyze && hasContentChanged && content.trim().length > 0 && originalAnalyzedContent && <Button variant="outline" size="sm" onClick={() => {
-                  onReanalyze(content);
-                  setHasContentChanged(false);
-                  setLastEditedContent('');
-                }} disabled={isReanalyzing} className="h-6 text-xs gap-1.5 px-2">
+              onReanalyze(content);
+              setHasContentChanged(false);
+              setLastEditedContent('');
+            }} disabled={isReanalyzing} className="h-6 text-xs gap-1.5 px-2">
                   {isReanalyzing ? <RefreshCw className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                   {isReanalyzing ? 'Reanalyzing...' : 'Reanalyze'}
                 </Button>}
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 px-[15px] my-0 py-0 mx-0">
               {/* Terminology Analysis - Always On */}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center space-x-2 opacity-60 cursor-not-allowed">
-                      <Switch id="terminology-check" checked={true} disabled />
-                      <Label htmlFor="terminology-check" className="text-sm flex items-center gap-1">
-                        <BookOpen className="h-3 w-3" />
-                        Terminology
-                      </Label>
+                      
+                      
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -608,17 +604,13 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center space-x-2">
-                      <Switch 
-                        id="spelling-check" 
-                        checked={spellingCheckingEnabled ?? true} 
-                        onCheckedChange={enabled => {
-                          console.log('Spelling checking toggled:', enabled);
-                          onSpellingCheckingToggle?.(enabled);
-                        }} 
-                      />
+                      <Switch id="spelling-check" checked={spellingCheckingEnabled ?? true} onCheckedChange={enabled => {
+                      console.log('Spelling checking toggled:', enabled);
+                      onSpellingCheckingToggle?.(enabled);
+                    }} />
                       <Label htmlFor="spelling-check" className="text-sm flex items-center gap-1">
                         <AlertCircle className="h-3 w-3" />
-                        Spelling {(spellingCheckingEnabled ?? true) ? '(ON)' : '(OFF)'}
+                        Spelling {spellingCheckingEnabled ?? true ? '(ON)' : '(OFF)'}
                       </Label>
                     </div>
                   </TooltipTrigger>
@@ -633,14 +625,10 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center space-x-2">
-                      <Switch 
-                        id="grammar-check" 
-                        checked={grammarCheckingEnabled} 
-                        onCheckedChange={enabled => {
-                          console.log('Grammar checking toggled:', enabled);
-                          onGrammarCheckingToggle?.(enabled);
-                        }} 
-                      />
+                      <Switch id="grammar-check" checked={grammarCheckingEnabled} onCheckedChange={enabled => {
+                      console.log('Grammar checking toggled:', enabled);
+                      onGrammarCheckingToggle?.(enabled);
+                    }} />
                       <Label htmlFor="grammar-check" className="text-sm flex items-center gap-1">
                         <Zap className="h-3 w-3" />
                         Grammar {grammarCheckingEnabled ? '(ON)' : '(OFF)'}
@@ -800,8 +788,8 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                     <div className="flex items-center gap-2">
                       {getClassificationIcon(hoveredTerm.classification)}
                       <Badge style={{
-                    backgroundColor: getClassificationColor(hoveredTerm.classification)
-                  }} className="text-white">
+                      backgroundColor: getClassificationColor(hoveredTerm.classification)
+                    }} className="text-white">
                         {hoveredTerm.classification.toUpperCase()}
                       </Badge>
                     </div>
@@ -824,15 +812,11 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                       <div className="text-xs text-muted-foreground mb-1">Semantic Type:</div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full" style={{
-                    backgroundColor: hoveredTerm.semantic_type.ui_information.color_code
-                  }}></div>
+                      backgroundColor: hoveredTerm.semantic_type.ui_information.color_code
+                    }}></div>
                         <span className="text-sm font-medium">
                           {/* Priority: 1) Classification, 2) Semantic Type, 3) Display Name */}
-                          {formatSemanticType(
-                            hoveredTerm.semantic_type.ui_information.category || 
-                            hoveredTerm.semantic_type.semantic_type || 
-                            hoveredTerm.semantic_type.ui_information.display_name
-                          )}
+                          {formatSemanticType(hoveredTerm.semantic_type.ui_information.category || hoveredTerm.semantic_type.semantic_type || hoveredTerm.semantic_type.ui_information.display_name)}
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
@@ -864,13 +848,13 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                       <div className="text-xs text-muted-foreground mb-1">Suggestions:</div>
                       <div className="flex flex-wrap gap-1">
                         {hoveredTerm.suggestions.filter(suggestion => suggestion !== hoveredTerm.text).slice(0, 3).map((suggestion, idx) => <Badge key={idx} variant="secondary" className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors" onClick={e => {
-                    e.stopPropagation();
-                    // Auto-replace with the clicked suggestion
-                    const newContent = content.slice(0, hoveredTerm.position.start) + suggestion + content.slice(hoveredTerm.position.end);
-                    onContentChange(newContent);
-                    setHoveredTerm(null);
-                    setTooltipPosition(null);
-                  }}>
+                      e.stopPropagation();
+                      // Auto-replace with the clicked suggestion
+                      const newContent = content.slice(0, hoveredTerm.position.start) + suggestion + content.slice(hoveredTerm.position.end);
+                      onContentChange(newContent);
+                      setHoveredTerm(null);
+                      setTooltipPosition(null);
+                    }}>
                             {suggestion}
                           </Badge>)}
                       </div>
