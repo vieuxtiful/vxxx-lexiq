@@ -1,0 +1,507 @@
+{
+  "description": "Standardized test corpus for benchmarking translation QA tools",
+  "version": "1.0",
+  "total_tests": 50,
+  "test_cases": [
+    {
+      "id": "num_001",
+      "source": "The product costs $99.99 and weighs 2.5 kg.",
+      "target": "El producto cuesta $99.99 y pesa 2.5 kg.",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "es",
+      "domain": "ecommerce"
+    },
+    {
+      "id": "num_002",
+      "source": "The product costs $99.99 and weighs 2.5 kg.",
+      "target": "El producto cuesta $89.99 y pesa 2.5 kg.",
+      "expected_issues": ["number_mismatch"],
+      "error_type": "number",
+      "severity": "critical",
+      "language": "es",
+      "domain": "ecommerce"
+    },
+    {
+      "id": "tag_001",
+      "source": "Click <b>here</b> to continue.",
+      "target": "Cliquez <b>ici</b> pour continuer.",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "fr",
+      "domain": "ui"
+    },
+    {
+      "id": "tag_002",
+      "source": "Click <b>here</b> to continue.",
+      "target": "Cliquez ici pour continuer.",
+      "expected_issues": ["missing_tag"],
+      "error_type": "tag",
+      "severity": "critical",
+      "language": "fr",
+      "domain": "ui"
+    },
+    {
+      "id": "gram_001",
+      "source": "The cats are playing.",
+      "target": "Les chats joue.",
+      "expected_issues": ["subject_verb_agreement"],
+      "error_type": "grammar",
+      "severity": "grammar",
+      "language": "fr",
+      "domain": "general"
+    },
+    {
+      "id": "spell_001",
+      "source": "Welcome to our website.",
+      "target": "Bienvenido a nuestro sitio web.",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "es",
+      "domain": "general"
+    },
+    {
+      "id": "spell_002",
+      "source": "Welcome to our website.",
+      "target": "Bienbenido a nuestro sitio web.",
+      "expected_issues": ["spelling_error"],
+      "error_type": "spelling",
+      "severity": "spelling",
+      "language": "es",
+      "domain": "general"
+    },
+    {
+      "id": "white_001",
+      "source": "Hello world",
+      "target": " Hello world ",
+      "expected_issues": ["leading_trailing_whitespace"],
+      "error_type": "whitespace",
+      "severity": "review",
+      "language": "en",
+      "domain": "general"
+    },
+    {
+      "id": "white_002",
+      "source": "Hello world",
+      "target": "Hello  world",
+      "expected_issues": ["double_space"],
+      "error_type": "whitespace",
+      "severity": "review",
+      "language": "en",
+      "domain": "general"
+    },
+    {
+      "id": "cons_001",
+      "source": "Save file",
+      "target": "Guardar archivo",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "es",
+      "domain": "software"
+    },
+    {
+      "id": "legal_001",
+      "source": "This agreement is binding under Article 42.",
+      "target": "Este acuerdo es vinculante según el Artículo 42.",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "es",
+      "domain": "legal"
+    },
+    {
+      "id": "legal_002",
+      "source": "This agreement is binding under Article 42.",
+      "target": "Este acuerdo es vinculante según el Artículo 43.",
+      "expected_issues": ["number_mismatch"],
+      "error_type": "number",
+      "severity": "critical",
+      "language": "es",
+      "domain": "legal"
+    },
+    {
+      "id": "med_001",
+      "source": "Take 2 tablets every 8 hours.",
+      "target": "Tome 2 tabletas cada 8 horas.",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "es",
+      "domain": "medical"
+    },
+    {
+      "id": "med_002",
+      "source": "Take 2 tablets every 8 hours.",
+      "target": "Tome 3 tabletas cada 8 horas.",
+      "expected_issues": ["number_mismatch"],
+      "error_type": "number",
+      "severity": "critical",
+      "language": "es",
+      "domain": "medical"
+    },
+    {
+      "id": "tech_001",
+      "source": "Configure the <code>API_KEY</code> variable.",
+      "target": "Configurez la variable <code>API_KEY</code>.",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "fr",
+      "domain": "technical"
+    },
+    {
+      "id": "tech_002",
+      "source": "Configure the <code>API_KEY</code> variable.",
+      "target": "Configurez la variable API_KEY.",
+      "expected_issues": ["missing_tag"],
+      "error_type": "tag",
+      "severity": "critical",
+      "language": "fr",
+      "domain": "technical"
+    },
+    {
+      "id": "fin_001",
+      "source": "Your balance is $1,234.56 USD.",
+      "target": "Su saldo es de $1,234.56 USD.",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "es",
+      "domain": "finance"
+    },
+    {
+      "id": "fin_002",
+      "source": "Your balance is $1,234.56 USD.",
+      "target": "Su saldo es de $1,234.50 USD.",
+      "expected_issues": ["number_mismatch"],
+      "error_type": "number",
+      "severity": "critical",
+      "language": "es",
+      "domain": "finance"
+    },
+    {
+      "id": "complex_001",
+      "source": "Click <a href='#'>here</a> to view the $99 offer (expires in 24 hours).",
+      "target": "Cliquez <a href='#'>ici</a> pour voir l'offre de $99 (expire dans 24 heures).",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "fr",
+      "domain": "marketing"
+    },
+    {
+      "id": "complex_002",
+      "source": "Click <a href='#'>here</a> to view the $99 offer (expires in 24 hours).",
+      "target": "Cliquez ici pour voir l'offre de $89 (expire dans 48 heures).",
+      "expected_issues": ["missing_tag", "number_mismatch"],
+      "error_type": "multiple",
+      "severity": "critical",
+      "language": "fr",
+      "domain": "marketing"
+    },
+    {
+      "id": "term_001",
+      "source": "machine learning",
+      "target": "aprendizaje automático",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "es",
+      "domain": "technical"
+    },
+    {
+      "id": "term_002",
+      "source": "artificial intelligence",
+      "target": "inteligencia artifical",
+      "expected_issues": ["spelling_error"],
+      "error_type": "spelling",
+      "severity": "spelling",
+      "language": "es",
+      "domain": "technical"
+    },
+    {
+      "id": "punc_001",
+      "source": "Are you ready?",
+      "target": "¿Estás listo?",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "es",
+      "domain": "general"
+    },
+    {
+      "id": "punc_002",
+      "source": "Are you ready?",
+      "target": "Estás listo?",
+      "expected_issues": ["missing_punctuation"],
+      "error_type": "grammar",
+      "severity": "review",
+      "language": "es",
+      "domain": "general"
+    },
+    {
+      "id": "case_001",
+      "source": "Welcome to New York City",
+      "target": "Bienvenido a la ciudad de Nueva York",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "es",
+      "domain": "general"
+    },
+    {
+      "id": "date_001",
+      "source": "Meeting on March 15, 2024 at 3:00 PM",
+      "target": "Réunion le 15 mars 2024 à 15h00",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "fr",
+      "domain": "business"
+    },
+    {
+      "id": "date_002",
+      "source": "Meeting on March 15, 2024 at 3:00 PM",
+      "target": "Réunion le 15 mars 2025 à 15h00",
+      "expected_issues": ["number_mismatch"],
+      "error_type": "number",
+      "severity": "critical",
+      "language": "fr",
+      "domain": "business"
+    },
+    {
+      "id": "unit_001",
+      "source": "Drive 5 km and turn left",
+      "target": "Conduisez 5 km et tournez à gauche",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "fr",
+      "domain": "general"
+    },
+    {
+      "id": "unit_002",
+      "source": "Drive 5 km and turn left",
+      "target": "Conduisez 5 miles et tournez à gauche",
+      "expected_issues": ["unit_conversion_error"],
+      "error_type": "review",
+      "severity": "review",
+      "language": "fr",
+      "domain": "general"
+    },
+    {
+      "id": "percent_001",
+      "source": "Save 25% on all items",
+      "target": "Ahorre 25% en todos los artículos",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "es",
+      "domain": "ecommerce"
+    },
+    {
+      "id": "percent_002",
+      "source": "Save 25% on all items",
+      "target": "Ahorre 20% en todos los artículos",
+      "expected_issues": ["number_mismatch"],
+      "error_type": "number",
+      "severity": "critical",
+      "language": "es",
+      "domain": "ecommerce"
+    },
+    {
+      "id": "gender_001",
+      "source": "The user must enter their password",
+      "target": "El usuario debe ingresar su contraseña",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "es",
+      "domain": "software"
+    },
+    {
+      "id": "plural_001",
+      "source": "5 items in cart",
+      "target": "5 artículos en el carrito",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "es",
+      "domain": "ecommerce"
+    },
+    {
+      "id": "plural_002",
+      "source": "1 item in cart",
+      "target": "1 artículos en el carrito",
+      "expected_issues": ["plural_mismatch"],
+      "error_type": "grammar",
+      "severity": "review",
+      "language": "es",
+      "domain": "ecommerce"
+    },
+    {
+      "id": "brand_001",
+      "source": "Download the iPhone app",
+      "target": "Téléchargez l'application iPhone",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "fr",
+      "domain": "marketing"
+    },
+    {
+      "id": "abbrev_001",
+      "source": "Contact us via email at info@example.com",
+      "target": "Contáctenos por correo electrónico a info@example.com",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "es",
+      "domain": "general"
+    },
+    {
+      "id": "abbrev_002",
+      "source": "Contact us via email at info@example.com",
+      "target": "Contáctenos por correo electrónico a info@ejemplo.com",
+      "expected_issues": ["content_modification"],
+      "error_type": "critical",
+      "severity": "critical",
+      "language": "es",
+      "domain": "general"
+    },
+    {
+      "id": "link_001",
+      "source": "Visit <a href='https://example.com'>our website</a>",
+      "target": "Visitez <a href='https://example.com'>notre site web</a>",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "fr",
+      "domain": "general"
+    },
+    {
+      "id": "link_002",
+      "source": "Visit <a href='https://example.com'>our website</a>",
+      "target": "Visitez <a href='https://ejemplo.com'>notre site web</a>",
+      "expected_issues": ["url_modification"],
+      "error_type": "critical",
+      "severity": "critical",
+      "language": "fr",
+      "domain": "general"
+    },
+    {
+      "id": "var_001",
+      "source": "Hello {username}, welcome back!",
+      "target": "Bonjour {username}, bon retour!",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "fr",
+      "domain": "software"
+    },
+    {
+      "id": "var_002",
+      "source": "Hello {username}, welcome back!",
+      "target": "Bonjour username, bon retour!",
+      "expected_issues": ["missing_variable"],
+      "error_type": "critical",
+      "severity": "critical",
+      "language": "fr",
+      "domain": "software"
+    },
+    {
+      "id": "empty_001",
+      "source": "Click here",
+      "target": "",
+      "expected_issues": ["empty_translation"],
+      "error_type": "critical",
+      "severity": "critical",
+      "language": "es",
+      "domain": "general"
+    },
+    {
+      "id": "len_001",
+      "source": "OK",
+      "target": "De acuerdo, absolutamente, por supuesto",
+      "expected_issues": ["length_mismatch"],
+      "error_type": "review",
+      "severity": "review",
+      "language": "es",
+      "domain": "ui"
+    },
+    {
+      "id": "tone_001",
+      "source": "Click the button below",
+      "target": "Haz clic en el botón de abajo",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "es",
+      "domain": "ui"
+    },
+    {
+      "id": "fmt_001",
+      "source": "Total: $1,000.00",
+      "target": "Total: 1.000,00 €",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "es",
+      "domain": "finance"
+    },
+    {
+      "id": "legal_003",
+      "source": "Section 3.1.2 applies",
+      "target": "La section 3.1.2 s'applique",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "fr",
+      "domain": "legal"
+    },
+    {
+      "id": "legal_004",
+      "source": "Section 3.1.2 applies",
+      "target": "La section 3.1.3 s'applique",
+      "expected_issues": ["number_mismatch"],
+      "error_type": "number",
+      "severity": "critical",
+      "language": "fr",
+      "domain": "legal"
+    },
+    {
+      "id": "list_001",
+      "source": "Steps: 1. Login 2. Select 3. Confirm",
+      "target": "Étapes: 1. Connexion 2. Sélectionner 3. Confirmer",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "fr",
+      "domain": "software"
+    },
+    {
+      "id": "list_002",
+      "source": "Steps: 1. Login 2. Select 3. Confirm",
+      "target": "Étapes: 1. Connexion 2. Confirmer",
+      "expected_issues": ["missing_content"],
+      "error_type": "critical",
+      "severity": "critical",
+      "language": "fr",
+      "domain": "software"
+    },
+    {
+      "id": "special_001",
+      "source": "Price: €50 (approx. $55)",
+      "target": "Precio: €50 (aprox. $55)",
+      "expected_issues": [],
+      "error_type": "none",
+      "severity": "valid",
+      "language": "es",
+      "domain": "ecommerce"
+    }
+  ]
+}

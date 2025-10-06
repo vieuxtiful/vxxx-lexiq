@@ -109,6 +109,14 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // Extract numbers, tags, and check whitespace issues
+    const sourceNumbers = (glossaryContent.match(/\d+\.?\d*/g) || []).join(',');
+    const targetNumbers = (translationContent.match(/\d+\.?\d*/g) || []).join(',');
+    const sourceTags = (glossaryContent.match(/<[^>]+>/g) || []).join(' ');
+    const targetTags = (translationContent.match(/<[^>]+>/g) || []).join(' ');
+    const hasLeadingTrailingSpace = /^\s|\s$/.test(translationContent);
+    const hasDoubleSpace = /\s{2,}/.test(translationContent);
+
     // ENHANCED PROMPT with stronger language enforcement
     const prompt = `CRITICAL LANGUAGE REQUIREMENT: ALL output text, suggestions, rationale, and context MUST be in ${language}. Never provide English suggestions for ${language} text.
 
@@ -117,6 +125,11 @@ ANALYSIS CONTEXT:
 - Domain: ${domain}
 - Grammar Checking: ${checkGrammar ? 'ENABLED' : 'DISABLED'}
 - Spelling Checking: ${checkSpelling ? 'ENABLED' : 'DISABLED'}
+
+ADDITIONAL QA CHECKS:
+- Number Validation: Source numbers [${sourceNumbers}] vs Target numbers [${targetNumbers}] - FLAG CRITICAL if mismatch
+- Tag Preservation: Source tags [${sourceTags}] vs Target tags [${targetTags}] - FLAG CRITICAL if missing/extra
+- Whitespace Issues: Leading/trailing=${hasLeadingTrailingSpace}, Double spaces=${hasDoubleSpace} - FLAG REVIEW if present
 
 GLOSSARY TERMS (authoritative reference):
 ${glossaryContent}
@@ -130,14 +143,21 @@ When a term matches multiple classifications, assign the HIGHEST priority classi
 ${checkSpelling ? 'PRIORITY 1 - SPELLING:\n  - Obvious typos, misspellings\n  - Non-existent words not in standard dictionaries\n  - Character transpositions, missing/extra letters\n  - Incorrect plurals that create non-existent words\n' : ''}
 ${checkGrammar ? 'PRIORITY 2 - GRAMMAR:\n  - Subject-verb agreement errors (singular/plural mismatch)\n  - Article-noun number agreement (a/an + plural noun)\n  - Incorrect pluralizations of mass nouns (e.g., "quenchings" → "quenching")\n  - Tense inconsistencies\n  - Article misuse (a/an/the)\n  - Preposition errors\n  - Wrong word forms even if term appears in glossary\n' : ''}
 PRIORITY 3 - CRITICAL:
+  - Number mismatches between source and target
+  - Missing or extra HTML/XML tags
   - Terms completely inconsistent with glossary
   - Significantly better alternatives exist
   - Context-inappropriate terminology
+  - Empty translations
+  - URL or email modifications
 
 PRIORITY 4 - REVIEW:
+  - Leading or trailing whitespace
+  - Double spaces or formatting issues
   - Valid variations (conjugations of count nouns, declensions)
   - Acceptable synonyms requiring review
   - Minor stylistic improvements
+  - Significant length mismatches
 
 PRIORITY 5 - VALID:
   - Exact glossary matches
@@ -216,6 +236,20 @@ SPELLING VALIDATION (when checkSpelling=true):
 LANGUAGE CHECK PARAMETERS:
 - checkSpelling: ${checkSpelling} - ${checkSpelling ? 'Flag spelling issues with PRIORITY 1' : 'DO NOT flag spelling issues'}
 - checkGrammar: ${checkGrammar} - ${checkGrammar ? 'Flag grammar issues with PRIORITY 2' : 'DO NOT flag grammar issues'}
+
+NUMBER VALIDATION:
+- Compare all numbers in source vs target
+- Flag as CRITICAL if numbers don't match (dates, amounts, percentages, quantities)
+- Ignore formatting differences (1,000 vs 1000 is OK)
+
+TAG PRESERVATION:
+- Extract all HTML/XML tags from source and target
+- Flag as CRITICAL if tags are missing, extra, or mismatched
+- Examples: <b>, <code>, <a href="">, {variables}
+
+WHITESPACE CHECKS:
+- Flag as REVIEW if leading/trailing whitespace detected
+- Flag as REVIEW if double spaces found
 
 LANGUAGE COMPLIANCE RULES:
 - ALL suggestions MUST be in ${language}

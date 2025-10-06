@@ -1,8 +1,10 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { TrendingUp, AlertCircle, CheckCircle, Target, PieChart, BarChart3, TrendingDown } from 'lucide-react';
+import { TrendingUp, AlertCircle, CheckCircle, Target, PieChart, BarChart3, TrendingDown, Trophy } from 'lucide-react';
 import { AnalysisStatistics } from '@/hooks/useAnalysisEngine';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 interface EnhancedStatisticsTabProps {
   statistics: AnalysisStatistics;
@@ -30,9 +32,15 @@ export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ st
   return (
     <div className="space-y-6 p-6">
       {/* Header Section */}
-      <div>
-        <h2 className="text-2xl font-bold mb-2">LQA Analysis</h2>
-        <p className="text-muted-foreground">Comprehensive statistical evaluation of terminology consistency and quality</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold mb-2">LQA Analysis</h2>
+          <p className="text-muted-foreground">Comprehensive statistical evaluation of terminology consistency and quality</p>
+        </div>
+        <Button variant="outline" onClick={() => window.location.hash = '#benchmark'}>
+          <Trophy className="w-4 h-4 mr-2" />
+          View Benchmark
+        </Button>
       </div>
 
       {/* Key Metrics Grid */}

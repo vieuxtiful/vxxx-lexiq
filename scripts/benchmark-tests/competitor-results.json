@@ -1,0 +1,46 @@
+{
+  "description": "Results from competitor tools (ErrorSpy & Verifika) - Manual entry required",
+  "version": "1.0",
+  "tools": {
+    "errorspy": {
+      "name": "ErrorSpy",
+      "version": "Latest",
+      "test_date": null,
+      "results": {},
+      "summary": {
+        "note": "Manually run test corpus through ErrorSpy and record results here",
+        "format": {
+          "test_id": {
+            "detected": true,
+            "issues_found": ["list of issues"],
+            "processing_time_ms": 0
+          }
+        }
+      }
+    },
+    "verifika": {
+      "name": "Verifika",
+      "version": "Latest",
+      "test_date": null,
+      "results": {},
+      "summary": {
+        "note": "Manually run test corpus through Verifika and record results here",
+        "format": {
+          "test_id": {
+            "detected": true,
+            "issues_found": ["list of issues"],
+            "processing_time_ms": 0
+          }
+        }
+      }
+    }
+  },
+  "instructions": [
+    "1. Export test cases from test-corpus.json",
+    "2. Run each test case through ErrorSpy",
+    "3. Record detected issues and processing time",
+    "4. Repeat for Verifika",
+    "5. Update this file with results",
+    "6. Run benchmark comparison to see LexiQ performance vs competitors"
+  ]
+}
