@@ -9,8 +9,11 @@ const corsHeaders = {
  * Extract the full sentence containing a term
  */
 function extractFullSentence(text: string, startPos: number, endPos: number): string {
-  if (!text || startPos < 0 || endPos > text.length) {
-    return text.substring(Math.max(0, startPos - 30), Math.min(text.length, endPos + 30)).trim();
+  // Defensive checks for undefined/null/invalid positions
+  if (!text || typeof startPos !== 'number' || typeof endPos !== 'number' || 
+      startPos < 0 || endPos > text.length || startPos >= endPos) {
+    console.warn(`⚠️ Invalid position data: startPos=${startPos}, endPos=${endPos}, textLength=${text?.length || 0}`);
+    return text?.substring(0, Math.min(100, text.length)) || '';
   }
 
   // Find the start of the sentence
@@ -141,7 +144,7 @@ REQUIRED JSON FORMAT (all text in ${language}):
 {
   "terms": [
     {
-      "text": "found issue",
+      "text": "exact text of the issue as it appears in source",
       "startPosition": number,
       "endPosition": number,
       "classification": "${checkGrammar && checkSpelling ? 'spelling|grammar' : checkGrammar ? 'grammar' : 'spelling'}",
@@ -173,6 +176,29 @@ REQUIRED JSON FORMAT (all text in ${language}):
     "averageConfidence": 0-100,
     "coverage": 100
   }
+}
+
+CRITICAL POSITION REQUIREMENTS:
+1. startPosition and endPosition MUST be exact zero-indexed character positions in the source text
+2. The substring sourceText.substring(startPosition, endPosition) MUST EXACTLY equal the "text" field
+3. Count positions carefully - include all characters (letters, spaces, punctuation)
+
+EXAMPLE:
+For source text: "Hello! I have a issue that needs fixing."
+The phrase "a issue" appears at character positions 14-21 (zero-indexed).
+Verification: "Hello! I have a issue that needs fixing.".substring(14, 21) === "a issue" ✓
+
+Correct JSON:
+{
+  "text": "a issue",
+  "startPosition": 14,
+  "endPosition": 21,
+  "classification": "grammar",
+  "score": 70,
+  "frequency": 1,
+  "context": "Hello! I have a issue that needs fixing.",
+  "rationale": "Article-noun agreement error: 'a' should be 'an' before vowel sounds",
+  "suggestions": ["an issue"]
 }
 
 CRITICAL: Only return grammar and/or spelling issues. Do NOT analyze terminology or glossary compliance.`;
@@ -608,14 +634,19 @@ CRITICAL REQUIREMENTS:
       
       // Normalize term fields with enhanced context extraction
       analysisResult.terms = analysisResult.terms.map((term: any) => {
-        const startPos = Array.isArray(term.pos) ? term.pos[0] : term.startPosition;
-        const endPos = Array.isArray(term.pos) ? term.pos[1] : term.endPosition;
+        const startPos = Array.isArray(term.pos) ? term.pos[0] : (term.startPosition ?? term.start);
+        const endPos = Array.isArray(term.pos) ? term.pos[1] : (term.endPosition ?? term.end);
         const existingContext = term.ctx || term.context || '';
         
-        // Enhance context if it seems incomplete
-        const enhancedContext = existingContext.length > 20 && existingContext.includes('.') 
-          ? existingContext 
-          : extractFullSentence(translationContent, startPos, endPos);
+        // Validate positions before extracting context
+        let enhancedContext = existingContext;
+        if (typeof startPos === 'number' && typeof endPos === 'number' && startPos >= 0 && endPos <= translationContent.length) {
+          enhancedContext = existingContext.length > 20 && existingContext.includes('.') 
+            ? existingContext 
+            : extractFullSentence(translationContent, startPos, endPos);
+        } else {
+          console.warn(`⚠️ Invalid term positions for "${term.text}": startPos=${startPos}, endPos=${endPos}`);
+        }
         
         return {
           text: term.text,
@@ -675,14 +706,19 @@ CRITICAL REQUIREMENTS:
         
         // Simplified normalization for fallback with enhanced context
         analysisResult.terms = analysisResult.terms.map((term: any) => {
-          const startPos = Array.isArray(term.pos) ? term.pos[0] : term.startPosition;
-          const endPos = Array.isArray(term.pos) ? term.pos[1] : term.endPosition;
+          const startPos = Array.isArray(term.pos) ? term.pos[0] : (term.startPosition ?? term.start);
+          const endPos = Array.isArray(term.pos) ? term.pos[1] : (term.endPosition ?? term.end);
           const existingContext = term.ctx || term.context || '';
           
-          // Enhance context if it seems incomplete
-          const enhancedContext = existingContext.length > 20 && existingContext.includes('.') 
-            ? existingContext 
-            : extractFullSentence(translationContent, startPos, endPos);
+          // Validate positions before extracting context
+          let enhancedContext = existingContext;
+          if (typeof startPos === 'number' && typeof endPos === 'number' && startPos >= 0 && endPos <= translationContent.length) {
+            enhancedContext = existingContext.length > 20 && existingContext.includes('.') 
+              ? existingContext 
+              : extractFullSentence(translationContent, startPos, endPos);
+          } else {
+            console.warn(`⚠️ Invalid term positions for "${term.text}": startPos=${startPos}, endPos=${endPos}`);
+          }
           
           return {
             text: term.text,
