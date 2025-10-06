@@ -599,6 +599,46 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                 </Tooltip>
               </TooltipProvider>
 
+              {/* Grammar Toggle */}
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="term-grammar"
+                  checked={grammarCheckingEnabled}
+                  onCheckedChange={(enabled) => {
+                    console.log('Grammar checking toggled:', enabled);
+                    onGrammarCheckingToggle?.(enabled);
+                  }}
+                />
+                <Label htmlFor="term-grammar" className="text-sm flex items-center gap-1">
+                  Grammar
+                  {grammarCheckingEnabled && flaggedTerms.filter(t => t.classification === 'grammar').length > 0 && (
+                    <Badge variant="outline" className="ml-1 text-xs bg-purple-500/10 text-purple-700 border-purple-500/20">
+                      {flaggedTerms.filter(t => t.classification === 'grammar').length}
+                    </Badge>
+                  )}
+                </Label>
+              </div>
+
+              {/* Spelling Toggle */}
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="term-spelling"
+                  checked={spellingCheckingEnabled}
+                  onCheckedChange={(enabled) => {
+                    console.log('Spelling checking toggled:', enabled);
+                    onSpellingCheckingToggle?.(enabled);
+                  }}
+                />
+                <Label htmlFor="term-spelling" className="text-sm flex items-center gap-1">
+                  Spelling
+                  {spellingCheckingEnabled && flaggedTerms.filter(t => t.classification === 'spelling').length > 0 && (
+                    <Badge variant="outline" className="ml-1 text-xs bg-red-500/10 text-red-700 border-red-500/20">
+                      {flaggedTerms.filter(t => t.classification === 'spelling').length}
+                    </Badge>
+                  )}
+                </Label>
+              </div>
+
               {/* Semantic Types Toggle */}
               <div className="flex items-center space-x-2">
                 <Switch id="semantic-types" checked={showSemanticTypes} onCheckedChange={setShowSemanticTypes} />
@@ -716,48 +756,8 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
               {content}
             </div>}
 
-          {/* Bottom Bar: Toggles + Word/Character Count */}
-          <div className="flex items-center justify-between mt-3 pt-3 border-t">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="term-grammar"
-                  checked={grammarCheckingEnabled}
-                  onCheckedChange={(enabled) => {
-                    console.log('Grammar checking toggled:', enabled);
-                    onGrammarCheckingToggle?.(enabled);
-                  }}
-                />
-                <Label htmlFor="term-grammar" className="text-xs cursor-pointer text-blue-600 dark:text-blue-400">
-                  Grammar
-                  {grammarCheckingEnabled && flaggedTerms.filter(t => t.classification === 'grammar').length > 0 && (
-                    <Badge variant="outline" className="ml-2 text-xs bg-purple-500/10 text-purple-700 border-purple-500/20">
-                      {flaggedTerms.filter(t => t.classification === 'grammar').length}
-                    </Badge>
-                  )}
-                </Label>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="term-spelling"
-                  checked={spellingCheckingEnabled}
-                  onCheckedChange={(enabled) => {
-                    console.log('Spelling checking toggled:', enabled);
-                    onSpellingCheckingToggle?.(enabled);
-                  }}
-                />
-                <Label htmlFor="term-spelling" className="text-xs cursor-pointer text-blue-600 dark:text-blue-400">
-                  Spelling
-                  {spellingCheckingEnabled && flaggedTerms.filter(t => t.classification === 'spelling').length > 0 && (
-                    <Badge variant="outline" className="ml-2 text-xs bg-red-500/10 text-red-700 border-red-500/20">
-                      {flaggedTerms.filter(t => t.classification === 'spelling').length}
-                    </Badge>
-                  )}
-                </Label>
-              </div>
-            </div>
-
+          {/* Bottom Bar: Word/Character Count */}
+          <div className="flex items-center justify-end mt-3 pt-3 border-t">
             <div className="flex gap-4 text-xs text-blue-600 dark:text-blue-400">
               <span>{content.trim() ? content.trim().split(/\s+/).length : 0} words</span>
               <span>•</span>
