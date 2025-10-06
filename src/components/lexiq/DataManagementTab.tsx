@@ -16,16 +16,18 @@ interface DataManagementTabProps {
   glossaryContent: string;
   currentFullText?: string;
   projectType?: 'monolingual' | 'bilingual';
+  language?: string;
 }
 
 export const DataManagementTab: React.FC<DataManagementTabProps> = ({ 
   terms, 
   glossaryContent,
-  currentFullText 
+  currentFullText,
+  language = 'en'
 }) => {
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
-  const { editedTerms, setEditedTerms } = useEditedTerms(terms);
+  const { editedTerms, setEditedTerms } = useEditedTerms(terms, language);
   const [editValues, setEditValues] = useState<Partial<AnalyzedTerm>>({});
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [processedTerms, setProcessedTerms] = useState<AnalyzedTerm[]>([]);

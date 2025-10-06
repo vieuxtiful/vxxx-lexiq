@@ -1956,7 +1956,7 @@ export function EnhancedMainInterface({
 
           {/* Data Management Tab */}
             <TabsContent value="data">
-              {analysisComplete && analysisResults ? <DataManagementTab terms={analysisResults.terms || []} glossaryContent={glossaryFile ? '' : ''} currentFullText={currentFullText} /> : <Card className="p-12">
+              {analysisComplete && analysisResults ? <DataManagementTab terms={analysisResults.terms || []} glossaryContent={glossaryFile ? '' : ''} currentFullText={currentFullText} language={selectedLanguage} /> : <Card className="p-12">
                 <div className="text-center text-muted-foreground">
                   <Database className="h-16 w-16 mx-auto mb-4 opacity-30" />
                   <h3 className="text-lg font-semibold mb-2">No Data Available</h3>
