@@ -599,42 +599,6 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                 </Tooltip>
               </TooltipProvider>
 
-              {/* Spelling Check Toggle */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center space-x-2">
-                      
-                      
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Analyzes entire text for spelling errors</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              {/* Grammar Check Toggle */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center space-x-2">
-                      <Switch id="grammar-check" checked={grammarCheckingEnabled} onCheckedChange={enabled => {
-                      console.log('Grammar checking toggled:', enabled);
-                      onGrammarCheckingToggle?.(enabled);
-                    }} />
-                      <Label htmlFor="grammar-check" className="text-sm flex items-center gap-1">
-                        <Zap className="h-3 w-3" />
-                        Grammar {grammarCheckingEnabled ? '(ON)' : '(OFF)'}
-                      </Label>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Analyzes entire text for grammar issues</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              
               {/* Semantic Types Toggle */}
               <div className="flex items-center space-x-2">
                 <Switch id="semantic-types" checked={showSemanticTypes} onCheckedChange={setShowSemanticTypes} />
@@ -752,11 +716,55 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
               {content}
             </div>}
 
-          {/* Character Counter ONLY (legend moved above) */}
-          <div className="text-xs mt-2 flex justify-end">
-            <span className={`font-mono ${content.length > 45000 ? 'text-red-600 dark:text-red-400' : content.length > 35000 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'}`}>
-              {content.length.toLocaleString()} / 50,000 characters
-            </span>
+          {/* Bottom Bar: Toggles + Word/Character Count */}
+          <div className="flex items-center justify-between mt-3 pt-3 border-t">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="term-grammar"
+                  checked={grammarCheckingEnabled}
+                  onCheckedChange={(enabled) => {
+                    console.log('Grammar checking toggled:', enabled);
+                    onGrammarCheckingToggle?.(enabled);
+                  }}
+                />
+                <Label htmlFor="term-grammar" className="text-xs cursor-pointer text-blue-600 dark:text-blue-400">
+                  Grammar
+                  {grammarCheckingEnabled && flaggedTerms.filter(t => t.classification === 'grammar').length > 0 && (
+                    <Badge variant="outline" className="ml-2 text-xs bg-purple-500/10 text-purple-700 border-purple-500/20">
+                      {flaggedTerms.filter(t => t.classification === 'grammar').length}
+                    </Badge>
+                  )}
+                </Label>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="term-spelling"
+                  checked={spellingCheckingEnabled}
+                  onCheckedChange={(enabled) => {
+                    console.log('Spelling checking toggled:', enabled);
+                    onSpellingCheckingToggle?.(enabled);
+                  }}
+                />
+                <Label htmlFor="term-spelling" className="text-xs cursor-pointer text-blue-600 dark:text-blue-400">
+                  Spelling
+                  {spellingCheckingEnabled && flaggedTerms.filter(t => t.classification === 'spelling').length > 0 && (
+                    <Badge variant="outline" className="ml-2 text-xs bg-red-500/10 text-red-700 border-red-500/20">
+                      {flaggedTerms.filter(t => t.classification === 'spelling').length}
+                    </Badge>
+                  )}
+                </Label>
+              </div>
+            </div>
+
+            <div className="flex gap-4 text-xs text-blue-600 dark:text-blue-400">
+              <span>{content.trim() ? content.trim().split(/\s+/).length : 0} words</span>
+              <span>•</span>
+              <span className={content.length > 45000 ? 'text-red-600 dark:text-red-400' : content.length > 35000 ? 'text-yellow-600 dark:text-yellow-400' : ''}>
+                {content.length.toLocaleString()} / 50,000 characters
+              </span>
+            </div>
           </div>
 
           {/* Enhanced Hover Tooltip */}

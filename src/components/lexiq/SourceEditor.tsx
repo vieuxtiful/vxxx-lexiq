@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { FileText, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { FileText, AlertCircle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface SourceEditorProps {
@@ -16,6 +16,8 @@ interface SourceEditorProps {
   spellingEnabled: boolean;
   onGrammarToggle: () => void;
   onSpellingToggle: () => void;
+  onReanalyze?: () => void;
+  isReanalyzing?: boolean;
   readOnly?: boolean;
 }
 
@@ -32,6 +34,8 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
   spellingEnabled,
   onGrammarToggle,
   onSpellingToggle,
+  onReanalyze,
+  isReanalyzing = false,
   readOnly = false,
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -126,7 +130,7 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
           readOnly={readOnly}
         />
 
-        {/* Bottom Bar: Toggles + Character/Word Count */}
+        {/* Bottom Bar: Toggles + Reanalyze + Character/Word Count */}
         <div className="flex items-center justify-between mt-3 pt-3 border-t">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
@@ -160,6 +164,19 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
                 )}
               </Label>
             </div>
+
+            {onReanalyze && content.trim() && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onReanalyze}
+                disabled={isReanalyzing || isAnalyzing}
+                className="h-7 text-xs"
+              >
+                <RefreshCw className={`h-3 w-3 mr-1 ${isReanalyzing ? 'animate-spin' : ''}`} />
+                {isReanalyzing ? 'Analyzing...' : 'Reanalyze'}
+              </Button>
+            )}
           </div>
 
           <div className="flex gap-4 text-xs text-muted-foreground">
