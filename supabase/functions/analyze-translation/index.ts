@@ -73,6 +73,7 @@ interface AnalysisRequest {
   domain: string;
   checkGrammar?: boolean;
   checkSpelling?: boolean;
+  sourceTextOnly?: boolean;
 }
 
 serve(async (req) => {
@@ -81,10 +82,10 @@ serve(async (req) => {
   }
 
   try {
-    const { translationContent, glossaryContent, language, domain, checkGrammar = false, checkSpelling = true } = await req.json() as AnalysisRequest;
+    const { translationContent, glossaryContent, language, domain, checkGrammar = false, checkSpelling = true, sourceTextOnly = false } = await req.json() as AnalysisRequest;
 
     console.log('=== Edge Function: Starting Analysis ===');
-    console.log(`Parameters: language=${language}, domain=${domain}, checkGrammar=${checkGrammar}, checkSpelling=${checkSpelling}`);
+    console.log(`Parameters: language=${language}, domain=${domain}, checkGrammar=${checkGrammar}, checkSpelling=${checkSpelling}, sourceTextOnly=${sourceTextOnly}`);
     console.log(`Content sizes: Translation=${translationContent.length} chars, Glossary=${glossaryContent.length} chars`);
 
     // Enhanced validation with better error messages
@@ -116,6 +117,139 @@ serve(async (req) => {
     const targetTags = (translationContent.match(/<[^>]+>/g) || []).join(' ');
     const hasLeadingTrailingSpace = /^\s|\s$/.test(translationContent);
     const hasDoubleSpace = /\s{2,}/.test(translationContent);
+
+    // SOURCE-ONLY ANALYSIS: When sourceTextOnly is true, skip terminology validation
+    if (sourceTextOnly) {
+      const sourceOnlyPrompt = `You are analyzing SOURCE TEXT for grammar and spelling issues ONLY.
+
+CRITICAL LANGUAGE REQUIREMENT: ALL output text, suggestions, rationale, and context MUST be in ${language}.
+
+ANALYSIS CONTEXT:
+- Target Language: ${language}
+- Grammar Checking: ${checkGrammar ? 'ENABLED' : 'DISABLED'}
+- Spelling Checking: ${checkSpelling ? 'ENABLED' : 'DISABLED'}
+- Mode: SOURCE TEXT ONLY (no terminology validation)
+
+SOURCE TEXT TO ANALYZE:
+${translationContent}
+
+${checkSpelling ? 'SPELLING VALIDATION:\n- Check EVERY word against standard ' + language + ' dictionaries\n- Flag words that are:\n  * Non-existent in standard dictionaries\n  * Character transpositions (e.g., "teh" → "the")\n  * Missing/extra letters (e.g., "temperture" → "temperature")\n  * Typos that create plausible-looking but incorrect words\n- DO NOT flag:\n  * Proper nouns\n  * Domain-specific technical terms\n' : ''}
+
+${checkGrammar ? 'GRAMMAR VALIDATION:\n- Subject-Verb Agreement:\n  * SINGULAR subjects take SINGULAR verbs: "The control IS" (not "are")\n  * PLURAL subjects take PLURAL verbs: "The processes ARE" (not "is")\n- Article-Noun Number Agreement:\n  * "a/an" (singular articles) must be followed by SINGULAR nouns\n  * ❌ "a solutions treatment" → GRAMMAR ERROR (singular article + plural noun)\n  * ✅ "a solution treatment" → CORRECT\n- Mass Nouns (No Plural Forms):\n  * "quenching" → ❌ "quenchings" (GRAMMAR ERROR)\n  * "information" → ❌ "informations" (GRAMMAR ERROR)\n' : ''}
+
+REQUIRED JSON FORMAT (all text in ${language}):
+{
+  "terms": [
+    {
+      "text": "found issue",
+      "startPosition": number,
+      "endPosition": number,
+      "classification": "${checkGrammar && checkSpelling ? 'spelling|grammar' : checkGrammar ? 'grammar' : 'spelling'}",
+      "score": 0-100,
+      "frequency": 1,
+      "context": "COMPLETE SENTENCE where issue appears (${language})",
+      "rationale": "why this is an issue (${language})",
+      "suggestions": ["correction (${language})"],
+      "semantic_type": {
+        "semantic_type": "Quality",
+        "confidence": 80,
+        "ui_information": {
+          "category": "Quality",
+          "color_code": "#FF9800",
+          "description": "Language quality issue",
+          "display_name": "Quality"
+        }
+      }
+    }
+  ],
+  "statistics": {
+    "totalTerms": number,
+    "validTerms": 0,
+    "reviewTerms": 0,
+    "criticalTerms": 0,
+    "spellingIssues": number,
+    "grammarIssues": number,
+    "qualityScore": 0-100,
+    "averageConfidence": 0-100,
+    "coverage": 100
+  }
+}
+
+CRITICAL: Only return grammar and/or spelling issues. Do NOT analyze terminology or glossary compliance.`;
+
+      // Call Lovable AI for source-only analysis
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 90000);
+      
+      console.log("Calling Lovable AI API for source-only analysis...");
+      
+      let response;
+      try {
+        response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              { role: "system", content: `Return compact minified JSON only. No markdown. Brief text fields. All content in ${language}.` },
+              { role: "user", content: sourceOnlyPrompt }
+            ],
+            response_format: { type: "json_object" },
+            max_tokens: 20000,
+          }),
+        });
+        clearTimeout(timeoutId);
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          throw new Error("Analysis timeout - please try with smaller files");
+        }
+        throw fetchError;
+      }
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          return new Response(
+            JSON.stringify({ error: "Rate limit exceeded. Too many requests - please wait a moment and try again." }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        if (response.status === 402) {
+          return new Response(
+            JSON.stringify({ error: "AI credits depleted. Please add credits to your Lovable workspace to continue analysis." }),
+            { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        throw new Error("AI analysis failed");
+      }
+
+      const aiResponse = await response.json();
+      const content = aiResponse.choices?.[0]?.message?.content;
+
+      if (!content) {
+        throw new Error("No content in AI response");
+      }
+
+      let cleanContent = content.trim();
+      if (cleanContent.startsWith('```')) {
+        cleanContent = cleanContent.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '');
+      }
+      cleanContent = cleanContent.trim().replace(/^["']|["']$/g, '');
+
+      const analysisResult = JSON.parse(cleanContent);
+      
+      console.log('=== Source-Only Analysis Complete ===');
+      console.log(`Total issues found: ${analysisResult.terms?.length || 0}`);
+      
+      return new Response(
+        JSON.stringify({ analysis: analysisResult }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // ENHANCED PROMPT with stronger language enforcement
     const prompt = `CRITICAL LANGUAGE REQUIREMENT: ALL output text, suggestions, rationale, and context MUST be in ${language}. Never provide English suggestions for ${language} text.

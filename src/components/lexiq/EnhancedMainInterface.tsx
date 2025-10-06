@@ -1696,14 +1696,14 @@ export function EnhancedMainInterface({
                           <Upload className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0 ml-2" />
                         )}
                       </div>
-                      <p className="text-[10px] text-muted-foreground px-1">
-                        {textManuallyEntered 
-                          ? 'Paste or type in editor • Clear text to upload files' 
-                          : currentProject?.project_type === 'bilingual'
-                            ? 'Bilingual files: .sdlxliff, .mqxliff, .xliff, .tmx, .po • Max 50MB'
-                            : 'Monolingual files: .txt, .docx, .json, .csv, .xml • Max 50MB'
-                        }
-                      </p>
+                <p className="text-[10px] text-muted-foreground px-1">
+                  {textManuallyEntered 
+                    ? 'Paste or type in editor • Clear text to upload files' 
+                    : currentProject?.project_type === 'bilingual'
+                      ? '.xliff, .tmx, .po (and TMS/CAT variants) • Max 50MB'
+                      : '.txt, .docx, .json, .csv, .xml, .yml, .odt, .xlsx • Max 50MB'
+                  }
+                </p>
                       <input 
                         ref={translationInputRef} 
                         type="file" 
@@ -1743,9 +1743,9 @@ export function EnhancedMainInterface({
                           <Upload className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0 ml-2" />
                         )}
                       </div>
-                      <p className="text-[10px] text-muted-foreground px-1">
-                        CSV or TXT format · 50MB file size limit
-                      </p>
+                <p className="text-[10px] text-muted-foreground px-1">
+                  .csv or .txt format • Max 50MB
+                </p>
                       <input ref={glossaryInputRef} type="file" onChange={e => handleFileUpload(e, 'glossary')} className="hidden" accept=".csv,.txt" />
 
                       <Button onClick={runEnhancedAnalysis} disabled={!translationFile && !textManuallyEntered || !glossaryFile || isAnalyzing} className="w-full relative overflow-hidden transition-all duration-300">

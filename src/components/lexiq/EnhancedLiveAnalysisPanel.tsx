@@ -620,35 +620,6 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                 </Tooltip>
               </TooltipProvider>
 
-              {/* Grammar Check Toggle */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center space-x-2">
-                      <Switch id="grammar-check" checked={grammarCheckingEnabled} onCheckedChange={enabled => {
-                      console.log('Grammar checking toggled:', enabled);
-                      onGrammarCheckingToggle?.(enabled);
-                    }} />
-                      <Label htmlFor="grammar-check" className="text-sm flex items-center gap-1">
-                        <Zap className="h-3 w-3" />
-                        Grammar {grammarCheckingEnabled ? '(ON)' : '(OFF)'}
-                      </Label>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Analyzes entire text for grammar issues</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              
-              {/* Semantic Types Toggle */}
-              <div className="flex items-center space-x-2">
-                <Switch id="semantic-types" checked={showSemanticTypes} onCheckedChange={setShowSemanticTypes} />
-                <Label htmlFor="semantic-types" className="text-sm flex items-center gap-1">
-                  <Palette className="h-3 w-3" />
-                  Types
-                </Label>
-              </div>
             </div>
           </div>
           
@@ -722,7 +693,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
         </CardHeader>
         
         <CardContent className="flex-1 overflow-auto relative">
-          {editorRef.current ? <div ref={editorRef} className="min-h-[400px] p-4 rounded-md border bg-background/50 font-mono text-sm leading-relaxed" contentEditable={isEditing} spellCheck={false} suppressContentEditableWarning onInput={e => {
+          {editorRef.current ? <div ref={editorRef} className="min-h-[400px] p-4 rounded-md border bg-background/50 font-mono text-sm leading-relaxed whitespace-pre-wrap break-words" contentEditable={isEditing} spellCheck={false} suppressContentEditableWarning onInput={e => {
           if (!isEditing || isComposing) return;
           saveCursorPosition();
           const newContent = e.currentTarget.textContent || '';
@@ -752,18 +723,11 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
             onContentChange(newContent);
             saveCursorPosition();
           }
-        }} dangerouslySetInnerHTML={{
+          }} dangerouslySetInnerHTML={{
           __html: renderContentWithUnderlines() || ''
-        }} /> : <div ref={editorRef} className="min-h-[400px] p-4 rounded-md border bg-background/50 font-mono text-sm leading-relaxed">
+        }} /> : <div ref={editorRef} className="min-h-[400px] p-4 rounded-md border bg-background/50 font-mono text-sm leading-relaxed whitespace-pre-wrap break-words">
               {content}
             </div>}
-
-          {/* Character Counter ONLY (legend moved above) */}
-          <div className="text-xs mt-2 flex justify-end">
-            <span className={`font-mono ${content.length > 45000 ? 'text-red-600 dark:text-red-400' : content.length > 35000 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'}`}>
-              {content.length.toLocaleString()} / 50,000 characters
-            </span>
-          </div>
 
           {/* Enhanced Hover Tooltip */}
           {hoveredTerm && tooltipPosition && !clickedTerm && <div className="fixed z-50 pointer-events-auto" style={{
@@ -933,6 +897,84 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                 </div>
               </div>
             </div>}
+
+          {/* Bottom Bar: Toggles + Character/Word Count */}
+          <div className="flex items-center justify-between mt-3 pt-3 border-t">
+            <div className="flex items-center gap-6">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="grammar-check-bottom"
+                        checked={grammarCheckingEnabled}
+                        onCheckedChange={enabled => {
+                          console.log('Grammar checking toggled:', enabled);
+                          onGrammarCheckingToggle?.(enabled);
+                        }}
+                      />
+                      <Label htmlFor="grammar-check-bottom" className="text-xs cursor-pointer">
+                        Grammar
+                        {grammarCheckingEnabled && categoryStats.grammar > 0 && (
+                          <Badge variant="outline" className="ml-2 text-xs bg-purple-500/10 text-purple-700 border-purple-500/20">
+                            {categoryStats.grammar}
+                          </Badge>
+                        )}
+                      </Label>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Analyzes text for grammar issues</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="spelling-check-bottom"
+                        checked={spellingCheckingEnabled}
+                        onCheckedChange={onSpellingCheckingToggle}
+                      />
+                      <Label htmlFor="spelling-check-bottom" className="text-xs cursor-pointer">
+                        Spelling
+                        {spellingCheckingEnabled && categoryStats.spelling > 0 && (
+                          <Badge variant="outline" className="ml-2 text-xs bg-red-500/10 text-red-700 border-red-500/20">
+                            {categoryStats.spelling}
+                          </Badge>
+                        )}
+                      </Label>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Checks spelling errors</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="semantic-types-bottom"
+                  checked={showSemanticTypes}
+                  onCheckedChange={setShowSemanticTypes}
+                />
+                <Label htmlFor="semantic-types-bottom" className="text-xs cursor-pointer flex items-center gap-1">
+                  <Palette className="h-3 w-3" />
+                  Types
+                </Label>
+              </div>
+            </div>
+
+            <div className="flex gap-4 text-xs text-muted-foreground">
+              <span>{(content.trim() ? content.trim().split(/\s+/).length : 0).toLocaleString()} words</span>
+              <span>•</span>
+              <span className={content.length > 45000 ? 'text-red-600' : content.length > 35000 ? 'text-yellow-600' : ''}>
+                {content.length.toLocaleString()} characters
+              </span>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </TooltipProvider>;

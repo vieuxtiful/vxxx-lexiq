@@ -87,7 +87,7 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
-            Source Text Editor
+            Source Editor
             <Badge variant="outline" className="ml-2 text-xs">
               {language.toUpperCase()}
             </Badge>
@@ -115,41 +115,6 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
             ) : null}
           </div>
         </div>
-
-        {/* Toggles */}
-        <div className="flex items-center gap-6 mt-3">
-          <div className="flex items-center gap-2">
-            <Switch
-              id="source-grammar"
-              checked={grammarEnabled}
-              onCheckedChange={onGrammarToggle}
-            />
-            <Label htmlFor="source-grammar" className="text-xs cursor-pointer">
-              Grammar Check
-              {grammarEnabled && analysis.grammarIssues > 0 && (
-                <Badge variant="outline" className="ml-2 text-xs bg-purple-500/10 text-purple-700 border-purple-500/20">
-                  {analysis.grammarIssues}
-                </Badge>
-              )}
-            </Label>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Switch
-              id="source-spelling"
-              checked={spellingEnabled}
-              onCheckedChange={onSpellingToggle}
-            />
-            <Label htmlFor="source-spelling" className="text-xs cursor-pointer">
-              Spelling Check
-              {spellingEnabled && analysis.spellingIssues > 0 && (
-                <Badge variant="outline" className="ml-2 text-xs bg-red-500/10 text-red-700 border-red-500/20">
-                  {analysis.spellingIssues}
-                </Badge>
-              )}
-            </Label>
-          </div>
-        </div>
       </CardHeader>
 
       <CardContent className="flex-1 p-4 flex flex-col min-h-0">
@@ -157,32 +122,51 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
           value={content}
           onChange={(e) => onContentChange(e.target.value)}
           placeholder="Source text will appear here when you upload a bilingual file..."
-          className="flex-1 resize-none font-mono text-sm leading-relaxed"
+          className="flex-1 resize-none font-mono text-sm leading-relaxed whitespace-pre-wrap break-words"
           readOnly={readOnly}
         />
 
-        {/* Character/Word Count */}
-        <div className="flex items-center justify-between mt-3 pt-3 border-t text-xs text-muted-foreground">
-          <div className="flex gap-4">
+        {/* Bottom Bar: Toggles + Character/Word Count */}
+        <div className="flex items-center justify-between mt-3 pt-3 border-t">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="source-grammar-bottom"
+                checked={grammarEnabled}
+                onCheckedChange={onGrammarToggle}
+              />
+              <Label htmlFor="source-grammar-bottom" className="text-xs cursor-pointer">
+                Grammar
+                {grammarEnabled && analysis.grammarIssues > 0 && (
+                  <Badge variant="outline" className="ml-2 text-xs bg-purple-500/10 text-purple-700 border-purple-500/20">
+                    {analysis.grammarIssues}
+                  </Badge>
+                )}
+              </Label>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Switch
+                id="source-spelling-bottom"
+                checked={spellingEnabled}
+                onCheckedChange={onSpellingToggle}
+              />
+              <Label htmlFor="source-spelling-bottom" className="text-xs cursor-pointer">
+                Spelling
+                {spellingEnabled && analysis.spellingIssues > 0 && (
+                  <Badge variant="outline" className="ml-2 text-xs bg-red-500/10 text-red-700 border-red-500/20">
+                    {analysis.spellingIssues}
+                  </Badge>
+                )}
+              </Label>
+            </div>
+          </div>
+
+          <div className="flex gap-4 text-xs text-muted-foreground">
             <span>{wordCount.toLocaleString()} words</span>
             <span>•</span>
             <span>{characterCount.toLocaleString()} characters</span>
           </div>
-          
-          {totalIssues > 0 && (
-            <div className="flex gap-3 text-xs">
-              {analysis.grammarIssues > 0 && (
-                <span className="text-purple-600">
-                  Grammar: {analysis.grammarIssues}
-                </span>
-              )}
-              {analysis.spellingIssues > 0 && (
-                <span className="text-red-600">
-                  Spelling: {analysis.spellingIssues}
-                </span>
-              )}
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>
