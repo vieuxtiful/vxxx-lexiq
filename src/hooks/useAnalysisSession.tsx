@@ -16,6 +16,8 @@ export interface AnalysisSession {
   analyzed_terms: any;
   statistics: any;
   translation_content?: string; // Full translation text for auto-restore
+  source_content?: string | null; // NEW: Source text for bilingual projects
+  source_word_count?: number | null; // NEW: Source word count
   processing_time?: number | null;
   created_at: string;
 }
@@ -30,6 +32,8 @@ export const useAnalysisSession = () => {
     domain: string,
     analysisResult: AnalysisResult,
     translationContent: string, // Add full translation content
+    sourceContent?: string, // NEW: Source content for bilingual projects
+    sourceWordCount?: number, // NEW: Source word count
     translationFileId?: string,
     glossaryFileId?: string,
     processingTime?: number
@@ -45,6 +49,8 @@ export const useAnalysisSession = () => {
         analyzed_terms: JSON.parse(JSON.stringify(analysisResult.terms)),
         statistics: JSON.parse(JSON.stringify(analysisResult.statistics)),
         translation_content: translationContent, // Store full content for auto-restore
+        source_content: sourceContent || null, // NEW: Store source content
+        source_word_count: sourceWordCount || null, // NEW: Store source word count
         processing_time: processingTime || null,
       };
 

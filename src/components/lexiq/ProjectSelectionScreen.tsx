@@ -4,6 +4,7 @@ import { Project } from '@/hooks/useProjects';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { FloatingBackground } from './FloatingBackground';
 import { useProject } from '@/contexts/ProjectContext';
 import { useToast } from '@/hooks/use-toast';
@@ -152,14 +153,37 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <h3 className="text-xl text-foreground mb-2 font-light">
-                          {project.name}
-                        </h3>
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="text-xl text-foreground font-light">
+                            {project.name}
+                          </h3>
+                          <Badge 
+                            variant="outline" 
+                            className={project.project_type === 'bilingual' 
+                              ? 'bg-blue-500/10 text-blue-700 border-blue-500/20' 
+                              : 'bg-green-500/10 text-green-700 border-green-500/20'
+                            }
+                          >
+                            {project.project_type === 'bilingual' ? 'Bilingual' : 'Monolingual'}
+                          </Badge>
+                        </div>
                         <div className="flex gap-3 text-sm text-muted-foreground">
-                          <span className="font-medium">
-                            {project.language.toUpperCase()}
-                          </span>
-                          <span>•</span>
+                          {project.project_type === 'bilingual' && project.source_language && (
+                            <>
+                              <span className="font-medium">
+                                {project.source_language.toUpperCase()} → {project.language.toUpperCase()}
+                              </span>
+                              <span>•</span>
+                            </>
+                          )}
+                          {project.project_type === 'monolingual' && (
+                            <>
+                              <span className="font-medium">
+                                {project.language.toUpperCase()}
+                              </span>
+                              <span>•</span>
+                            </>
+                          )}
                           <span>{project.domain.charAt(0).toUpperCase() + project.domain.slice(1)}</span>
                         </div>
                       </div>

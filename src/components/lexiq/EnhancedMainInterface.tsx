@@ -34,6 +34,7 @@ import { OrganizationSwitcher } from './OrganizationSwitcher';
 import { BatchProcessor } from './BatchProcessor';
 import { AnalyticsDashboard } from './AnalyticsDashboard';
 import { ProjectSetupWizard } from './ProjectSetupWizard';
+import { SourceEditor } from './SourceEditor';
 import { validateFile } from '@/utils/fileValidation';
 import lexiqLogo from '@/assets/lexiq-team-logo.png';
 import glossaryIcon from '@/assets/glossary-icon.png';
@@ -127,8 +128,17 @@ export function EnhancedMainInterface({
     const saved = localStorage.getItem('lexiq-spelling-checking');
     return saved === null ? true : saved === 'true';
   });
+  const [sourceGrammarEnabled, setSourceGrammarEnabled] = useState(() => {
+    const saved = localStorage.getItem('lexiq-source-grammar-enabled');
+    return saved === null ? true : saved === 'true';
+  });
+  const [sourceSpellingEnabled, setSourceSpellingEnabled] = useState(() => {
+    const saved = localStorage.getItem('lexiq-source-spelling-enabled');
+    return saved === null ? true : saved === 'true';
+  });
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [currentContent, setCurrentContent] = useState('');
+  const [sourceContent, setSourceContent] = useState(''); // NEW: For bilingual projects
   const [translationFileUploaded, setTranslationFileUploaded] = useState(false);
   const [glossaryFileUploaded, setGlossaryFileUploaded] = useState(false);
   const [textManuallyEntered, setTextManuallyEntered] = useState(false);
@@ -323,6 +333,7 @@ export function EnhancedMainInterface({
     setAnalysisComplete(false);
     setAnalysisResults(null);
     setCurrentContent('');
+    setSourceContent(''); // NEW: Reset source content
     setTranslationFileUploaded(false);
     setGlossaryFileUploaded(false);
     setTextManuallyEntered(false);
@@ -374,6 +385,15 @@ export function EnhancedMainInterface({
   useEffect(() => {
     localStorage.setItem('lexiq-spelling-checking', String(spellingCheckingEnabled));
   }, [spellingCheckingEnabled]);
+
+  // Persist source editor toggle states
+  useEffect(() => {
+    localStorage.setItem('lexiq-source-grammar-enabled', String(sourceGrammarEnabled));
+  }, [sourceGrammarEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('lexiq-source-spelling-enabled', String(sourceSpellingEnabled));
+  }, [sourceSpellingEnabled]);
 
   // Real-time language validation with blocking
   useEffect(() => {
@@ -528,6 +548,12 @@ export function EnhancedMainInterface({
             if (validSession) {
               console.log('✅ Loading database session:', validSession.id);
               setCurrentContent(validSession.translation_content);
+              
+              // NEW: Load source content for bilingual projects
+              if (currentProject.project_type === 'bilingual' && validSession.source_content) {
+                setSourceContent(validSession.source_content);
+              }
+              
               setAnalysisResults({
                 terms: validSession.analyzed_terms,
                 statistics: validSession.statistics
@@ -585,6 +611,7 @@ export function EnhancedMainInterface({
 
         const stateToSave = {
           currentContent,
+          sourceContent, // NEW: Save source content for bilingual projects
           analysisResults,
           textManuallyEntered,
           activeMainTab,
@@ -992,9 +1019,20 @@ export function EnhancedMainInterface({
         // Auto-save to database if user and project exist
         if (user && currentProject) {
           try {
-            const session = await saveAnalysisSession(currentProject.id, user.id, selectedLanguage, selectedDomain, result, translationContent,
-            // Add full translation content
-            translationFileId || undefined, glossaryFileId || undefined, processingTime);
+            const sourceWordCountValue = sourceContent.trim() ? sourceContent.trim().split(/\s+/).length : 0;
+            const session = await saveAnalysisSession(
+              currentProject.id, 
+              user.id, 
+              selectedLanguage, 
+              selectedDomain, 
+              result, 
+              translationContent,
+              sourceContent || undefined, // NEW: Source content for bilingual
+              sourceWordCountValue || undefined, // NEW: Source word count
+              translationFileId || undefined, 
+              glossaryFileId || undefined, 
+              processingTime
+            );
 
             // Log audit trail
             await logAnalysis(session?.id || '', translationContent.length);
@@ -1659,9 +1697,23 @@ export function EnhancedMainInterface({
                         )}
                       </div>
                       <p className="text-[10px] text-muted-foreground px-1">
-                        {textManuallyEntered ? 'Paste or type in editor • Clear text to upload files' : 'Up to 50,000 characters · 50MB file size limit'}
+                        {textManuallyEntered 
+                          ? 'Paste or type in editor • Clear text to upload files' 
+                          : currentProject?.project_type === 'bilingual'
+                            ? 'Bilingual files: .sdlxliff, .mqxliff, .xliff, .tmx, .po • Max 50MB'
+                            : 'Monolingual files: .txt, .docx, .json, .csv, .xml • Max 50MB'
+                        }
                       </p>
-                      <input ref={translationInputRef} type="file" onChange={e => handleFileUpload(e, 'translation')} className="hidden" accept=".txt,.docx,.json,.csv,.xml,.po,.tmx,.xliff,.xlf" />
+                      <input 
+                        ref={translationInputRef} 
+                        type="file" 
+                        onChange={e => handleFileUpload(e, 'translation')} 
+                        className="hidden" 
+                        accept={currentProject?.project_type === 'bilingual' 
+                          ? '.sdlxliff,.mqxliff,.txlf,.mqxlz,.mxliff,.xlsx,.xlsm,.xliff,.xlf,.xlif,.tmx,.po,.csv'
+                          : '.txt,.doc,.docx,.odt,.json,.yml,.csv,.xlsx'
+                        } 
+                      />
 
                       <div 
                         onClick={() => glossaryInputRef.current?.click()} 
@@ -1749,7 +1801,9 @@ export function EnhancedMainInterface({
                 <div className="h-full flex flex-col">
                   {/* Undo/Redo Controls */}
                   <div className="flex items-center justify-between px-6 py-3 border-b bg-card/50">
-                    <h3 className="text-lg font-semibold">Editor</h3>
+                    <h3 className="text-lg font-semibold">
+                      {currentProject?.project_type === 'bilingual' ? 'Dual Editor' : 'Editor'}
+                    </h3>
                     <div className="flex items-center gap-2">
                       <Button 
                         variant="ghost" 
@@ -1769,10 +1823,70 @@ export function EnhancedMainInterface({
                   </div>
 
                   <ResizablePanelGroup direction="vertical" className="flex-1">
-                    {/* Editor Panel */}
+                    {/* Editor Panel - Conditional dual-pane layout */}
                     <ResizablePanel defaultSize={65} minSize={30}>
-                      <div className="h-full overflow-auto p-4">
-                        <EnhancedLiveAnalysisPanel content={currentContent} flaggedTerms={analysisResults?.terms ? transformAnalyzedTermsToFlagged(analysisResults.terms) : []} onContentChange={handleContentChange} onReanalyze={() => handleReanalyze()} isReanalyzing={isReanalyzing} grammarCheckingEnabled={grammarCheckingEnabled} onGrammarCheckingToggle={setGrammarCheckingEnabled} spellingCheckingEnabled={spellingCheckingEnabled} onSpellingCheckingToggle={setSpellingCheckingEnabled} selectedLanguage={selectedLanguage} selectedDomain={selectedDomain} onValidateTerm={handleValidateTerm} originalAnalyzedContent={originalAnalyzedContent} />
+                      <div className="h-full">
+                        {currentProject?.project_type === 'bilingual' ? (
+                          // BILINGUAL: Horizontal dual-pane layout
+                          <ResizablePanelGroup direction="horizontal" className="h-full">
+                            {/* Target Text Editor (Terminology Validator) */}
+                            <ResizablePanel defaultSize={50} minSize={30}>
+                              <div className="h-full overflow-auto p-4">
+                                <EnhancedLiveAnalysisPanel 
+                                  content={currentContent} 
+                                  flaggedTerms={analysisResults?.terms ? transformAnalyzedTermsToFlagged(analysisResults.terms) : []} 
+                                  onContentChange={handleContentChange} 
+                                  onReanalyze={() => handleReanalyze()} 
+                                  isReanalyzing={isReanalyzing} 
+                                  grammarCheckingEnabled={grammarCheckingEnabled} 
+                                  onGrammarCheckingToggle={setGrammarCheckingEnabled} 
+                                  spellingCheckingEnabled={spellingCheckingEnabled} 
+                                  onSpellingCheckingToggle={setSpellingCheckingEnabled} 
+                                  selectedLanguage={selectedLanguage} 
+                                  selectedDomain={selectedDomain} 
+                                  onValidateTerm={handleValidateTerm} 
+                                  originalAnalyzedContent={originalAnalyzedContent} 
+                                />
+                              </div>
+                            </ResizablePanel>
+
+                            <ResizableHandle withHandle />
+
+                            {/* Source Text Editor */}
+                            <ResizablePanel defaultSize={50} minSize={30}>
+                              <div className="h-full overflow-auto p-4">
+                                <SourceEditor
+                                  content={sourceContent}
+                                  onContentChange={setSourceContent}
+                                  language={currentProject?.source_language || 'en'}
+                                  grammarEnabled={sourceGrammarEnabled}
+                                  spellingEnabled={sourceSpellingEnabled}
+                                  onGrammarToggle={() => setSourceGrammarEnabled(!sourceGrammarEnabled)}
+                                  onSpellingToggle={() => setSourceSpellingEnabled(!sourceSpellingEnabled)}
+                                />
+                              </div>
+                            </ResizablePanel>
+                          </ResizablePanelGroup>
+                        ) : (
+                          // MONOLINGUAL: Single pane layout
+                          <div className="h-full overflow-auto p-4">
+                            <EnhancedLiveAnalysisPanel 
+                              content={currentContent} 
+                              flaggedTerms={analysisResults?.terms ? transformAnalyzedTermsToFlagged(analysisResults.terms) : []} 
+                              onContentChange={handleContentChange} 
+                              onReanalyze={() => handleReanalyze()} 
+                              isReanalyzing={isReanalyzing} 
+                              grammarCheckingEnabled={grammarCheckingEnabled} 
+                              onGrammarCheckingToggle={setGrammarCheckingEnabled} 
+                              spellingCheckingEnabled={spellingCheckingEnabled} 
+                              onSpellingCheckingToggle={setSpellingCheckingEnabled} 
+                              selectedLanguage={selectedLanguage} 
+                              selectedDomain={selectedDomain} 
+                              onValidateTerm={handleValidateTerm} 
+                              originalAnalyzedContent={originalAnalyzedContent} 
+                            />
+                          </div>
+                        )}
                       </div>
                     </ResizablePanel>
 
@@ -1787,7 +1901,11 @@ export function EnhancedMainInterface({
                         
                         {analysisComplete && analysisResults ? <div className="space-y-4">
                             {/* Analysis insights and visualizations */}
-                            <SimplifiedStatisticsPanel statistics={analysisResults.statistics} />
+                            <SimplifiedStatisticsPanel 
+                              statistics={analysisResults.statistics} 
+                              projectType={currentProject?.project_type as 'monolingual' | 'bilingual'}
+                              sourceWordCount={sourceContent.trim() ? sourceContent.trim().split(/\s+/).length : 0}
+                            />
                           </div> : <div className="flex items-center justify-center h-full text-muted-foreground">
                             <div className="text-center">
                               <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />

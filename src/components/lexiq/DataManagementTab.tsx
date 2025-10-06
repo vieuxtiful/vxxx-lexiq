@@ -14,7 +14,8 @@ import { extractSentenceContext } from '@/utils/contextExtractor';
 interface DataManagementTabProps {
   terms: AnalyzedTerm[];
   glossaryContent: string;
-  currentFullText?: string; // Add this prop
+  currentFullText?: string;
+  projectType?: 'monolingual' | 'bilingual';
 }
 
 export const DataManagementTab: React.FC<DataManagementTabProps> = ({ 

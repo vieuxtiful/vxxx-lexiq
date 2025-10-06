@@ -75,7 +75,8 @@ export const useFileProcessor = () => {
           fileContent,
           fileSize: file.size,
           type,
-          expectedLanguage: options?.expectedLanguage, // Include expected language
+          projectType: projectId ? 'monolingual' : undefined, // Will be enhanced with actual project type
+          expectedLanguage: options?.expectedLanguage,
         },
       });
 
@@ -87,6 +88,8 @@ export const useFileProcessor = () => {
         ...data,
         fileId,
         storagePath,
+        sourceContent: data?.sourceContent, // NEW: For bilingual files
+        sourceWordCount: data?.sourceWordCount, // NEW
       };
       
       toast({

@@ -1,14 +1,23 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Target, CheckCircle, AlertCircle, PieChart, BarChart3, TrendingDown } from 'lucide-react';
+import { Target, CheckCircle, AlertCircle, PieChart, BarChart3, TrendingDown, Languages } from 'lucide-react';
 import { AnalysisStatistics } from '@/hooks/useAnalysisEngine';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface SimplifiedStatisticsPanelProps {
   statistics: AnalysisStatistics;
+  projectType?: 'monolingual' | 'bilingual';
+  sourceWordCount?: number;
 }
 
-export const SimplifiedStatisticsPanel: React.FC<SimplifiedStatisticsPanelProps> = ({ statistics }) => {
+export const SimplifiedStatisticsPanel: React.FC<SimplifiedStatisticsPanelProps> = ({ 
+  statistics, 
+  projectType = 'monolingual',
+  sourceWordCount = 0 
+}) => {
   const validPercentage = statistics.totalTerms > 0 ? (statistics.validTerms / statistics.totalTerms) * 100 : 0;
   const reviewPercentage = statistics.totalTerms > 0 ? (statistics.reviewTerms / statistics.totalTerms) * 100 : 0;
   const criticalPercentage = statistics.totalTerms > 0 ? (statistics.criticalTerms / statistics.totalTerms) * 100 : 0;
@@ -17,6 +26,10 @@ export const SimplifiedStatisticsPanel: React.FC<SimplifiedStatisticsPanelProps>
   const successRate = validPercentage;
   const riskScore = (reviewPercentage * 0.5 + criticalPercentage * 1.0).toFixed(1);
   const qualityGrade = statistics.qualityScore >= 8 ? 'A' : statistics.qualityScore >= 7 ? 'B' : statistics.qualityScore >= 6 ? 'C' : statistics.qualityScore >= 5 ? 'D' : 'F';
+  
+  // Bilingual metrics
+  const targetWordCount = statistics.totalTerms; // Approximate from terms
+  const expansionRatio = sourceWordCount > 0 ? targetWordCount / sourceWordCount : 1;
   
   return (
     <div className="space-y-6">
@@ -160,6 +173,43 @@ export const SimplifiedStatisticsPanel: React.FC<SimplifiedStatisticsPanelProps>
           </div>
         </CardContent>
       </Card>
+
+      {/* Bilingual Metrics - Only show for bilingual projects */}
+      {projectType === 'bilingual' && sourceWordCount > 0 && (
+        <Card className="border-primary/20">
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Languages className="h-4 w-4" />
+              Bilingual Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Source Words:</span>
+              <Badge variant="outline">{sourceWordCount.toLocaleString()}</Badge>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Target Words:</span>
+              <Badge variant="outline">{targetWordCount.toLocaleString()}</Badge>
+            </div>
+            <Separator />
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Expansion Ratio:</span>
+              <Badge 
+                variant={expansionRatio > 1.3 || expansionRatio < 0.7 ? 'destructive' : 'default'}
+              >
+                {expansionRatio.toFixed(2)}x
+              </Badge>
+            </div>
+            <Alert className="mt-3">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                Statistics apply to Target text only. Source editor checks grammar/spelling independently.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
