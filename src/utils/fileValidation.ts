@@ -5,26 +5,48 @@
 export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB in bytes
 export const MAX_FILES = 25;
 
+// Monolingual file extensions (target text only)
+export const MONOLINGUAL_EXTENSIONS = [
+  '.txt', '.doc', '.docx', '.odt', 
+  '.json', '.yml', '.csv', '.xlsx'
+];
+
+// Bilingual file extensions (source + target text)
+export const BILINGUAL_EXTENSIONS = [
+  '.sdlxliff', '.mqxliff', '.txlf', '.mqxlz', '.mxliff',
+  '.xlsx', '.xlsm', '.xliff', '.xlf', '.xlif', 
+  '.tmx', '.po', '.csv'
+];
+
 export interface FileValidationResult {
   valid: boolean;
   error?: string;
 }
 
 /**
- * Validates file type based on extension
+ * Validates file type based on extension and project type
  */
-export const validateFileType = (file: File): FileValidationResult => {
-  const validExtensions = [
-    '.txt', '.docx', '.json', '.csv', '.xml', 
-    '.po', '.tmx', '.xliff', '.xlf'
-  ];
+export const validateFileType = (
+  file: File, 
+  projectType?: 'monolingual' | 'bilingual'
+): FileValidationResult => {
+  // If no project type specified, allow all formats
+  let validExtensions: string[];
+  
+  if (!projectType) {
+    validExtensions = [...MONOLINGUAL_EXTENSIONS, ...BILINGUAL_EXTENSIONS];
+  } else if (projectType === 'monolingual') {
+    validExtensions = MONOLINGUAL_EXTENSIONS;
+  } else {
+    validExtensions = BILINGUAL_EXTENSIONS;
+  }
   
   const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
   
   if (!validExtensions.includes(fileExtension)) {
     return {
       valid: false,
-      error: `Invalid file type. Supported formats: ${validExtensions.join(', ')}`
+      error: `Invalid file type for ${projectType || 'this'} project. Supported formats: ${validExtensions.join(', ')}`
     };
   }
   
@@ -48,10 +70,13 @@ export const validateFileSize = (file: File): FileValidationResult => {
 };
 
 /**
- * Comprehensive file validation
+ * Comprehensive file validation with project type support
  */
-export const validateFile = (file: File): FileValidationResult => {
-  const typeValidation = validateFileType(file);
+export const validateFile = (
+  file: File, 
+  projectType?: 'monolingual' | 'bilingual'
+): FileValidationResult => {
+  const typeValidation = validateFileType(file, projectType);
   if (!typeValidation.valid) {
     return typeValidation;
   }

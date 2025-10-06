@@ -8,7 +8,7 @@ interface ProjectContextType {
   projects: Project[];
   setCurrentProject: (project: Project | null) => void;
   setCurrentProjectWithReset: (project: Project | null) => void;
-  createProject: (name: string, language: string, domain: string) => Promise<Project | null>;
+  createProject: (name: string, language: string, domain: string, projectType: 'monolingual' | 'bilingual', sourceLanguage?: string) => Promise<Project | null>;
   deleteProject: (id: string) => Promise<void>;
   clearProjectData: () => void;
   loading: boolean;
@@ -97,13 +97,19 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [user, projects, projectsLoading]);
 
-  const createProject = async (name: string, language: string, domain: string): Promise<Project | null> => {
+  const createProject = async (
+    name: string, 
+    language: string, 
+    domain: string, 
+    projectType: 'monolingual' | 'bilingual' = 'monolingual',
+    sourceLanguage?: string
+  ): Promise<Project | null> => {
     if (!language || !domain) {
       throw new Error('Language and domain are required to create a project');
     }
 
-    console.log('Creating project:', { name, language, domain, userId: user?.id });
-    const { data } = await createProjectHook(name, language, domain);
+    console.log('Creating project:', { name, language, domain, projectType, sourceLanguage, userId: user?.id });
+    const { data } = await createProjectHook(name, language, domain, projectType, sourceLanguage);
     if (data) {
       console.log('Project created successfully:', data);
       

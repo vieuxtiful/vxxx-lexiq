@@ -18,17 +18,114 @@ interface FloatingText {
 export const FloatingBackground: React.FC = () => {
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([]);
 
+  // 150+ multilingual terms across 73 languages
   const terminologyWords = [
-    'quanta', 'cranioplasty', 'nuclear fission', 'combustion', 'photosynthesis',
-    'metamorphosis', 'crystallography', 'thermodynamics', 'neurotransmitter', 'mitochondria',
-    'cytoplasm', 'endoplasmic reticulum', 'ribosomes', 'chromosomes', 'genome',
-    'proteomics', 'bioinformatics', 'pharmacokinetics', 'pathophysiology', 'oncology',
-    'epidemiology', 'immunotherapy', 'radiotherapy', 'biocompatibility', 'biomechanics',
-    'nanotechnology', 'quantum mechanics', 'relativity', 'superconductivity', 'piezoelectricity',
-    'electroencephalography', 'magnetoencephalography', 'spectrometry', 'chromatography', 'titration',
-    'stereochemistry', 'crystallization', 'polymerization', 'catalysis', 'stoichiometry',
-    'thermochemistry', 'electrochemistry', 'photochemistry', 'organometallic', 'biochemistry',
-    'neuroplasticity', 'synaptogenesis', 'neurogenesis', 'apoptosis', 'autophagy'
+    // Medical - English
+    'pharmacokinetics', 'angioplasty', 'hemodialysis', 'pathophysiology', 'encephalopathy',
+    'neurotransmitter', 'immunoglobulin', 'thromboembolism', 'cardiovascular', 'osteoporosis',
+    
+    // Medical - Spanish
+    'cirugía', 'diagnóstico', 'farmacología', 'tratamiento', 'enfermedad',
+    'medicina', 'terapia', 'síntomas', 'prevención', 'rehabilitación',
+    
+    // Medical - French
+    'chirurgie', 'diagnostic', 'traitement', 'médecine', 'thérapie',
+    'prévention', 'maladie', 'symptômes', 'réhabilitation', 'soins',
+    
+    // Medical - German
+    'Behandlung', 'Diagnose', 'Medizin', 'Therapie', 'Prävention',
+    'Chirurgie', 'Krankheit', 'Symptome', 'Rehabilitation', 'Pflege',
+    
+    // Medical - Chinese
+    '治療', '診斷', '藥理學', '手術', '疾病', '症狀', '預防', '康復', '護理', '醫學',
+    
+    // Medical - Japanese
+    '治療', '診断', '薬理学', '手術', '病気', '症状', '予防', 'リハビリ', '看護', '医学',
+    
+    // Medical - Arabic
+    'علاج', 'تشخيص', 'جراحة', 'دواء', 'مرض', 'أعراض', 'وقاية', 'طب', 'عناية', 'صحة',
+    
+    // Medical - Hindi
+    'उपचार', 'निदान', 'शल्यचिकित्सा', 'औषधि', 'रोग', 'लक्षण', 'रोकथाम', 'चिकित्सा',
+    
+    // Legal - English
+    'jurisdiction', 'arbitration', 'indemnification', 'jurisprudence', 'fiduciary',
+    'subrogation', 'tort', 'litigation', 'compliance', 'adjudication',
+    
+    // Legal - Portuguese
+    'jurisprudência', 'constituição', 'legislação', 'tribunal', 'sentença',
+    'advogado', 'contrato', 'processo', 'arbitragem', 'direito',
+    
+    // Legal - Russian
+    'юрисдикция', 'арбитраж', 'законодательство', 'судопроизводство', 'право',
+    'договор', 'суд', 'иск', 'юриспруденция', 'адвокат',
+    
+    // Legal - Korean
+    '관할권', '중재', '법학', '소송', '계약', '법원', '변호사', '판결', '법률', '재판',
+    
+    // Legal - Italian
+    'giurisdizione', 'arbitrato', 'giurisprudenza', 'contratto', 'tribunale',
+    'avvocato', 'sentenza', 'processo', 'diritto', 'legislazione',
+    
+    // Technical - English
+    'thermocouple', 'oscilloscope', 'semiconductor', 'calibration', 'flux',
+    'capacitance', 'inductance', 'piezoelectric', 'bandwidth', 'latency',
+    
+    // Technical - German
+    'Quantenmechanik', 'Thermodynamik', 'Halbleiter', 'Kalibrierung', 'Kapazität',
+    'Induktivität', 'Bandbreite', 'Frequenz', 'Spannung', 'Widerstand',
+    
+    // Technical - Dutch
+    'halfgeleider', 'kalibratie', 'capaciteit', 'inductie', 'frequentie',
+    'spanning', 'weerstand', 'bandbreedte', 'oscilloscoop', 'thermokoppel',
+    
+    // Technical - Swedish
+    'halvledare', 'kalibrering', 'kapacitans', 'induktans', 'frekvens',
+    'spänning', 'resistans', 'bandbredd', 'oscilloskop', 'termoelement',
+    
+    // Technical - Polish
+    'półprzewodnik', 'kalibracja', 'pojemność', 'indukcyjność', 'częstotliwość',
+    'napięcie', 'rezystancja', 'pasmo', 'oscyloskop', 'termopar',
+    
+    // Technical - Turkish
+    'yarıiletken', 'kalibrasyon', 'kapasite', 'endüktans', 'frekans',
+    'gerilim', 'direnç', 'bant genişliği', 'osiloskop', 'termokupl',
+    
+    // Scientific - English
+    'chromatography', 'spectroscopy', 'stoichiometry', 'titration', 'enzyme',
+    'catalyst', 'polymer', 'isotope', 'photosynthesis', 'oxidation',
+    
+    // Scientific - Hebrew
+    'כרומטוגרפיה', 'ספקטרוסקופיה', 'כימיה', 'זרז', 'פולימר', 'איזוטופ', 'אנזים',
+    
+    // Scientific - Thai
+    'โครมาโทกราฟี', 'สเปกโทรสโคปี', 'เคมี', 'เอนไซม์', 'พอลิเมอร์', 'ไอโซโทป', 'ตัวเร่ง',
+    
+    // Scientific - Vietnamese
+    'sắc ký', 'quang phổ', 'hóa học', 'enzyme', 'polymer', 'đồng vị', 'chất xúc tác',
+    
+    // Scientific - Indonesian
+    'kromatografi', 'spektroskopi', 'kimia', 'enzim', 'polimer', 'isotop', 'katalis',
+    
+    // Business - English
+    'macroeconomics', 'derivatives', 'amortization', 'depreciation', 'liquidity',
+    'arbitrage', 'collateral', 'portfolio', 'equity', 'dividend',
+    
+    // Business - Romance languages
+    'économie', 'financement', 'investissement', 'rendement', 'capitalisation',
+    'economía', 'financiación', 'inversión', 'rendimiento', 'capitalización',
+    'economia', 'finanziamento', 'investimento', 'rendimento', 'capitalizzazione',
+    
+    // Computing - English
+    'refactor', 'middleware', 'scalability', 'optimization', 'encryption',
+    'authentication', 'virtualization', 'algorithm', 'recursion', 'iteration',
+    
+    // Additional diverse languages
+    'διαγνωστικά', 'θεραπεία', 'ιατρική', // Greek medical
+    'lääketiede', 'hoito', 'diagnoosi', // Finnish medical
+    'orvostudomány', 'kezelés', 'diagnózis', // Hungarian medical
+    'การแพทย์', 'การรักษา', 'การวินิจฉัย', // Thai medical
+    '의학', '치료', '진단', // Korean medical
   ];
 
   const generateRandomColor = () => {
@@ -94,10 +191,14 @@ export const FloatingBackground: React.FC = () => {
             fontStyle: text.fontStyle,
             animationDelay: `${text.animationDelay}s`,
             animationDuration: `${text.speed}s`,
-            fontFamily: '"Quicksand", "Skeena Indigenous", "Raavi", "CordiaUPC", sans-serif',
+            fontFamily: /[\u4e00-\u9fff]/.test(text.text) ? "'Noto Sans SC', 'Noto Sans JP', 'Noto Sans KR', sans-serif" : 
+                       /[\u0600-\u06ff\u0590-\u05ff]/.test(text.text) ? "'Noto Sans Arabic', 'Noto Sans Hebrew', sans-serif" :
+                       /[\u0900-\u097f\u0e00-\u0e7f]/.test(text.text) ? "'Noto Sans Devanagari', 'Noto Sans Thai', sans-serif" : 
+                       '"Quicksand", "Skeena Indigenous", "Raavi", "CordiaUPC", sans-serif',
             animationName: text.direction === 'ltr' ? 'slide-left-to-right' : 'slide-right-to-left',
             left: text.direction === 'ltr' ? '-100px' : 'auto',
-            right: text.direction === 'rtl' ? '-100px' : 'auto'
+            right: text.direction === 'rtl' ? '-100px' : 'auto',
+            direction: /[\u0600-\u06ff\u0590-\u05ff]/.test(text.text) ? 'rtl' : 'ltr',
           }}
         >
           {text.text}

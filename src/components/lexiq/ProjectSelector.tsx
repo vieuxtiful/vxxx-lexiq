@@ -29,9 +29,15 @@ export const ProjectSelector: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
 
-  const handleProjectCreate = async (name: string, language: string, domain: string) => {
-    console.log('ProjectSelector: Creating project:', { name, language, domain });
-    const newProject = await createProject(name, language, domain);
+  const handleProjectCreate = async (
+    name: string, 
+    language: string, 
+    domain: string, 
+    projectType: 'monolingual' | 'bilingual' = 'monolingual',
+    sourceLanguage?: string
+  ) => {
+    console.log('ProjectSelector: Creating project:', { name, language, domain, projectType, sourceLanguage });
+    const newProject = await createProject(name, language, domain, projectType, sourceLanguage);
     if (newProject) {
       console.log('ProjectSelector: Project created, closing modal');
       setShowCreateModal(false);

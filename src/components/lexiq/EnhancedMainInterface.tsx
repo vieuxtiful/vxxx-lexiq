@@ -1360,9 +1360,15 @@ export function EnhancedMainInterface({
   }, [grammarCheckingEnabled, toast]);
 
   // Handle project setup completion
-  const handleProjectSetupComplete = async (projectName: string, language: string, domain: string) => {
+  const handleProjectSetupComplete = async (
+    projectName: string, 
+    language: string, 
+    domain: string, 
+    projectType: 'monolingual' | 'bilingual' = 'monolingual',
+    sourceLanguage?: string
+  ) => {
     try {
-      await createProject(projectName, language, domain);
+      await createProject(projectName, language, domain, projectType, sourceLanguage);
       setShowProjectSetup(false);
       toast({
         title: "Project Created",

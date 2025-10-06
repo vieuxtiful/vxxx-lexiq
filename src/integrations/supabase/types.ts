@@ -24,6 +24,8 @@ export type Database = {
           language: string
           processing_time: number | null
           project_id: string
+          source_content: string | null
+          source_word_count: number | null
           statistics: Json | null
           translation_content: string | null
           translation_file_id: string | null
@@ -38,6 +40,8 @@ export type Database = {
           language: string
           processing_time?: number | null
           project_id: string
+          source_content?: string | null
+          source_word_count?: number | null
           statistics?: Json | null
           translation_content?: string | null
           translation_file_id?: string | null
@@ -52,6 +56,8 @@ export type Database = {
           language?: string
           processing_time?: number | null
           project_id?: string
+          source_content?: string | null
+          source_word_count?: number | null
           statistics?: Json | null
           translation_content?: string | null
           translation_file_id?: string | null
@@ -134,8 +140,10 @@ export type Database = {
           file_name: string
           file_size: number | null
           file_type: string
+          has_source_content: boolean | null
           id: string
           project_id: string
+          project_type: string | null
           storage_path: string
           user_id: string
         }
@@ -144,8 +152,10 @@ export type Database = {
           file_name: string
           file_size?: number | null
           file_type: string
+          has_source_content?: boolean | null
           id?: string
           project_id: string
+          project_type?: string | null
           storage_path: string
           user_id: string
         }
@@ -154,8 +164,10 @@ export type Database = {
           file_name?: string
           file_size?: number | null
           file_type?: string
+          has_source_content?: boolean | null
           id?: string
           project_id?: string
+          project_type?: string | null
           storage_path?: string
           user_id?: string
         }
@@ -330,7 +342,9 @@ export type Database = {
           language: string | null
           name: string
           organization_id: string | null
+          project_type: string
           settings: Json | null
+          source_language: string | null
           updated_at: string | null
           user_id: string
         }
@@ -341,7 +355,9 @@ export type Database = {
           language?: string | null
           name: string
           organization_id?: string | null
+          project_type?: string
           settings?: Json | null
+          source_language?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -352,7 +368,9 @@ export type Database = {
           language?: string | null
           name?: string
           organization_id?: string | null
+          project_type?: string
           settings?: Json | null
+          source_language?: string | null
           updated_at?: string | null
           user_id?: string
         }

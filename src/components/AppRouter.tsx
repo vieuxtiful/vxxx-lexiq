@@ -24,9 +24,15 @@ export const AppRouter: React.FC = () => {
     setSelectedProject(project);
   };
 
-  const handleCreateProject = async (name: string, language: string, domain: string) => {
-    console.log('📝 Creating project:', { name, language, domain });
-    const newProject = await createProject(name, language, domain);
+  const handleCreateProject = async (
+    name: string, 
+    language: string, 
+    domain: string, 
+    projectType: 'monolingual' | 'bilingual' = 'monolingual',
+    sourceLanguage?: string
+  ) => {
+    console.log('📝 Creating project:', { name, language, domain, projectType, sourceLanguage });
+    const newProject = await createProject(name, language, domain, projectType, sourceLanguage);
     if (newProject) {
       await refetchProjects();
       setSelectedProject(newProject);

@@ -9,6 +9,8 @@ export interface Project {
   organization_id?: string;
   language: string;
   domain: string;
+  project_type?: 'monolingual' | 'bilingual';
+  source_language?: string;
   settings: any;
   created_at: string;
   updated_at: string;
@@ -41,7 +43,12 @@ export const useProjects = (userId?: string) => {
       }
 
       console.log('Projects loaded:', data?.length || 0, 'projects');
-      setProjects(data || []);
+      // Cast project_type to the correct union type
+      const typedProjects = (data || []).map(p => ({
+        ...p,
+        project_type: (p.project_type || 'monolingual') as 'monolingual' | 'bilingual'
+      }));
+      setProjects(typedProjects);
     } catch (error) {
       console.error('Error loading projects:', error);
       toast({
@@ -54,7 +61,13 @@ export const useProjects = (userId?: string) => {
     }
   };
 
-  const createProject = async (name: string, language: string, domain: string) => {
+  const createProject = async (
+    name: string, 
+    language: string, 
+    domain: string, 
+    projectType: 'monolingual' | 'bilingual' = 'monolingual',
+    sourceLanguage?: string
+  ) => {
     try {
       console.log('Creating project in DB:', { name, language, domain, user_id: userId });
       
@@ -105,6 +118,8 @@ export const useProjects = (userId?: string) => {
           name: finalName,
           language,
           domain,
+          project_type: projectType,
+          source_language: sourceLanguage,
           user_id: userId,
         })
         .select()
@@ -116,7 +131,11 @@ export const useProjects = (userId?: string) => {
       }
 
       console.log('Project created in DB:', data);
-      setProjects(prev => [data, ...prev]);
+      const typedProject = {
+        ...data,
+        project_type: (data.project_type || 'monolingual') as 'monolingual' | 'bilingual'
+      };
+      setProjects(prev => [typedProject, ...prev]);
       
       toast({
         title: "Project created",
@@ -146,7 +165,11 @@ export const useProjects = (userId?: string) => {
 
       if (error) throw error;
 
-      setProjects(prev => prev.map(p => p.id === id ? data : p));
+      const typedProject = {
+        ...data,
+        project_type: (data.project_type || 'monolingual') as 'monolingual' | 'bilingual'
+      };
+      setProjects(prev => prev.map(p => p.id === id ? typedProject : p));
       
       toast({
         title: "Project updated",

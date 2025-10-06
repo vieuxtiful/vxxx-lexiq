@@ -15,7 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { LANGUAGES, LANGUAGE_FAMILIES, Language } from "@/lib/languageData";
+import { LANGUAGES, LANGUAGE_REGIONS, Language } from "@/lib/languageData";
 
 interface LanguageComboboxProps {
   value?: string;
@@ -60,16 +60,17 @@ export function LanguageCombobox({
           <CommandInput placeholder="Search languages..." />
           <CommandList>
             <CommandEmpty>No language found.</CommandEmpty>
-            {Object.entries(LANGUAGE_FAMILIES).map(([family, codes]) => {
-              const familyLanguages = LANGUAGES.filter((lang) =>
-                codes.includes(lang.code)
+            {/* Use regional organization instead of families */}
+            {Object.entries(LANGUAGE_REGIONS).map(([region, codes]) => {
+              const regionLanguages = LANGUAGES.filter((lang) =>
+                codes.includes(lang.code) && lang.region === region
               );
               
-              if (familyLanguages.length === 0) return null;
+              if (regionLanguages.length === 0) return null;
 
               return (
-                <CommandGroup key={family} heading={family}>
-                  {familyLanguages.map((lang) => (
+                <CommandGroup key={region} heading={region}>
+                  {regionLanguages.map((lang) => (
                     <CommandItem
                       key={lang.code}
                       value={`${lang.name} ${lang.nativeName} ${lang.code}`}
