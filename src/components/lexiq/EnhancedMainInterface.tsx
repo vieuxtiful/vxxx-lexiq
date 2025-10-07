@@ -1361,11 +1361,13 @@ export function EnhancedMainInterface({
     const newVersion: SavedVersion = {
       id: Date.now().toString(),
       content: currentContent,
+      sourceContent: currentProject.project_type === 'bilingual' ? sourceContent : undefined,
       timestamp: Date.now(),
       name: `Version ${savedVersions.length + 1}`,
       wordCount,
       hasAnalysis: analysisComplete,
-      projectId: currentProject.id // Add project reference
+      projectId: currentProject.id, // Add project reference
+      analysisResults: analysisComplete ? analysisResults : undefined
     };
     const updatedVersions = [newVersion, ...savedVersions].slice(0, 20);
     setSavedVersions(updatedVersions);
@@ -1376,15 +1378,33 @@ export function EnhancedMainInterface({
       title: "Version saved",
       description: `Saved as "${newVersion.name}" with ${wordCount} words`
     });
-  }, [currentContent, savedVersions, analysisComplete, toast, currentProject]);
+  }, [currentContent, sourceContent, savedVersions, analysisComplete, analysisResults, toast, currentProject]);
   const handleLoadVersion = useCallback((version: SavedVersion) => {
+    console.log('📂 Loading version:', version.name);
+    
+    // Restore translation content
     setCurrentContent(version.content);
+    setOriginalAnalyzedContent(version.content); // Critical for Term Validator
+    
+    // Restore source content for bilingual projects
+    if (currentProject?.project_type === 'bilingual' && version.sourceContent) {
+      setSourceContent(version.sourceContent);
+      console.log('✅ Restored source content:', version.sourceContent.length, 'chars');
+    }
+    
+    // Restore analysis results if available
+    if (version.hasAnalysis && version.analysisResults) {
+      setAnalysisResults(version.analysisResults);
+      setAnalysisComplete(true);
+      console.log('✅ Restored analysis results');
+    }
+    
     setHasUnsavedChanges(false);
     toast({
       title: "Version loaded",
       description: `Loaded "${version.name}"`
     });
-  }, [toast]);
+  }, [toast, currentProject]);
   const handleDeleteVersion = useCallback((id: string) => {
     if (!currentProject) return;
     const updatedVersions = savedVersions.filter(v => v.id !== id);

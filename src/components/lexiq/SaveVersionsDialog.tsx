@@ -14,11 +14,13 @@ import { Clock, FileText, Trash2 } from 'lucide-react';
 export interface SavedVersion {
   id: string;
   content: string;
+  sourceContent?: string; // For bilingual projects
   timestamp: number;
   name: string;
   wordCount: number;
   hasAnalysis: boolean;
   projectId?: string; // Optional for backward compatibility
+  analysisResults?: any; // Store analysis data if available
 }
 
 interface SaveVersionsDialogProps {
