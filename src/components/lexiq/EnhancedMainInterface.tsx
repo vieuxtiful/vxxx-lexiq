@@ -185,6 +185,8 @@ export function EnhancedMainInterface({
     glossaryContent: ''
   });
   const [isReanalyzing, setIsReanalyzing] = useState(false);
+  // Track if analysis was performed in current live session (not loaded from storage)
+  const [hasLiveAnalysis, setHasLiveAnalysis] = useState(false);
   const translationInputRef = useRef<HTMLInputElement>(null);
   const glossaryInputRef = useRef<HTMLInputElement>(null);
   const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -347,6 +349,7 @@ export function EnhancedMainInterface({
     setTranslationFileId(null);
     setGlossaryFileId(null);
     setIsLoadingSession(false);
+    setHasLiveAnalysis(false); // Reset live analysis flag
     console.log('✅ Main Window state reset complete');
   }, [currentProject]);
 
@@ -1065,6 +1068,7 @@ export function EnhancedMainInterface({
         setCurrentContent(translationContent);
         setOriginalAnalyzedContent(translationContent);
         setLastAnalyzedContent(translationContent);
+        setHasLiveAnalysis(true); // Mark that live analysis was performed
         setAnalysisProgress(100);
         addToHistory(translationContent, result);
 
@@ -1114,7 +1118,14 @@ export function EnhancedMainInterface({
   };
   // Reanalysis handler - BILINGUAL PROJECTS: Only reanalyzes the Term Validator (currentContent)
   // The Source Editor (sourceContent) is NOT reanalyzed - it's reference text only
+  // NOTE: Only available during live sessions (after QA analysis is performed)
   const handleReanalyze = async () => {
+    // Only allow reanalysis if analysis was performed in current live session
+    if (!hasLiveAnalysis) {
+      console.log('⚠️ Reanalysis blocked - no live analysis in current session');
+      return;
+    }
+    
     // Check if we have glossary content available
     const hasGlossaryContent = glossaryFile || glossaryFileUploaded;
     
@@ -1280,6 +1291,7 @@ export function EnhancedMainInterface({
         setAnalysisResults(result);
         setLastAnalyzedContent(content);
         setOriginalAnalyzedContent(content);
+        setHasLiveAnalysis(true); // Maintain live analysis flag during reanalysis
         setLastAnalysisParams({
           language: selectedLanguage,
           domain: selectedDomain,
@@ -1332,10 +1344,11 @@ export function EnhancedMainInterface({
       // If content similarity is less than 80% (20% change), clear analysis
       if (similarity < 0.8) {
         console.log('Content changed significantly, clearing analysis results');
-        setAnalysisResults(null);
-        setAnalysisComplete(false);
-        setLastAnalyzedContent('');
-        setOriginalAnalyzedContent('');
+      setAnalysisResults(null);
+      setAnalysisComplete(false);
+      setLastAnalyzedContent('');
+      setOriginalAnalyzedContent('');
+      setHasLiveAnalysis(false); // Clear live analysis flag when content changes significantly
         toast({
           title: "Content changed significantly",
           description: `Analysis results cleared (${(similarity * 100).toFixed(1)}% similarity). Click 'Start QA' to re-analyze the new content.`,
@@ -1451,6 +1464,7 @@ export function EnhancedMainInterface({
     if (version.hasAnalysis && version.analysisResults) {
       setAnalysisResults(version.analysisResults);
       setAnalysisComplete(true);
+      // Don't set hasLiveAnalysis - loaded versions are not live sessions
       console.log('✅ Restored analysis results');
     }
     
@@ -2014,7 +2028,7 @@ export function EnhancedMainInterface({
                                   content={currentContent} 
                                   flaggedTerms={analysisResults?.terms ? transformAnalyzedTermsToFlagged(analysisResults.terms) : []} 
                                   onContentChange={handleContentChange} 
-                                  onReanalyze={() => handleReanalyze()} 
+                                  onReanalyze={hasLiveAnalysis ? () => handleReanalyze() : undefined} 
                                   isReanalyzing={isReanalyzing} 
                                   grammarCheckingEnabled={grammarCheckingEnabled} 
                                   onGrammarCheckingToggle={setGrammarCheckingEnabled} 
@@ -2023,7 +2037,7 @@ export function EnhancedMainInterface({
                                   selectedLanguage={selectedLanguage} 
                                   selectedDomain={selectedDomain} 
                                   onValidateTerm={handleValidateTerm} 
-                                  originalAnalyzedContent={originalAnalyzedContent} 
+                                  originalAnalyzedContent={hasLiveAnalysis ? originalAnalyzedContent : ''}
                                 />
                               </div>
                             </ResizablePanel>
@@ -2052,7 +2066,7 @@ export function EnhancedMainInterface({
                               content={currentContent} 
                               flaggedTerms={analysisResults?.terms ? transformAnalyzedTermsToFlagged(analysisResults.terms) : []} 
                               onContentChange={handleContentChange} 
-                              onReanalyze={() => handleReanalyze()} 
+                              onReanalyze={hasLiveAnalysis ? () => handleReanalyze() : undefined} 
                               isReanalyzing={isReanalyzing} 
                               grammarCheckingEnabled={grammarCheckingEnabled} 
                               onGrammarCheckingToggle={setGrammarCheckingEnabled} 
@@ -2061,7 +2075,7 @@ export function EnhancedMainInterface({
                               selectedLanguage={selectedLanguage} 
                               selectedDomain={selectedDomain} 
                               onValidateTerm={handleValidateTerm} 
-                              originalAnalyzedContent={originalAnalyzedContent} 
+                              originalAnalyzedContent={hasLiveAnalysis ? originalAnalyzedContent : ''}
                             />
                           </div>
                         )}
