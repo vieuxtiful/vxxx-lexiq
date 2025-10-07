@@ -162,6 +162,8 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   const [isComposing, setIsComposing] = useState(false);
   const warningShownRef = useRef(false);
   const semanticTypesJustEnabledRef = useRef(false);
+  const userManuallySetLegendRef = useRef(false); // Track if user manually toggled legend
+  const userLegendPreferenceRef = useRef(false); // Store user's legend preference
   const [hasContentChanged, setHasContentChanged] = useState(false);
   const [lastEditedContent, setLastEditedContent] = useState('');
 
@@ -175,12 +177,20 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
     }
   }, [content, originalAnalyzedContent]);
 
-  // Auto-enable legend ONLY when semantic types are first enabled
+  // Auto-enable legend ONLY when semantic types are first enabled AND user hasn't manually set it
   useEffect(() => {
     if (showSemanticTypes && !semanticTypesJustEnabledRef.current) {
-      setShowLegend(true);
+      // Only auto-show legend if user hasn't manually changed it
+      if (!userManuallySetLegendRef.current) {
+        setShowLegend(true);
+        userLegendPreferenceRef.current = true;
+      } else {
+        // Restore user's manual preference when re-enabling types
+        setShowLegend(userLegendPreferenceRef.current);
+      }
       semanticTypesJustEnabledRef.current = true;
     } else if (!showSemanticTypes) {
+      // When types are disabled, remember the current legend state but mark that first-enable has passed
       semanticTypesJustEnabledRef.current = false;
     }
   }, [showSemanticTypes]);
@@ -639,9 +649,19 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
               </div>
               
               {/* Legend button right-aligned when Types is enabled */}
-              {showSemanticTypes && flaggedTerms.length > 0 && <Button variant="outline" size="sm" onClick={() => setShowLegend(!showLegend)} className="h-7 text-xs">
-                  {showLegend ? 'Hide Legend' : 'Show Legend'}
-                </Button>}
+              {showSemanticTypes && flaggedTerms.length > 0 && <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  const newValue = !showLegend;
+                  setShowLegend(newValue);
+                  userManuallySetLegendRef.current = true; // User manually changed it
+                  userLegendPreferenceRef.current = newValue; // Store preference
+                }} 
+                className="h-7 text-xs"
+              >
+                {showLegend ? 'Hide Legend' : 'Show Legend'}
+              </Button>}
             </div>}
 
           {/* NEW LOCATION: Semantic Types Legend - Now directly under category badges */}
