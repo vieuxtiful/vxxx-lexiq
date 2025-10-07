@@ -584,61 +584,6 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
             </div>
             
             <div className="flex items-center gap-4 px-[15px] my-0 py-0 mx-0">
-              {/* Terminology Analysis - Always On */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center space-x-2 opacity-60 cursor-not-allowed">
-                      
-                      
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Terminology analysis is always enabled</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              {/* Grammar Toggle */}
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="term-grammar"
-                  checked={grammarCheckingEnabled}
-                  onCheckedChange={(enabled) => {
-                    console.log('Grammar checking toggled:', enabled);
-                    onGrammarCheckingToggle?.(enabled);
-                  }}
-                />
-                <Label htmlFor="term-grammar" className="text-sm flex items-center gap-1">
-                  Grammar
-                  {grammarCheckingEnabled && flaggedTerms.filter(t => t.classification === 'grammar').length > 0 && (
-                    <Badge variant="outline" className="ml-1 text-xs bg-purple-500/10 text-purple-700 border-purple-500/20">
-                      {flaggedTerms.filter(t => t.classification === 'grammar').length}
-                    </Badge>
-                  )}
-                </Label>
-              </div>
-
-              {/* Spelling Toggle */}
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="term-spelling"
-                  checked={spellingCheckingEnabled}
-                  onCheckedChange={(enabled) => {
-                    console.log('Spelling checking toggled:', enabled);
-                    onSpellingCheckingToggle?.(enabled);
-                  }}
-                />
-                <Label htmlFor="term-spelling" className="text-sm flex items-center gap-1">
-                  Spelling
-                  {spellingCheckingEnabled && flaggedTerms.filter(t => t.classification === 'spelling').length > 0 && (
-                    <Badge variant="outline" className="ml-1 text-xs bg-red-500/10 text-red-700 border-red-500/20">
-                      {flaggedTerms.filter(t => t.classification === 'spelling').length}
-                    </Badge>
-                  )}
-                </Label>
-              </div>
-
               {/* Semantic Types Toggle */}
               <div className="flex items-center space-x-2">
                 <Switch id="semantic-types" checked={showSemanticTypes} onCheckedChange={setShowSemanticTypes} />
@@ -719,7 +664,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
             </div>}
         </CardHeader>
         
-        <CardContent className="flex-1 overflow-auto relative">
+        <CardContent className="flex-1 overflow-auto relative pb-16">
           {editorRef.current ? <div ref={editorRef} className="min-h-[400px] p-4 rounded-md border bg-background/50 font-mono text-sm leading-relaxed" contentEditable={isEditing} spellCheck={false} suppressContentEditableWarning onInput={e => {
           if (!isEditing || isComposing) return;
           saveCursorPosition();
@@ -756,8 +701,50 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
               {content}
             </div>}
 
-          {/* Bottom Bar: Word/Character Count */}
-          <div className="flex items-center justify-end mt-3 pt-3 border-t">
+          {/* Bottom Bar: Word/Character Count and Grammar/Spelling Toggles */}
+          <div className="flex items-center justify-between mt-3 pt-3 border-t">
+            <div className="flex items-center gap-4">
+              {/* Grammar Toggle */}
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="term-grammar-bottom"
+                  checked={grammarCheckingEnabled}
+                  onCheckedChange={(enabled) => {
+                    console.log('Grammar checking toggled:', enabled);
+                    onGrammarCheckingToggle?.(enabled);
+                  }}
+                />
+                <Label htmlFor="term-grammar-bottom" className="text-sm flex items-center gap-1 cursor-pointer">
+                  Grammar
+                  {grammarCheckingEnabled && flaggedTerms.filter(t => t.classification === 'grammar').length > 0 && (
+                    <Badge variant="outline" className="ml-1 text-xs bg-purple-500/10 text-purple-700 border-purple-500/20">
+                      {flaggedTerms.filter(t => t.classification === 'grammar').length}
+                    </Badge>
+                  )}
+                </Label>
+              </div>
+
+              {/* Spelling Toggle */}
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="term-spelling-bottom"
+                  checked={spellingCheckingEnabled}
+                  onCheckedChange={(enabled) => {
+                    console.log('Spelling checking toggled:', enabled);
+                    onSpellingCheckingToggle?.(enabled);
+                  }}
+                />
+                <Label htmlFor="term-spelling-bottom" className="text-sm flex items-center gap-1 cursor-pointer">
+                  Spelling
+                  {spellingCheckingEnabled && flaggedTerms.filter(t => t.classification === 'spelling').length > 0 && (
+                    <Badge variant="outline" className="ml-1 text-xs bg-red-500/10 text-red-700 border-red-500/20">
+                      {flaggedTerms.filter(t => t.classification === 'spelling').length}
+                    </Badge>
+                  )}
+                </Label>
+              </div>
+            </div>
+
             <div className="flex gap-4 text-xs text-blue-600 dark:text-blue-400">
               <span>{content.trim() ? content.trim().split(/\s+/).length : 0} words</span>
               <span>•</span>

@@ -486,6 +486,13 @@ export function EnhancedMainInterface({
             if (parsed.currentContent) {
               setCurrentContent(parsed.currentContent);
               setTextManuallyEntered(parsed.textManuallyEntered || false);
+              
+              // Restore source content for bilingual projects
+              if (currentProject.project_type === 'bilingual' && parsed.sourceContent) {
+                setSourceContent(parsed.sourceContent);
+                console.log('✅ Restored source content:', parsed.sourceContent.length, 'chars');
+              }
+              
               if (parsed.analysisResults) {
                 setAnalysisResults(parsed.analysisResults);
                 setAnalysisComplete(true);
@@ -502,7 +509,7 @@ export function EnhancedMainInterface({
               }
               // Clear unsaved changes flag since we're loading saved data
               setHasUnsavedChanges(false);
-              console.log('✅ Loaded from localStorage session (including edited terms)');
+              console.log('✅ Loaded from localStorage session (including edited terms and source content)');
               setIsLoadingSession(false);
               return; // Stop here if we loaded from localStorage
             }
@@ -549,9 +556,10 @@ export function EnhancedMainInterface({
               console.log('✅ Loading database session:', validSession.id);
               setCurrentContent(validSession.translation_content);
               
-              // NEW: Load source content for bilingual projects
+              // Load source content for bilingual projects
               if (currentProject.project_type === 'bilingual' && validSession.source_content) {
                 setSourceContent(validSession.source_content);
+                console.log('✅ Restored source content from DB:', validSession.source_content.length, 'chars');
               }
               
               setAnalysisResults({
@@ -611,16 +619,20 @@ export function EnhancedMainInterface({
 
         const stateToSave = {
           currentContent,
-          sourceContent, // NEW: Save source content for bilingual projects
+          sourceContent, // Save source content for bilingual projects
           analysisResults,
           textManuallyEntered,
           activeMainTab,
           editedTerms, // Include edited terms in auto-save
           projectId: currentProject.id,
-          // Add project ID for validation
           timestamp: new Date().toISOString()
         };
         localStorage.setItem(sessionKey, JSON.stringify(stateToSave));
+        console.log('💾 Auto-saved session:', { 
+          hasSourceContent: !!sourceContent, 
+          sourceLength: sourceContent?.length || 0,
+          contentLength: currentContent?.length || 0 
+        });
       }
     }, 5000);
     return () => {
@@ -1349,6 +1361,13 @@ export function EnhancedMainInterface({
 
     // Set the main content and analysis results
     setCurrentContent(restoredContent);
+    
+    // Restore source content for bilingual projects
+    if (currentProject?.project_type === 'bilingual' && session.source_content) {
+      setSourceContent(session.source_content);
+      console.log('✅ Restored source content from session:', session.source_content.length, 'chars');
+    }
+    
     setAnalysisResults({
       terms: session.analyzed_terms,
       statistics: session.statistics
@@ -1435,6 +1454,7 @@ export function EnhancedMainInterface({
 
     // Clear all state
     setCurrentContent('');
+    setSourceContent(''); // Clear source content
     setTranslationFile(null);
     setGlossaryFile(null);
     setAnalysisResults(null);
