@@ -14,15 +14,18 @@ export const useChunkedAnalysis = () => {
 
   const cancelAnalysis = () => {
     if (abortControllerRef.current) {
-      console.log('🛑 Cancelling analysis...');
+      console.log('🛑 User initiated analysis cancellation');
       abortControllerRef.current.abort();
+      
+      // Immediate state reset
       setIsAnalyzing(false);
       setProgress(0);
       setCurrentChunk(0);
       setTotalChunks(0);
+      
       toast({
         title: "Analysis cancelled",
-        description: "The analysis has been stopped.",
+        description: "Returning to pre-analysis state.",
       });
     }
   };
@@ -165,10 +168,10 @@ export const useChunkedAnalysis = () => {
       return null;
     } finally {
       setIsAnalyzing(false);
+      setProgress(0);
       setCurrentChunk(0);
       setTotalChunks(0);
       abortControllerRef.current = null;
-      setTimeout(() => setProgress(0), 100);
     }
   };
 

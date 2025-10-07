@@ -69,7 +69,7 @@ export const useAnalysisEngine = () => {
     checkGrammar: boolean = false,
     checkSpelling: boolean = true,
     signal?: AbortSignal
-  ): Promise<AnalysisResult> => {
+  ): Promise<AnalysisResult | null> => {
     // Check cache first
     const cacheKey = analysisCache.generateKey(translationContent, language, domain, checkGrammar, checkSpelling);
     const cachedResult = analysisCache.get<AnalysisResult>(cacheKey);
@@ -87,16 +87,16 @@ export const useAnalysisEngine = () => {
     setProgress(0);
     setCurrentFullText(translationContent); // Store the full text for context enhancement
 
+    const progressInterval = setInterval(() => {
+      setProgress(prev => Math.min(prev + 10, 90));
+    }, 500);
+
     try {
       // Check if already cancelled
       if (signal?.aborted) {
+        console.log('🛑 Analysis already cancelled before starting');
         throw new Error('Analysis cancelled by user');
       }
-
-      // Simulate progress updates
-      const progressInterval = setInterval(() => {
-        setProgress(prev => Math.min(prev + 10, 90));
-      }, 500);
 
       console.log('Starting analysis with Lovable AI...');
 
@@ -107,7 +107,10 @@ export const useAnalysisEngine = () => {
 
       // Add abort handling
       const abortPromise = signal ? new Promise<never>((_, reject) => {
-        signal.addEventListener('abort', () => reject(new Error('Analysis cancelled by user')), { once: true });
+        signal.addEventListener('abort', () => {
+          console.log('🛑 Abort signal received - terminating analysis');
+          reject(new Error('Analysis cancelled by user'));
+        }, { once: true });
       }) : Promise.race([]);
 
       const analysisPromise = supabase.functions.invoke('analyze-translation', {
@@ -205,7 +208,15 @@ export const useAnalysisEngine = () => {
 
       return enhancedResult;
     } catch (error) {
+      clearInterval(progressInterval);
       console.error('Analysis error:', error);
+      
+      // Don't show error toast if it was a user cancellation
+      if (error instanceof Error && error.message.includes('cancelled by user')) {
+        console.log('✅ Analysis cancelled - no error toast needed');
+        return null;
+      }
+      
       toast({
         title: "Analysis failed",
         description: error instanceof Error ? error.message : 'Unknown error',
@@ -213,9 +224,10 @@ export const useAnalysisEngine = () => {
       });
       return null;
     } finally {
+      clearInterval(progressInterval);
       setIsAnalyzing(false);
-      // Delay resetting progress to allow the UI to show 100%
-      setTimeout(() => setProgress(0), 100);
+      setProgress(0);
+      setCurrentFullText('');
     }
   };
 

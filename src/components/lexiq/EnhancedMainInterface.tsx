@@ -990,6 +990,17 @@ export function EnhancedMainInterface({
         checkGrammar: grammarCheckingEnabled
       });
       const result = await analyzeWithChunking(translationContent, glossaryContent, selectedLanguage, selectedDomain, grammarCheckingEnabled);
+      
+      // If analysis was cancelled, reset to pre-QA state
+      if (!result) {
+        console.log('🛑 Analysis cancelled or failed - resetting to pre-QA state');
+        setIsAnalyzing(false);
+        setAnalysisProgress(0);
+        setAnalysisComplete(false);
+        setAnalysisResults(null);
+        return;
+      }
+      
       if (result) {
         // Log specific spell/grammar issues for verification
         const spellTerms = result.terms.filter((t: any) => t.classification === 'spelling');
