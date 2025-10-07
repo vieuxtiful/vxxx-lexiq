@@ -174,10 +174,10 @@ export const FloatingBackground: React.FC = () => {
   useEffect(() => {
     generateFloatingTexts();
     
-    // Refresh with new words every minute
+    // Refresh with new words after all animations complete (max speed is 70s + buffer)
     const interval = setInterval(() => {
       generateFloatingTexts();
-    }, 60000); // 60 seconds
+    }, 90000); // 90 seconds - ensures all words are off-screen before refresh
     
     return () => clearInterval(interval);
   }, []);
