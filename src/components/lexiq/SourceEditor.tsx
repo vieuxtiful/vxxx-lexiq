@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { FileText, AlertCircle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { AnimatedEllipsis } from '@/components/ui/animated-ellipsis';
 
 interface SourceEditorProps {
   content: string;
@@ -167,14 +168,25 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
 
             {onReanalyze && content.trim() && (
               <Button
-                variant="ghost"
+                variant={isReanalyzing ? "outline" : "ghost"}
                 size="sm"
                 onClick={onReanalyze}
                 disabled={isReanalyzing || isAnalyzing}
-                className="h-7 text-xs"
+                className={`h-7 text-xs transition-all duration-200 ${
+                  isReanalyzing ? 'bg-transparent border-primary/50' : ''
+                }`}
               >
-                <RefreshCw className={`h-3 w-3 mr-1 ${isReanalyzing ? 'animate-spin' : ''}`} />
-                {isReanalyzing ? 'Analyzing...' : 'Reanalyze'}
+                {isReanalyzing ? (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    <AnimatedEllipsis text="Analyzing" />
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Reanalyze
+                  </>
+                )}
               </Button>
             )}
           </div>

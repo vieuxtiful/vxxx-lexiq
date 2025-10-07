@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { CheckCircle, AlertCircle, XCircle, Zap, BookOpen, Palette, Check, RefreshCw, Globe, Building, AlertTriangle } from 'lucide-react';
+import { CheckCircle, AlertCircle, XCircle, Zap, BookOpen, Palette, Check, RefreshCw, Globe, Building, AlertTriangle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatSemanticType } from '@/utils/semanticTypeFormatter';
+import { AnimatedEllipsis } from '@/components/ui/animated-ellipsis';
 interface FlaggedTerm {
   text: string;
   start: number;
@@ -573,14 +574,31 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
               </Button>
               
               {/* Reanalyze button - shown when content has changed from original analyzed content */}
-              {onReanalyze && hasContentChanged && content.trim().length > 0 && originalAnalyzedContent && <Button variant="outline" size="sm" onClick={() => {
-              onReanalyze(content);
-              setHasContentChanged(false);
-              setLastEditedContent('');
-            }} disabled={isReanalyzing} className="h-6 text-xs gap-1.5 px-2">
-                  {isReanalyzing ? <RefreshCw className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                  {isReanalyzing ? 'Reanalyzing...' : 'Reanalyze'}
-                </Button>}
+              {onReanalyze && hasContentChanged && content.trim().length > 0 && originalAnalyzedContent && <Button 
+                variant={isReanalyzing ? "outline" : "outline"} 
+                size="sm" 
+                onClick={() => {
+                  onReanalyze(content);
+                  setHasContentChanged(false);
+                  setLastEditedContent('');
+                }} 
+                disabled={isReanalyzing} 
+                className={`h-6 text-xs gap-1.5 px-2 transition-all duration-200 ${
+                  isReanalyzing ? 'bg-transparent border-primary/50' : ''
+                }`}
+              >
+                {isReanalyzing ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <AnimatedEllipsis text="Reanalyzing" />
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-3 w-3" />
+                    Reanalyze
+                  </>
+                )}
+              </Button>}
             </div>
             
             <div className="flex items-center gap-4 px-[15px] my-0 py-0 mx-0">
