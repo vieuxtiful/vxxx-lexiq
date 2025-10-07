@@ -1,5 +1,6 @@
 // Phase 8 - Enhanced Main Interface with AuthFlow integration
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { detectLanguageSimple, validateContentLanguage, getLanguageName } from '@/lib/languageDetector';
 import { LanguageMismatchDialog } from './LanguageMismatchDialog';
 import { Button } from '@/components/ui/button';
@@ -493,6 +494,19 @@ export function EnhancedMainInterface({
                 console.log('✅ Restored source content:', parsed.sourceContent.length, 'chars');
               }
               
+              // Restore file upload states if files were used
+              if (parsed.translationFileId) {
+                setTranslationFileId(parsed.translationFileId);
+                setTranslationFileUploaded(true);
+                console.log('✅ Detected previous translation file upload');
+              }
+              
+              if (parsed.glossaryFileId) {
+                setGlossaryFileId(parsed.glossaryFileId);
+                setGlossaryFileUploaded(true);
+                console.log('✅ Detected previous glossary file upload');
+              }
+              
               if (parsed.analysisResults) {
                 setAnalysisResults(parsed.analysisResults);
                 setAnalysisComplete(true);
@@ -624,6 +638,8 @@ export function EnhancedMainInterface({
           textManuallyEntered,
           activeMainTab,
           editedTerms, // Include edited terms in auto-save
+          translationFileId, // Include file IDs for restoration
+          glossaryFileId, // Include glossary file ID for restoration
           projectId: currentProject.id,
           timestamp: new Date().toISOString()
         };
@@ -631,7 +647,8 @@ export function EnhancedMainInterface({
         console.log('💾 Auto-saved session:', { 
           hasSourceContent: !!sourceContent, 
           sourceLength: sourceContent?.length || 0,
-          contentLength: currentContent?.length || 0 
+          contentLength: currentContent?.length || 0,
+          hasGlossaryFile: !!glossaryFileId
         });
       }
     }, 5000);
@@ -1098,7 +1115,10 @@ export function EnhancedMainInterface({
   // Reanalysis handler - BILINGUAL PROJECTS: Only reanalyzes the Term Validator (currentContent)
   // The Source Editor (sourceContent) is NOT reanalyzed - it's reference text only
   const handleReanalyze = async () => {
-    if (!glossaryFile) {
+    // Check if we have glossary content available
+    const hasGlossaryContent = glossaryFile || glossaryFileUploaded;
+    
+    if (!hasGlossaryContent) {
       if (!noGlossaryWarningShown) {
         toast({
           title: "No Glossary",
@@ -1119,7 +1139,42 @@ export function EnhancedMainInterface({
     try {
       // Use currentContent from state to get the latest edited content from Term Validator
       const content = currentContent;
-      const glossaryContent = await glossaryFile.text();
+      
+      // Get glossary content - either from file or fetch from storage
+      let glossaryContent = '';
+      
+      if (glossaryFile) {
+        glossaryContent = await glossaryFile.text();
+      } else if (glossaryFileId) {
+        // Fetch from storage using file_uploads table
+        console.log('📥 Fetching glossary from storage:', glossaryFileId);
+        try {
+          const { data: fileData, error: fileError } = await supabase
+            .from('file_uploads')
+            .select('storage_path')
+            .eq('id', glossaryFileId)
+            .single();
+          
+          if (fileError) throw fileError;
+          
+          const { data: storageData, error: storageError } = await supabase.storage
+            .from('glossary-files')
+            .download(fileData.storage_path);
+          
+          if (storageError) throw storageError;
+          
+          glossaryContent = await storageData.text();
+          console.log('✅ Retrieved glossary from storage:', glossaryContent.length, 'chars');
+        } catch (error) {
+          console.error('Failed to fetch glossary from storage:', error);
+          toast({
+            title: "Glossary Not Found",
+            description: "Please re-upload your glossary file",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
 
       // Generate cache key for current content
       const cacheKey = analysisCache.generateKey(content, selectedLanguage, selectedDomain, grammarCheckingEnabled, spellingCheckingEnabled);
@@ -1440,6 +1495,19 @@ export function EnhancedMainInterface({
     if (currentProject?.project_type === 'bilingual' && session.source_content) {
       setSourceContent(session.source_content);
       console.log('✅ Restored source content from session:', session.source_content.length, 'chars');
+    }
+    
+    // Restore file upload indicators if files were used in the session
+    if (session.glossary_file_id) {
+      setGlossaryFileId(session.glossary_file_id);
+      setGlossaryFileUploaded(true);
+      console.log('✅ Detected glossary file from session:', session.glossary_file_id);
+    }
+    
+    if (session.translation_file_id) {
+      setTranslationFileId(session.translation_file_id);
+      setTranslationFileUploaded(true);
+      console.log('✅ Detected translation file from session:', session.translation_file_id);
     }
     
     setAnalysisResults({
@@ -1817,14 +1885,21 @@ export function EnhancedMainInterface({
                         className={`flex items-center justify-between p-3 rounded-md border-2 border-dashed cursor-pointer transition-all ${
                           isDraggingGlossary
                             ? 'border-primary bg-primary/20 scale-105 hover:border-primary hover:bg-primary/20'
-                            : glossaryFile 
+                            : glossaryFileUploaded 
                               ? 'border-success bg-success/5 hover:border-primary hover:bg-primary/5' 
                               : 'border-border hover:border-primary hover:bg-primary/5'
                         }`}>
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <img src={glossaryIcon} alt="Glossary" className="h-4 w-4 flex-shrink-0" />
                           <span className="text-xs truncate">
-                            {isDraggingGlossary ? 'Drop file here...' : glossaryFile ? glossaryFile.name : 'Glossary File'}
+                            {isDraggingGlossary 
+                              ? 'Drop file here...' 
+                              : glossaryFile 
+                                ? glossaryFile.name 
+                                : glossaryFileUploaded 
+                                  ? 'Glossary (from session) • Click to replace'
+                                  : 'Glossary File'
+                            }
                           </span>
                         </div>
                         {glossaryFileUploaded ? (
