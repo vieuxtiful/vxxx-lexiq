@@ -329,68 +329,158 @@ PRIORITY 5 - VALID:
 - Mass nouns (quenching, tempering, information, equipment) do NOT pluralize - flag additions of "-s" as GRAMMAR errors
 
 ${checkGrammar ? `
-GRAMMAR DETECTION RULES (when checkGrammar=true):
+GRAMMAR DETECTION RULES (Language: ${language}) - when checkGrammar=true:
 
-Subject-Verb Agreement:
-- SINGULAR subjects take SINGULAR verbs: "The control IS" (not "are")
-- PLURAL subjects take PLURAL verbs: "The processes ARE" (not "is")
-- ❌ "The careful control of these thermal processes ARE paramount" → GRAMMAR ERROR
-- ✅ "The careful control of these thermal processes IS paramount" → CORRECT
-- ❌ "The process involve multiple steps" → GRAMMAR ERROR  
-- ✅ "The process involves multiple steps" → CORRECT
+Apply the grammatical rules NATIVE to ${language}. Analyze for language-appropriate errors:
 
-Article-Noun Number Agreement:
-- "a/an" (singular articles) must be followed by SINGULAR nouns
-- ❌ "a solutions treatment" → GRAMMAR ERROR (singular article + plural noun)
-- ✅ "a solution treatment" → CORRECT
-- ❌ "an processes" → GRAMMAR ERROR
-- ✅ "a process" → CORRECT
-- Note: "the" can be used with both singular and plural
+1. AGREEMENT ERRORS:
+   - Noun-verb agreement (subject-predicate number/person)
+   - Noun-adjective agreement (gender, number, case where applicable)
+   - Article-noun agreement (definiteness, gender, number)
+   - Determiner-noun agreement
+   - Pronoun-antecedent agreement
 
-Mass Nouns (No Plural Forms):
-- "quenching" → ❌ "quenchings" (GRAMMAR ERROR - mass noun cannot be pluralized)
-- "tempering" → ❌ "temperings" (GRAMMAR ERROR - mass noun cannot be pluralized)
-- "information" → ❌ "informations" (GRAMMAR ERROR - mass noun cannot be pluralized)
-- "equipment" → ❌ "equipments" (GRAMMAR ERROR - mass noun cannot be pluralized)
+2. WORD FORM ERRORS:
+   - Incorrect verb conjugations (tense, person, number, aspect, mood)
+   - Incorrect noun declensions (case, number, gender)
+   - Incorrect adjective declensions (gender, number, case)
+   - Incorrect pluralization (including mass/uncountable nouns that don't pluralize in ${language})
+   - Gender mismatches (for gendered languages)
+   - Case errors (for languages with case systems)
 
-Process Nouns:
-- Check if adding "-s" creates a non-standard form
-- Verify pluralization against domain-specific usage
+3. SYNTAX ERRORS:
+   - Incorrect word order for ${language}
+   - Missing required grammatical particles or markers
+   - Tense/aspect/mood inconsistencies
+   - Incorrect use of grammatical constructions
 
-Detection Instructions:
-- For subject-verb disagreement: identify the TRUE subject (ignore prepositional phrases)
-  * "The control [of these processes]" - subject is "control" (singular)
-  * "The steps [in the process]" - subject is "steps" (plural)
-- For article-noun disagreement: check the IMMEDIATE noun after "a/an"
-  * "a solutions treatment" - "solutions" is incorrect
-  * "a solution treatment" - "solution" is correct
+LANGUAGE-FAMILY-SPECIFIC PATTERNS:
+
+${(() => {
+  // Romance languages (French, Spanish, Italian, Portuguese, Romanian, Catalan)
+  if (['fr', 'es', 'it', 'pt', 'ro', 'ca'].includes(language)) {
+    return `Romance Language (${language}) - Focus on:
+   - Article-noun GENDER agreement (masculine/feminine)
+     * French: un/une, le/la, ce/cette (un échange ✓, une échange ✗)
+     * Spanish: el/la, un/una (el problema ✓, la problema ✗)
+     * Italian: il/la, un/una (il problema ✓, la problema ✗)
+   - Article-noun NUMBER agreement (singular/plural)
+   - Adjective-noun gender AND number agreement
+   - Verb conjugation patterns (person, number, tense, mood)
+   - Common irregular forms and exceptions`;
+  }
   
-For each grammar error, provide:
-- The incorrect form used (e.g., "control... are", "a solutions")
-- The correct form (e.g., "control... is", "a solution")
-- Clear explanation of why it's incorrect (e.g., "singular subject requires singular verb", "singular article must be followed by singular noun")
-- Severity level: HIGH for subject-verb and article-noun errors, MEDIUM/HIGH for mass noun errors
+  // Germanic languages (German, Dutch, Swedish, Norwegian, Danish)
+  if (['de', 'nl', 'sv', 'no', 'da'].includes(language)) {
+    return `Germanic Language (${language}) - Focus on:
+   - Article-noun GENDER (der/die/das, de/het, etc.)
+   - Case declensions (German: nominative, accusative, dative, genitive)
+   - Compound word formation correctness
+   - Verb position rules (V2 word order)
+   - Separable prefix verbs`;
+  }
+  
+  // Slavic languages (Russian, Polish, Ukrainian, Czech, Bulgarian, Serbian)
+  if (['ru', 'pl', 'uk', 'cs', 'bg', 'sr'].includes(language)) {
+    return `Slavic Language (${language}) - Focus on:
+   - Case system (nominative, genitive, dative, accusative, instrumental, locative)
+   - Gender agreement (masculine, feminine, neuter)
+   - Aspect pairs (perfective/imperfective verbs)
+   - Declension patterns for nouns, adjectives, pronouns
+   - Noun-numeral agreement`;
+  }
+  
+  // East Asian languages (Chinese, Japanese, Korean)
+  if (['zh', 'ja', 'ko'].includes(language)) {
+    return `East Asian Language (${language}) - Focus on:
+   - Particle usage and placement (Japanese: は、が、を、に、で、と、へ、から、まで)
+   - Counter classifiers (correct classifier for noun type)
+   - Honorific forms and register appropriateness
+   - Character/script correctness (kanji vs. kana, hanja, hanzi)
+   - Topic-comment structure`;
+  }
+  
+  // Semitic languages (Arabic, Hebrew)
+  if (['ar', 'he'].includes(language)) {
+    return `Semitic Language (${language}) - Focus on:
+   - Root-pattern morphology correctness
+   - Definiteness marking (al-, ha-)
+   - Gender agreement (masculine/feminine)
+   - Plural patterns (sound plurals, broken plurals in Arabic)
+   - Construct state (idafa in Arabic, smikhut in Hebrew)`;
+  }
+  
+  // Agglutinative languages (Turkish, Finnish, Hungarian)
+  if (['tr', 'fi', 'hu'].includes(language)) {
+    return `Agglutinative Language (${language}) - Focus on:
+   - Suffix ordering and combinations
+   - Vowel harmony rules
+   - Case suffixes (multiple cases)
+   - Possessive suffix usage
+   - Question particle placement`;
+  }
+  
+  // Default for other languages
+  return `Apply ${language} grammar rules:
+   - Check agreement patterns native to ${language}
+   - Verify correct word forms for ${language}
+   - Validate syntax patterns specific to ${language}`;
+})()}
+
+For each grammar error found:
+- Identify the incorrect form used
+- Provide the correct form in ${language}
+- Explain why it's incorrect using ${language} grammatical concepts
+- Assign severity: HIGH for agreement/conjugation errors, MEDIUM for minor form variations
 ` : ''}
 
 ${checkSpelling ? `
-SPELLING VALIDATION (when checkSpelling=true):
-- Check EVERY word against standard ${language} dictionaries
-- Flag words that are:
-  * Non-existent in standard dictionaries
-  * Character transpositions (e.g., "teh" → "the")
-  * Missing/extra letters (e.g., "temperture" → "temperature")
-  * Typos that create plausible-looking but incorrect words
-  
-- DO NOT flag:
-  * Proper nouns
-  * Domain-specific technical terms in the glossary
-  * Correct variations of glossary terms
+SPELLING VALIDATION (Language: ${language}, Script: ${(() => {
+  if (['zh', 'ja'].includes(language)) return 'Han/CJK';
+  if (['ar', 'he'].includes(language)) return 'Arabic/Hebrew';
+  if (['ru', 'uk', 'bg', 'sr'].includes(language)) return 'Cyrillic';
+  if (['el'].includes(language)) return 'Greek';
+  if (['th'].includes(language)) return 'Thai';
+  if (['ko'].includes(language)) return 'Hangul';
+  if (['hi'].includes(language)) return 'Devanagari';
+  return 'Latin';
+})()}) - when checkSpelling=true:
 
-- For each spelling error:
-  * Provide the misspelled word
-  * Suggest the correct spelling
-  * Character positions
-  * Brief explanation
+Validate words against ${language} dictionaries and orthographic rules. Flag:
+
+1. NON-EXISTENT WORDS in ${language}:
+   - Words not found in standard ${language} dictionaries
+   - Verify against ${language} lexicon, not English or other languages
+   ${language === 'fr' ? '- Example: "journale" ✗ (correct: "journal")' : ''}
+   ${language === 'es' ? '- Example: "problemo" ✗ (correct: "problema")' : ''}
+   ${language === 'de' ? '- Example: "Hause" in wrong context ✗ (correct: "Haus" or "Hause" with preposition)' : ''}
+
+2. CHARACTER/LETTER ERRORS:
+   - Transpositions (wrong character order)
+   - Missing or extra letters
+   - Wrong characters that create non-words
+   ${['fr', 'es', 'it', 'pt', 'ca'].includes(language) ? '- Diacritical mark errors (é/è/ê/ë, á/à, ñ, ç, etc.)' : ''}
+   ${['de', 'sv', 'no', 'da', 'fi'].includes(language) ? '- Umlaut/special character errors (ä/ö/ü, å, ø, etc.)' : ''}
+   ${['ru', 'uk', 'bg', 'sr'].includes(language) ? '- Incorrect Cyrillic letters (е/ё, и/й confusion)' : ''}
+   ${['ja'].includes(language) ? '- Wrong kanji readings, incorrect kana usage' : ''}
+   ${['zh'].includes(language) ? '- Incorrect hanzi characters, simplified vs. traditional' : ''}
+   ${['ar'].includes(language) ? '- Wrong Arabic letter forms (initial/medial/final/isolated)' : ''}
+
+3. TYPOS CREATING PLAUSIBLE BUT INCORRECT WORDS:
+   - Real words in ${language} but wrong in context
+   - Confused homophones or near-homophones in ${language}
+
+DO NOT flag as spelling errors:
+- Proper nouns (names, places, brands)
+- Domain-specific technical terms from the glossary
+- Correct morphological variations (conjugations, declensions) of glossary terms
+- Loanwords commonly used in ${language}
+
+For each spelling error:
+- Provide the misspelled word
+- Suggest the correct ${language} spelling
+- Include character positions in the text
+- Brief explanation in ${language}
 ` : ''}
 
 LANGUAGE CHECK PARAMETERS:
