@@ -173,6 +173,13 @@ export const FloatingBackground: React.FC = () => {
 
   useEffect(() => {
     generateFloatingTexts();
+    
+    // Refresh with new words every minute
+    const interval = setInterval(() => {
+      generateFloatingTexts();
+    }, 60000); // 60 seconds
+    
+    return () => clearInterval(interval);
   }, []);
 
   return (
