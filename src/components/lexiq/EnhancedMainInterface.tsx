@@ -1084,6 +1084,8 @@ export function EnhancedMainInterface({
       startTimeRef.current = null;
     }
   };
+  // Reanalysis handler - BILINGUAL PROJECTS: Only reanalyzes the Term Validator (currentContent)
+  // The Source Editor (sourceContent) is NOT reanalyzed - it's reference text only
   const handleReanalyze = async () => {
     if (!glossaryFile) {
       if (!noGlossaryWarningShown) {
@@ -1097,9 +1099,14 @@ export function EnhancedMainInterface({
       }
       return;
     }
+    
     setIsReanalyzing(true);
+    console.log('🔄 Starting reanalysis of Term Validator content');
+    console.log(`Project type: ${currentProject?.project_type || 'unknown'}`);
+    console.log(`Analyzing content length: ${currentContent.length} chars`);
+    
     try {
-      // Use currentContent from state to get the latest edited content
+      // Use currentContent from state to get the latest edited content from Term Validator
       const content = currentContent;
       const glossaryContent = await glossaryFile.text();
 

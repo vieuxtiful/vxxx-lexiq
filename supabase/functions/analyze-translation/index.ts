@@ -85,11 +85,11 @@ serve(async (req) => {
   }
 
   try {
-    const { translationContent, glossaryContent, language, domain, checkGrammar = false, checkSpelling = true, sourceTextOnly = false } = await req.json() as AnalysisRequest;
+    const { translationContent, glossaryContent = '', language, domain, checkGrammar = false, checkSpelling = true, sourceTextOnly = false } = await req.json() as AnalysisRequest;
 
     console.log('=== Edge Function: Starting Analysis ===');
     console.log(`Parameters: language=${language}, domain=${domain}, checkGrammar=${checkGrammar}, checkSpelling=${checkSpelling}, sourceTextOnly=${sourceTextOnly}`);
-    console.log(`Content sizes: Translation=${translationContent.length} chars, Glossary=${glossaryContent.length} chars`);
+    console.log(`Content sizes: Translation=${translationContent?.length || 0} chars, Glossary=${glossaryContent?.length || 0} chars`);
 
     // Enhanced validation with better error messages
     if (translationContent.length > 50000) {
@@ -113,10 +113,10 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Extract numbers, tags, and check whitespace issues
-    const sourceNumbers = (glossaryContent.match(/\d+\.?\d*/g) || []).join(',');
+    // Extract numbers, tags, and check whitespace issues (only if glossaryContent exists)
+    const sourceNumbers = glossaryContent ? ((glossaryContent.match(/\d+\.?\d*/g) || []).join(',')) : '';
     const targetNumbers = (translationContent.match(/\d+\.?\d*/g) || []).join(',');
-    const sourceTags = (glossaryContent.match(/<[^>]+>/g) || []).join(' ');
+    const sourceTags = glossaryContent ? ((glossaryContent.match(/<[^>]+>/g) || []).join(' ')) : '';
     const targetTags = (translationContent.match(/<[^>]+>/g) || []).join(' ');
     const hasLeadingTrailingSpace = /^\s|\s$/.test(translationContent);
     const hasDoubleSpace = /\s{2,}/.test(translationContent);
