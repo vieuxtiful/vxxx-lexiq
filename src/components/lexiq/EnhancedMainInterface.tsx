@@ -935,6 +935,18 @@ export function EnhancedMainInterface({
     console.log('Spell Checker: Enabled by default in prompt');
     console.log('Grammar Checker:', grammarCheckingEnabled ? 'ENABLED' : 'DISABLED');
 
+    // For bilingual projects: Both source AND translation must have content
+    if (currentProject?.project_type === 'bilingual') {
+      if (!sourceContent.trim() || !currentContent.trim()) {
+        toast({
+          title: "Both Fields Required",
+          description: "For bilingual projects, both Source Editor and Term Validator must contain text before analysis.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     // Check if we have either a file or manually entered text
     const hasTranslation = translationFile || textManuallyEntered && currentContent.length > 0;
     if (!hasTranslation || !glossaryFile) {
@@ -1219,6 +1231,16 @@ export function EnhancedMainInterface({
     }
   };
   const handleContentChange = (content: string) => {
+    // For bilingual projects: Validate that source editor also has content
+    if (currentProject?.project_type === 'bilingual' && content.length > 0 && !sourceContent.trim()) {
+      toast({
+        title: "Source Required",
+        description: "Please add text to the Source Editor first before entering translation content.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setCurrentContent(content);
     setHasUnsavedChanges(true);
     
@@ -1263,6 +1285,20 @@ export function EnhancedMainInterface({
       setTextManuallyEntered(false);
       setShowUploadIconTransition(false);
     }
+  };
+  
+  const handleSourceContentChange = (content: string) => {
+    // For bilingual projects: If clearing source content and translation has content, warn user
+    if (currentProject?.project_type === 'bilingual' && content.length === 0 && currentContent.trim()) {
+      toast({
+        title: "Warning",
+        description: "Clearing the Source Editor while translation content exists. Both fields are required for analysis.",
+        variant: "destructive"
+      });
+    }
+    
+    setSourceContent(content);
+    setHasUnsavedChanges(true);
   };
   const handleValidateTerm = (term: any) => {
     if (!analysisResults || term.classification !== 'review') return;
@@ -1768,7 +1804,16 @@ export function EnhancedMainInterface({
                 </p>
                       <input ref={glossaryInputRef} type="file" onChange={e => handleFileUpload(e, 'glossary')} className="hidden" accept=".csv,.txt" />
 
-                      <Button onClick={runEnhancedAnalysis} disabled={!translationFile && !textManuallyEntered || !glossaryFile || isAnalyzing} className="w-full relative overflow-hidden transition-all duration-300">
+                      <Button 
+                        onClick={runEnhancedAnalysis} 
+                        disabled={
+                          !translationFile && !textManuallyEntered || 
+                          !glossaryFile || 
+                          isAnalyzing || 
+                          (currentProject?.project_type === 'bilingual' && (!sourceContent.trim() || !currentContent.trim()))
+                        } 
+                        className="w-full relative overflow-hidden transition-all duration-300"
+                      >
                         {isAnalyzing ? <div className="flex items-center justify-center w-full">
                             {/* Animated gradient background */}
                             <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary-glow to-primary animate-gradient-x"></div>
@@ -1877,7 +1922,7 @@ export function EnhancedMainInterface({
                               <div className="h-full overflow-auto p-4">
                                 <SourceEditor
                                   content={sourceContent}
-                                  onContentChange={setSourceContent}
+                                  onContentChange={handleSourceContentChange}
                                   language={currentProject?.source_language || 'en'}
                                   grammarEnabled={sourceGrammarEnabled}
                                   spellingEnabled={sourceSpellingEnabled}

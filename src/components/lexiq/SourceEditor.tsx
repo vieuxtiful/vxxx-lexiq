@@ -179,7 +179,7 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
             )}
           </div>
 
-          <div className="flex gap-4 text-xs text-muted-foreground">
+          <div className="flex gap-4 text-xs text-blue-600 dark:text-blue-400">
             <span>{wordCount.toLocaleString()} words</span>
             <span>•</span>
             <span>{characterCount.toLocaleString()} characters</span>
