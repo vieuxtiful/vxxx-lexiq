@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ChevronDown, Plus, FolderOpen, Trash2 } from 'lucide-react';
 import { useProject } from '@/contexts/ProjectContext';
-import { ProjectCreateModal } from './ProjectCreateModal';
+import { ProjectSetupWizard } from './ProjectSetupWizard';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,21 +27,21 @@ import { useToast } from '@/hooks/use-toast';
 export const ProjectSelector: React.FC = () => {
   const { currentProject, projects, setCurrentProject, createProject, deleteProject, loading } = useProject();
   const { toast } = useToast();
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
 
-  const handleProjectCreate = async (
+  const handleProjectComplete = async (
     name: string, 
     language: string, 
     domain: string, 
-    projectType: 'monolingual' | 'bilingual' = 'monolingual',
+    projectType: 'monolingual' | 'bilingual',
     sourceLanguage?: string
   ) => {
     console.log('ProjectSelector: Creating project:', { name, language, domain, projectType, sourceLanguage });
     const newProject = await createProject(name, language, domain, projectType, sourceLanguage);
     if (newProject) {
-      console.log('ProjectSelector: Project created, closing modal');
-      setShowCreateModal(false);
+      console.log('ProjectSelector: Project created, closing wizard');
+      setShowCreateWizard(false);
     }
   };
 
@@ -84,7 +85,7 @@ export const ProjectSelector: React.FC = () => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-64 bg-popover z-[100]">
           <DropdownMenuItem
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => setShowCreateWizard(true)}
             className="gap-2 font-medium cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -113,7 +114,12 @@ export const ProjectSelector: React.FC = () => {
                     }`}
                   >
                     <div className="flex flex-col gap-1">
-                      <span className="font-medium text-sm">{project.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{project.name}</span>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                          {project.project_type === 'bilingual' ? 'Bilingual' : 'Monolingual'}
+                        </Badge>
+                      </div>
                       <span className="text-xs text-muted-foreground">
                         {project.language.toUpperCase()} • {project.domain.charAt(0).toUpperCase() + project.domain.slice(1)}
                       </span>
@@ -138,10 +144,10 @@ export const ProjectSelector: React.FC = () => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <ProjectCreateModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onCreate={handleProjectCreate}
+      <ProjectSetupWizard
+        isOpen={showCreateWizard}
+        onComplete={handleProjectComplete}
+        onSkip={() => setShowCreateWizard(false)}
       />
 
       <AlertDialog open={!!projectToDelete} onOpenChange={() => setProjectToDelete(null)}>
