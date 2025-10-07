@@ -104,33 +104,47 @@ export const normalizeText = (text: string): string => {
   // Normalize Unicode to decompose accented characters (NFD)
   let normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   
-  // Basic normalization: lowercase, trim, normalize punctuation spacing
+  // Basic normalization: lowercase, trim
   normalized = normalized.toLowerCase().trim();
-  normalized = normalized.replace(/([.,;:!?])(\S)/g, '$1 $2');
+  
+  // Normalize apostrophes and quotes to standard form
+  normalized = normalized.replace(/['']/g, "'");
+  normalized = normalized.replace(/[""]/g, '"');
+  
+  // Remove punctuation and extra whitespace but keep apostrophes within words
+  normalized = normalized.replace(/[.,;:!?()[\]{}]/g, '');
+  normalized = normalized.replace(/\s+/g, ' ').trim();
   
   return normalized;
 };
 
 /**
- * Apply language-specific stemming to a word
+ * Apply language-specific stemming to a word or phrase
+ * Handles multi-word phrases by stemming each word individually
  */
-export const stemWord = (word: string, language: string): string => {
+export const stemWord = (text: string, language: string): string => {
   const rules = STEMMING_RULES[language] || STEMMING_RULES['en'];
-  const normalized = normalizeText(word);
+  const normalized = normalizeText(text);
   
-  // Don't stem very short words
-  if (normalized.length <= rules.minLength) {
-    return normalized;
-  }
-  
-  // Try to remove known suffixes
-  for (const suffix of rules.suffixes) {
-    if (normalized.endsWith(suffix) && normalized.length - suffix.length >= rules.minLength) {
-      return normalized.slice(0, -suffix.length);
+  // Split into words and stem each individually
+  const words = normalized.split(' ');
+  const stemmedWords = words.map(word => {
+    // Don't stem very short words
+    if (word.length <= rules.minLength) {
+      return word;
     }
-  }
+    
+    // Try to remove known suffixes
+    for (const suffix of rules.suffixes) {
+      if (word.endsWith(suffix) && word.length - suffix.length >= rules.minLength) {
+        return word.slice(0, -suffix.length);
+      }
+    }
+    
+    return word;
+  });
   
-  return normalized;
+  return stemmedWords.join(' ');
 };
 
 /**
@@ -169,6 +183,7 @@ export const calculateSimilarity = (str1: string, str2: string): number => {
 
 /**
  * Check if two terms are similar considering morphological variations
+ * Language-agnostic approach that works for multi-word phrases
  */
 export const areTermsSimilar = (
   term1: string, 
@@ -180,19 +195,20 @@ export const areTermsSimilar = (
   const normalized1 = normalizeText(term1);
   const normalized2 = normalizeText(term2);
   
-  // Exact match after normalization
+  // Exact match after normalization (most common case)
   if (normalized1 === normalized2) return true;
   
-  // Stem both words for the given language
+  // Stem both terms for the given language (handles multi-word phrases)
   const stem1 = stemWord(term1, language);
   const stem2 = stemWord(term2, language);
   
-  // Check if stems match
+  // Check if stems match (catches morphological variations)
   if (stem1 === stem2) return true;
   
-  // Fall back to similarity calculation
+  // For very similar strings, use Levenshtein distance
+  // This catches typos and minor variations
   const similarity = calculateSimilarity(normalized1, normalized2);
-  return similarity > threshold;
+  return similarity >= threshold;
 };
 
 /**
