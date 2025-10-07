@@ -156,7 +156,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   const tooltipHoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isTooltipHovered, setIsTooltipHovered] = useState(false);
   const reanalyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [showSemanticTypes, setShowSemanticTypes] = useState(true);
+  const [showSemanticTypes, setShowSemanticTypes] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
   const [showTermStatus, setShowTermStatus] = useState(true);
   const [isComposing, setIsComposing] = useState(false);
