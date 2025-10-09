@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FolderOpen, Plus, Clock, Search, Trash2, MoreVertical, Edit2 } from 'lucide-react';
+import { FolderOpen, Plus, Clock, Search, Trash2, MoreVertical, Edit2, GripVertical } from 'lucide-react';
 import { Project } from '@/hooks/useProjects';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +10,9 @@ import { useProject } from '@/contexts/ProjectContext';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '@/hooks/useAuth';
 import lexiqQLogo from '@/assets/lexiq-q-logo.png';
 interface ProjectSelectionScreenProps {
@@ -43,30 +46,47 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
   } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+  const [orderedProjects, setOrderedProjects] = useState<Project[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [renamingProject, setRenamingProject] = useState<Project | null>(null);
   const [newProjectName, setNewProjectName] = useState('');
 
-  // Force light mode on project selection screen
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Load saved order from localStorage
   useEffect(() => {
-    document.documentElement.classList.remove('dark');
-    return () => {
-      // Restore dark mode preference when leaving this screen
-      const savedDarkMode = localStorage.getItem('lexiq-dark-mode');
-      if (savedDarkMode === 'true') {
-        document.documentElement.classList.add('dark');
+    const savedOrder = localStorage.getItem('lexiq-project-order');
+    if (savedOrder && userProjects.length > 0) {
+      try {
+        const orderIds = JSON.parse(savedOrder);
+        const ordered = orderIds
+          .map((id: string) => userProjects.find(p => p.id === id))
+          .filter(Boolean) as Project[];
+        
+        // Add any new projects not in the saved order
+        const newProjects = userProjects.filter(p => !orderIds.includes(p.id));
+        setOrderedProjects([...ordered, ...newProjects]);
+      } catch {
+        setOrderedProjects(userProjects);
       }
-    };
-  }, []);
+    } else {
+      setOrderedProjects(userProjects);
+    }
+  }, [userProjects]);
 
   useEffect(() => {
     if (searchTerm) {
-      const filtered = userProjects.filter(project => project.name.toLowerCase().includes(searchTerm.toLowerCase()) || project.language.toLowerCase().includes(searchTerm.toLowerCase()) || project.domain.toLowerCase().includes(searchTerm.toLowerCase()));
+      const filtered = orderedProjects.filter(project => project.name.toLowerCase().includes(searchTerm.toLowerCase()) || project.language.toLowerCase().includes(searchTerm.toLowerCase()) || project.domain.toLowerCase().includes(searchTerm.toLowerCase()));
       setFilteredProjects(filtered);
     } else {
-      setFilteredProjects(userProjects);
+      setFilteredProjects(orderedProjects);
     }
-  }, [searchTerm, userProjects]);
+  }, [searchTerm, orderedProjects]);
   const handleDeleteProject = async (projectId: string, projectName: string, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
 
@@ -90,6 +110,23 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
       });
     } finally {
       setDeletingId(null);
+    }
+  };
+  
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setOrderedProjects((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        const newOrder = arrayMove(items, oldIndex, newIndex);
+        
+        // Save the new order to localStorage
+        localStorage.setItem('lexiq-project-order', JSON.stringify(newOrder.map(p => p.id)));
+        
+        return newOrder;
+      });
     }
   };
 
@@ -174,87 +211,41 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
           </div>
 
           {/* Projects Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredProjects.length === 0 ? <div className="col-span-2 text-center py-12">
-                <FolderOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground text-lg">
-                  {searchTerm ? 'No projects found matching your search' : 'No projects yet'}
-                </p>
-              </div> : filteredProjects.map(project => <Card key={project.id} className="cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] bg-card/95 backdrop-blur-sm border-border/40 group relative" onClick={() => onProjectSelect(project)}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="text-xl text-foreground font-light">
-                            {project.name}
-                          </h3>
-                          <Badge 
-                            variant="outline" 
-                            className={project.project_type === 'bilingual' 
-                              ? 'bg-blue-500/10 text-blue-700 border-blue-500/20' 
-                              : 'bg-green-500/10 text-green-700 border-green-500/20'
-                            }
-                          >
-                            {project.project_type === 'bilingual' ? 'Bilingual' : 'Monolingual'}
-                          </Badge>
-                        </div>
-                        <div className="flex gap-3 text-sm text-muted-foreground">
-                          {project.project_type === 'bilingual' && project.source_language && (
-                            <>
-                              <span className="font-medium">
-                                {project.source_language.toUpperCase()} → {project.language.toUpperCase()}
-                              </span>
-                              <span>•</span>
-                            </>
-                          )}
-                          {project.project_type === 'monolingual' && (
-                            <>
-                              <span className="font-medium">
-                                {project.language.toUpperCase()}
-                              </span>
-                              <span>•</span>
-                            </>
-                          )}
-                          <span>{project.domain.charAt(0).toUpperCase() + project.domain.slice(1)}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <FolderOpen className="w-6 h-6 text-primary" />
-                        
-                        {/* Delete dropdown */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0" onClick={e => e.stopPropagation()}>
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setRenamingProject(project);
-                                setNewProjectName(project.name);
-                              }}
-                            >
-                              <Edit2 className="h-4 w-4 mr-2" />
-                              Rename Project
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={e => handleDeleteProject(project.id, project.name, e)} disabled={deletingId === project.id} className="text-red-600 focus:text-red-600">
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              {deletingId === project.id ? 'Deleting...' : 'Delete Project'}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock className="w-4 h-4" />
-                      <span>Updated {formatDate(project.updated_at)}</span>
-                    </div>
-                  </CardContent>
-                </Card>)}
-          </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={filteredProjects.map(p => p.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredProjects.length === 0 ? (
+                  <div className="col-span-2 text-center py-12">
+                    <FolderOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground text-lg">
+                      {searchTerm ? 'No projects found matching your search' : 'No projects yet'}
+                    </p>
+                  </div>
+                ) : (
+                  filteredProjects.map(project => (
+                    <SortableProjectCard
+                      key={project.id}
+                      project={project}
+                      onSelect={() => onProjectSelect(project)}
+                      onRename={(proj) => {
+                        setRenamingProject(proj);
+                        setNewProjectName(proj.name);
+                      }}
+                      onDelete={handleDeleteProject}
+                      isDeleting={deletingId === project.id}
+                    />
+                  ))
+                )}
+              </div>
+            </SortableContext>
+          </DndContext>
         </div>
         
         {/* Return to Home Link - at the very bottom */}
@@ -309,4 +300,133 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
         </DialogContent>
       </Dialog>
     </div>;
+};
+
+interface SortableProjectCardProps {
+  project: Project;
+  onSelect: () => void;
+  onRename: (project: Project) => void;
+  onDelete: (id: string, name: string, e: React.MouseEvent) => void;
+  isDeleting: boolean;
+}
+
+const SortableProjectCard: React.FC<SortableProjectCardProps> = ({
+  project,
+  onSelect,
+  onRename,
+  onDelete,
+  isDeleting,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: project.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  return (
+    <Card 
+      ref={setNodeRef} 
+      style={style}
+      className="cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] bg-card/95 backdrop-blur-sm border-border/40 group relative" 
+      onClick={onSelect}
+    >
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-2 flex-1">
+            <div 
+              className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+              {...attributes}
+              {...listeners}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GripVertical className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-xl text-foreground font-light">
+                  {project.name}
+                </h3>
+                <Badge 
+                  variant="outline" 
+                  className={project.project_type === 'bilingual' 
+                    ? 'bg-blue-500/10 text-blue-700 border-blue-500/20' 
+                    : 'bg-green-500/10 text-green-700 border-green-500/20'
+                  }
+                >
+                  {project.project_type === 'bilingual' ? 'Bilingual' : 'Monolingual'}
+                </Badge>
+              </div>
+              <div className="flex gap-3 text-sm text-muted-foreground">
+                {project.project_type === 'bilingual' && project.source_language && (
+                  <>
+                    <span className="font-medium">
+                      {project.source_language.toUpperCase()} → {project.language.toUpperCase()}
+                    </span>
+                    <span>•</span>
+                  </>
+                )}
+                {project.project_type === 'monolingual' && (
+                  <>
+                    <span className="font-medium">
+                      {project.language.toUpperCase()}
+                    </span>
+                    <span>•</span>
+                  </>
+                )}
+                <span>{project.domain.charAt(0).toUpperCase() + project.domain.slice(1)}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <FolderOpen className="w-6 h-6 text-primary" />
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0" onClick={e => e.stopPropagation()}>
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRename(project);
+                  }}
+                >
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  Rename Project
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={e => onDelete(project.id, project.name, e)} disabled={isDeleting} className="text-red-600 focus:text-red-600">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {isDeleting ? 'Deleting...' : 'Delete Project'}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Clock className="w-4 h-4" />
+          <span>Updated {formatDate(project.updated_at)}</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
 };
