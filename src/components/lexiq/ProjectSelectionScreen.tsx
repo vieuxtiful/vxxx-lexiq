@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FolderOpen, Plus, Clock, Search, Trash2, MoreVertical } from 'lucide-react';
+import { FolderOpen, Plus, Clock, Search, Trash2, MoreVertical, Edit2 } from 'lucide-react';
 import { Project } from '@/hooks/useProjects';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { FloatingBackground } from './FloatingBackground';
 import { useProject } from '@/contexts/ProjectContext';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
 import lexiqQLogo from '@/assets/lexiq-q-logo.png';
 interface ProjectSelectionScreenProps {
@@ -31,6 +32,7 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
 }) => {
   const {
     deleteProject,
+    updateProject,
     refreshProjects
   } = useProject();
   const {
@@ -42,6 +44,8 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [renamingProject, setRenamingProject] = useState<Project | null>(null);
+  const [newProjectName, setNewProjectName] = useState('');
 
   // Force light mode on project selection screen
   useEffect(() => {
@@ -88,6 +92,28 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
       setDeletingId(null);
     }
   };
+
+  const handleRenameProject = async () => {
+    if (!renamingProject || !newProjectName.trim()) return;
+
+    try {
+      await updateProject(renamingProject.id, { name: newProjectName.trim() });
+      await refreshProjects();
+      toast({
+        title: "Project renamed",
+        description: `Project renamed to "${newProjectName.trim()}"`
+      });
+      setRenamingProject(null);
+      setNewProjectName('');
+    } catch (error) {
+      toast({
+        title: "Rename failed",
+        description: "Could not rename project",
+        variant: "destructive"
+      });
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -198,6 +224,16 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRenamingProject(project);
+                                setNewProjectName(project.name);
+                              }}
+                            >
+                              <Edit2 className="h-4 w-4 mr-2" />
+                              Rename Project
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={e => handleDeleteProject(project.id, project.name, e)} disabled={deletingId === project.id} className="text-red-600 focus:text-red-600">
                               <Trash2 className="h-4 w-4 mr-2" />
                               {deletingId === project.id ? 'Deleting...' : 'Delete Project'}
@@ -223,5 +259,49 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Rename Dialog */}
+      <Dialog open={!!renamingProject} onOpenChange={(open) => {
+        if (!open) {
+          setRenamingProject(null);
+          setNewProjectName('');
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Project</DialogTitle>
+            <DialogDescription>
+              Enter a new name for "{renamingProject?.name}"
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={newProjectName}
+            onChange={(e) => setNewProjectName(e.target.value)}
+            placeholder="Project name"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleRenameProject();
+              }
+            }}
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRenamingProject(null);
+                setNewProjectName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRenameProject}
+              disabled={!newProjectName.trim()}
+            >
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>;
 };

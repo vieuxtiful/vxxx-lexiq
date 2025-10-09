@@ -9,6 +9,7 @@ interface ProjectContextType {
   setCurrentProject: (project: Project | null) => void;
   setCurrentProjectWithReset: (project: Project | null) => void;
   createProject: (name: string, language: string, domain: string, projectType: 'monolingual' | 'bilingual', sourceLanguage?: string) => Promise<Project | null>;
+  updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   clearProjectData: () => void;
   loading: boolean;
@@ -28,7 +29,7 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const { projects, loading: projectsLoading, createProject: createProjectHook, deleteProject: deleteProjectHook, refreshProjects } = useProjects(user?.id);
+  const { projects, loading: projectsLoading, createProject: createProjectHook, updateProject: updateProjectHook, deleteProject: deleteProjectHook, refreshProjects } = useProjects(user?.id);
   const [currentProject, setCurrentProjectState] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [requiresProjectSetup, setRequiresProjectSetup] = useState(false);
@@ -142,6 +143,19 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       localStorage.setItem('lexiq-current-project-id', project.id);
     } else {
       localStorage.removeItem('lexiq-current-project-id');
+    }
+  };
+
+  const updateProject = async (id: string, updates: Partial<Project>): Promise<void> => {
+    console.log('Updating project:', id, updates);
+    const result = await updateProjectHook(id, updates);
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    
+    // If we're updating the current project, update the local state
+    if (currentProject?.id === id && result.data) {
+      setCurrentProjectState(result.data);
     }
   };
 
@@ -287,6 +301,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setCurrentProject,
         setCurrentProjectWithReset,
         createProject,
+        updateProject,
         deleteProject,
         clearProjectData,
         loading,
