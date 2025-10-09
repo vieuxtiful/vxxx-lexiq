@@ -96,15 +96,20 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
   const handleRenameProject = async () => {
     if (!renamingProject || !newProjectName.trim()) return;
 
+    const oldName = renamingProject.name;
+    
+    // Close dialog immediately for better UX
+    setRenamingProject(null);
+    setNewProjectName('');
+
     try {
       await updateProject(renamingProject.id, { name: newProjectName.trim() });
+      // Immediately refresh to show the new name
       await refreshProjects();
       toast({
         title: "Project renamed",
-        description: `Project renamed to "${newProjectName.trim()}"`
+        description: `"${oldName}" renamed to "${newProjectName.trim()}"`
       });
-      setRenamingProject(null);
-      setNewProjectName('');
     } catch (error) {
       toast({
         title: "Rename failed",
