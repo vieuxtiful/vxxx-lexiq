@@ -348,53 +348,56 @@ const SortableProjectCard: React.FC<SortableProjectCardProps> = ({
       onClick={onSelect}
     >
       <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-2 flex-1">
-            <div 
-              className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
-              {...attributes}
-              {...listeners}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <GripVertical className="h-5 w-5 text-muted-foreground" />
+        <div className="flex items-start gap-3 mb-4">
+          {/* Drag Handle */}
+          <div 
+            className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity pt-1"
+            {...attributes}
+            {...listeners}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="h-5 w-5 text-muted-foreground" />
+          </div>
+
+          {/* Main Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-xl text-foreground font-light truncate">
+                {project.name}
+              </h3>
+              <Badge 
+                variant="outline" 
+                className={project.project_type === 'bilingual' 
+                  ? 'bg-blue-500/10 text-blue-700 border-blue-500/20 flex-shrink-0' 
+                  : 'bg-green-500/10 text-green-700 border-green-500/20 flex-shrink-0'
+                }
+              >
+                {project.project_type === 'bilingual' ? 'Bilingual' : 'Monolingual'}
+              </Badge>
             </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-xl text-foreground font-light">
-                  {project.name}
-                </h3>
-                <Badge 
-                  variant="outline" 
-                  className={project.project_type === 'bilingual' 
-                    ? 'bg-blue-500/10 text-blue-700 border-blue-500/20' 
-                    : 'bg-green-500/10 text-green-700 border-green-500/20'
-                  }
-                >
-                  {project.project_type === 'bilingual' ? 'Bilingual' : 'Monolingual'}
-                </Badge>
-              </div>
-              <div className="flex gap-3 text-sm text-muted-foreground">
-                {project.project_type === 'bilingual' && project.source_language && (
-                  <>
-                    <span className="font-medium">
-                      {project.source_language.toUpperCase()} → {project.language.toUpperCase()}
-                    </span>
-                    <span>•</span>
-                  </>
-                )}
-                {project.project_type === 'monolingual' && (
-                  <>
-                    <span className="font-medium">
-                      {project.language.toUpperCase()}
-                    </span>
-                    <span>•</span>
-                  </>
-                )}
-                <span>{project.domain.charAt(0).toUpperCase() + project.domain.slice(1)}</span>
-              </div>
+            <div className="flex gap-3 text-sm text-muted-foreground flex-wrap">
+              {project.project_type === 'bilingual' && project.source_language && (
+                <>
+                  <span className="font-medium">
+                    {project.source_language.toUpperCase()} → {project.language.toUpperCase()}
+                  </span>
+                  <span>•</span>
+                </>
+              )}
+              {project.project_type === 'monolingual' && (
+                <>
+                  <span className="font-medium">
+                    {project.language.toUpperCase()}
+                  </span>
+                  <span>•</span>
+                </>
+              )}
+              <span>{project.domain.charAt(0).toUpperCase() + project.domain.slice(1)}</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 flex-shrink-0">
             <FolderOpen className="w-6 h-6 text-primary" />
             
             <DropdownMenu>
