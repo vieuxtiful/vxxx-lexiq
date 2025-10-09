@@ -54,7 +54,14 @@ export const useEditedTerms = (originalTerms: AnalyzedTerm[], language: string =
     const saved = sessionStorage.getItem('lexiq-edited-terms');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Validate that saved data matches current input count
+        // If the count differs significantly, the data is stale
+        if (Math.abs(parsed.length - deduplicatedTerms.length) > 2) {
+          console.log('🔄 Session storage stale, using fresh deduplicated terms');
+          return deduplicatedTerms;
+        }
+        return parsed;
       } catch (error) {
         console.error('Failed to load edited terms:', error);
         return deduplicatedTerms;
@@ -65,10 +72,16 @@ export const useEditedTerms = (originalTerms: AnalyzedTerm[], language: string =
 
   // Update edited terms when deduplicated terms change
   useEffect(() => {
-    // Only update if there are no edits in session storage
+    // Force update to deduplicated terms when original terms change significantly
     const saved = sessionStorage.getItem('lexiq-edited-terms');
-    if (!saved) {
+    if (!saved || editedTerms.length === 0) {
       setEditedTerms(deduplicatedTerms);
+    } else {
+      // Check if we have stale data by comparing counts
+      if (Math.abs(editedTerms.length - deduplicatedTerms.length) > 2) {
+        console.log('🔄 Updating with fresh deduplicated terms');
+        setEditedTerms(deduplicatedTerms);
+      }
     }
   }, [deduplicatedTerms]);
 

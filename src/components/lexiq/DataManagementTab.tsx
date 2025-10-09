@@ -32,10 +32,10 @@ export const DataManagementTab: React.FC<DataManagementTabProps> = ({
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [processedTerms, setProcessedTerms] = useState<AnalyzedTerm[]>([]);
 
-  // Process terms to ensure good context on mount
+  // Use editedTerms (deduplicated) and enhance context if needed
   useEffect(() => {
-    if (terms && terms.length > 0 && currentFullText) {
-      const enhancedTerms = terms.map(term => {
+    if (editedTerms && editedTerms.length > 0 && currentFullText) {
+      const enhancedTerms = editedTerms.map(term => {
         // If context seems incomplete, try to enhance it
         if (term.context && term.context.length < 50 && !term.context.includes('.')) {
           const fullContext = extractSentenceContext(
@@ -49,9 +49,9 @@ export const DataManagementTab: React.FC<DataManagementTabProps> = ({
       });
       setProcessedTerms(enhancedTerms);
     } else {
-      setProcessedTerms(terms || []);
+      setProcessedTerms(editedTerms || []);
     }
-  }, [terms, currentFullText]);
+  }, [editedTerms, currentFullText]);
 
   const getTermId = (term: AnalyzedTerm) => term.text.toLowerCase();
 
