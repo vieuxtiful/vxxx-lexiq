@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, LogOut } from 'lucide-react';
 import lexiqQLogo from '@/assets/lexiq-q-logo.png';
 import { useAuth } from '@/hooks/useAuth';
+import { useProjectScreenDarkMode } from '@/hooks/useProjectScreenDarkMode';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +23,7 @@ export function WelcomeScreen({ onEnter }: WelcomeScreenProps) {
   const [showStartupOverlay, setShowStartupOverlay] = useState(true);
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const { signOut } = useAuth();
+  const { isDarkMode } = useProjectScreenDarkMode();
 
   useEffect(() => {
     setShowStartupOverlay(true);
@@ -33,7 +35,10 @@ export function WelcomeScreen({ onEnter }: WelcomeScreenProps) {
   }, []);
 
   return (
-    <div className="h-full relative flex items-center justify-center">
+    <div className={`h-full relative flex items-center justify-center ${isDarkMode ? 'dark' : ''}`} style={{
+      background: 'var(--gradient-welcome)',
+      transition: 'background 300ms ease'
+    }}>
       {/* Sign Out Button - Top Right */}
       <div className="absolute top-4 right-4 z-20">
         <Button

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FolderOpen, Plus, Clock, Search, Trash2, MoreVertical, Edit2, GripVertical } from 'lucide-react';
+import { FolderOpen, Plus, Clock, Search, Trash2, MoreVertical, Edit2, GripVertical, Moon, Sun } from 'lucide-react';
 import { Project } from '@/hooks/useProjects';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '@/hooks/useAuth';
+import { useProjectScreenDarkMode } from '@/hooks/useProjectScreenDarkMode';
 import lexiqQLogo from '@/assets/lexiq-q-logo.png';
 interface ProjectSelectionScreenProps {
   onProjectSelect: (project: Project) => void;
@@ -44,6 +45,7 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
   const {
     toast
   } = useToast();
+  const { isDarkMode, shouldAnimate, toggleDarkMode } = useProjectScreenDarkMode();
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [orderedProjects, setOrderedProjects] = useState<Project[]>([]);
@@ -164,7 +166,7 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
     });
   };
   if (loading) {
-    return <div className="min-h-screen relative overflow-hidden" style={{
+    return <div className={`min-h-screen relative overflow-hidden ${isDarkMode ? 'dark' : ''}`} style={{
       background: 'var(--gradient-welcome)'
     }}>
         <div className="fixed inset-0 z-0 pointer-events-none">
@@ -178,7 +180,7 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
         </div>
       </div>;
   }
-  return <div className="min-h-screen relative overflow-hidden" style={{
+  return <div className={`min-h-screen relative overflow-hidden transition-colors ${shouldAnimate ? 'duration-[2000ms]' : 'duration-300'} ${isDarkMode ? 'dark' : ''}`} style={{
     background: 'var(--gradient-welcome)'
   }}>
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -248,8 +250,19 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
           </DndContext>
         </div>
         
-        {/* Return to Home Link - at the very bottom */}
-        <div className="text-center pb-8 mt-8">
+        {/* Dark Mode Toggle and Return to Home - at the very bottom */}
+        <div className="text-center pb-8 mt-8 space-y-3">
+          <div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={toggleDarkMode}
+              className="h-8 text-xs text-muted-foreground hover:text-foreground px-3 gap-2"
+            >
+              {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+            </Button>
+          </div>
           <button onClick={() => signOut()} className="text-sm text-foreground/40 hover:text-foreground/60 transition-colors underline">
             Return to Home
           </button>
