@@ -566,12 +566,10 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                   </Badge>
                   
                   {/* LQA Sync Indicator */}
-                  {lqaSyncEnabled && (
-                    <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-500/20 flex items-center gap-1">
+                  {lqaSyncEnabled && <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-500/20 flex items-center gap-1">
                       <RefreshCw className="h-3 w-3" />
                       LQA Sync
-                    </Badge>
-                  )}
+                    </Badge>}
                   
                   {/* Content validation warning with similarity percentage */}
                   {flaggedTerms.length > 0 && !isContentValid() && <Tooltip>
@@ -599,30 +597,18 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
               </Button>
               
               {/* Reanalyze button - shown when content has changed from original analyzed content */}
-              {onReanalyze && hasContentChanged && content.trim().length > 0 && originalAnalyzedContent && <Button 
-                variant={isReanalyzing ? "outline" : "outline"} 
-                size="sm" 
-                onClick={() => {
-                  onReanalyze(content);
-                  setHasContentChanged(false);
-                  setLastEditedContent('');
-                }} 
-                disabled={isReanalyzing} 
-                className={`h-6 text-xs gap-1.5 px-2 transition-all duration-200 ${
-                  isReanalyzing ? 'bg-transparent border-primary/50' : ''
-                }`}
-              >
-                {isReanalyzing ? (
-                  <>
+              {onReanalyze && hasContentChanged && content.trim().length > 0 && originalAnalyzedContent && <Button variant={isReanalyzing ? "outline" : "outline"} size="sm" onClick={() => {
+              onReanalyze(content);
+              setHasContentChanged(false);
+              setLastEditedContent('');
+            }} disabled={isReanalyzing} className={`h-6 text-xs gap-1.5 px-2 transition-all duration-200 ${isReanalyzing ? 'bg-transparent border-primary/50' : ''}`}>
+                {isReanalyzing ? <>
                     <Loader2 className="h-3 w-3 animate-spin" />
                     <AnimatedEllipsis text="Reanalyzing" />
-                  </>
-                ) : (
-                  <>
+                  </> : <>
                     <RefreshCw className="h-3 w-3" />
                     Reanalyze
-                  </>
-                )}
+                  </>}
               </Button>}
             </div>
             
@@ -653,28 +639,17 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                   <XCircle className="h-3 w-3" />
                   Critical ({categoryStats.critical})
                 </Badge>
-                <Badge variant="outline" className="text-orange-600 border-orange-500 flex items-center gap-1">
-                  <BookOpen className="h-3 w-3" />
-                  Spelling ({categoryStats.spelling})
-                </Badge>
-                {grammarCheckingEnabled && <Badge variant="outline" className="text-purple-600 border-purple-500 flex items-center gap-1">
-                    <Zap className="h-3 w-3" />
-                    Grammar ({categoryStats.grammar})
-                  </Badge>}
+                
+                {grammarCheckingEnabled}
               </div>
               
               {/* Legend button right-aligned when Types is enabled */}
-              {showSemanticTypes && flaggedTerms.length > 0 && <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => {
-                  const newValue = !showLegend;
-                  setShowLegend(newValue);
-                  userManuallySetLegendRef.current = true; // User manually changed it
-                  userLegendPreferenceRef.current = newValue; // Store preference
-                }} 
-                className="h-7 text-xs"
-              >
+              {showSemanticTypes && flaggedTerms.length > 0 && <Button variant="outline" size="sm" onClick={() => {
+            const newValue = !showLegend;
+            setShowLegend(newValue);
+            userManuallySetLegendRef.current = true; // User manually changed it
+            userLegendPreferenceRef.current = newValue; // Store preference
+          }} className="h-7 text-xs">
                 {showLegend ? 'Hide Legend' : 'Show Legend'}
               </Button>}
             </div>}
@@ -759,41 +734,29 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
             <div className="flex items-center gap-4">
               {/* Grammar Toggle */}
               <div className="flex items-center space-x-2">
-                <Switch
-                  id="term-grammar-bottom"
-                  checked={grammarCheckingEnabled}
-                  onCheckedChange={(enabled) => {
-                    console.log('Grammar checking toggled:', enabled);
-                    onGrammarCheckingToggle?.(enabled);
-                  }}
-                />
+                <Switch id="term-grammar-bottom" checked={grammarCheckingEnabled} onCheckedChange={enabled => {
+                console.log('Grammar checking toggled:', enabled);
+                onGrammarCheckingToggle?.(enabled);
+              }} />
                 <Label htmlFor="term-grammar-bottom" className="text-sm flex items-center gap-1 cursor-pointer">
                   Grammar
-                  {grammarCheckingEnabled && flaggedTerms.filter(t => t.classification === 'grammar').length > 0 && (
-                    <Badge variant="outline" className="ml-1 text-xs bg-purple-500/10 text-purple-700 border-purple-500/20">
+                  {grammarCheckingEnabled && flaggedTerms.filter(t => t.classification === 'grammar').length > 0 && <Badge variant="outline" className="ml-1 text-xs bg-purple-500/10 text-purple-700 border-purple-500/20">
                       {flaggedTerms.filter(t => t.classification === 'grammar').length}
-                    </Badge>
-                  )}
+                    </Badge>}
                 </Label>
               </div>
 
               {/* Spelling Toggle */}
               <div className="flex items-center space-x-2">
-                <Switch
-                  id="term-spelling-bottom"
-                  checked={spellingCheckingEnabled}
-                  onCheckedChange={(enabled) => {
-                    console.log('Spelling checking toggled:', enabled);
-                    onSpellingCheckingToggle?.(enabled);
-                  }}
-                />
+                <Switch id="term-spelling-bottom" checked={spellingCheckingEnabled} onCheckedChange={enabled => {
+                console.log('Spelling checking toggled:', enabled);
+                onSpellingCheckingToggle?.(enabled);
+              }} />
                 <Label htmlFor="term-spelling-bottom" className="text-sm flex items-center gap-1 cursor-pointer">
                   Spelling
-                  {spellingCheckingEnabled && flaggedTerms.filter(t => t.classification === 'spelling').length > 0 && (
-                    <Badge variant="outline" className="ml-1 text-xs bg-red-500/10 text-red-700 border-red-500/20">
+                  {spellingCheckingEnabled && flaggedTerms.filter(t => t.classification === 'spelling').length > 0 && <Badge variant="outline" className="ml-1 text-xs bg-red-500/10 text-red-700 border-red-500/20">
                       {flaggedTerms.filter(t => t.classification === 'spelling').length}
-                    </Badge>
-                  )}
+                    </Badge>}
                 </Label>
               </div>
             </div>
