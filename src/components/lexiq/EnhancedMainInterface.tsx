@@ -260,6 +260,14 @@ export function EnhancedMainInterface({
   const showGTVAnalysis = isBilingual && (syncMode === 'gtv' || syncMode === 'both');
   const showLQAAnalysis = isBilingual && (syncMode === 'lqa' || syncMode === 'both');
 
+  // Set default toggle values when switching to LQA Only mode
+  useEffect(() => {
+    if (syncMode === 'lqa' && isBilingual) {
+      setGrammarCheckingEnabled(true);
+      setSpellingCheckingEnabled(true);
+    }
+  }, [syncMode, isBilingual]);
+
   // Language validation state
   const [languageValidation, setLanguageValidation] = useState<{
     isOpen: boolean;
@@ -416,6 +424,19 @@ export function EnhancedMainInterface({
   // Toggle LQA sync based on sync mode
   useEffect(() => {
     setLqaSyncEnabled(syncMode === 'lqa' || syncMode === 'both');
+  }, [syncMode]);
+
+  // Auto re-analysis when syncMode changes
+  useEffect(() => {
+    if (!currentContent.trim() || !analysisComplete || !hasLiveAnalysis) return;
+    
+    console.log('🔄 Analysis mode changed, triggering re-analysis:', syncMode);
+    
+    // Clear cache to force fresh analysis with new mode
+    analysisCache.clear();
+    
+    // Trigger re-analysis
+    handleReanalyze();
   }, [syncMode]);
 
   // Real-time language validation with blocking - MAIN CONTENT (Term Validator)

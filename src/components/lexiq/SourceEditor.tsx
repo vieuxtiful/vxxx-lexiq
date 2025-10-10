@@ -240,6 +240,7 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
             isLocked ? 'cursor-not-allowed bg-muted/50' : ''
           }`}
           readOnly={isLocked || readOnly}
+          spellCheck={false}
           onKeyDown={(e) => {
             if (isLocked) return;
             if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {

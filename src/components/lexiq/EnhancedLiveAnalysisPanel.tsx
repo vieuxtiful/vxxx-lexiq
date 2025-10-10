@@ -120,7 +120,7 @@ const calculateContentSimilarity = (content1: string, content2: string): number 
 };
 export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps> = ({
   content,
-  flaggedTerms,
+  flaggedTerms: allFlaggedTerms,
   onContentChange,
   onReanalyze,
   isReanalyzing = false,
@@ -139,6 +139,34 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   isBilingual = false,
   showGTVFeatures = true
 }) => {
+  // Filter flagged terms based on analysis mode
+  const flaggedTerms = React.useMemo(() => {
+    if (!isBilingual) return allFlaggedTerms; // Monolingual shows all terms
+    
+    if (syncMode === 'lqa') {
+      // LQA Only mode: Show only spelling and grammar issues
+      return allFlaggedTerms.filter(term => 
+        term.classification === 'spelling' || term.classification === 'grammar'
+      );
+    }
+    
+    if (syncMode === 'gtv') {
+      // GTV Only mode: Show only GTV terms (valid, review, critical)
+      return allFlaggedTerms.filter(term => 
+        term.classification === 'valid' || 
+        term.classification === 'review' || 
+        term.classification === 'critical'
+      );
+    }
+    
+    if (syncMode === 'both') {
+      // LQA & GTV mode: Show all terms
+      return allFlaggedTerms;
+    }
+    
+    // Default: show all
+    return allFlaggedTerms;
+  }, [allFlaggedTerms, isBilingual, syncMode]);
   const {
     toast
   } = useToast();
