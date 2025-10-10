@@ -385,11 +385,11 @@ All colors MUST be HSL.
   @keyframes tooltip-fade-deblur {
     0% {
       opacity: 0;
-      filter: blur(8px);
+      filter: blur(80%);
     }
     100% {
       opacity: 1;
-      filter: blur(0px);
+      filter: blur(0%);
     }
   }
 
