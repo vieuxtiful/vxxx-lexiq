@@ -127,14 +127,16 @@ export const QAChatPanel: React.FC<QAChatPanelProps> = ({ analysisContext }) => 
           </div>
         </ScrollArea>
         <div className="flex gap-2">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Ask about terminology..."
-            className="min-h-[50px] max-h-[80px] resize-none text-xs"
-            disabled={isLoading}
-          />
+          <div className="tooltip-gradient-border flex-1">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Ask about terminology..."
+              className="min-h-[50px] max-h-[80px] resize-none text-xs border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+              disabled={isLoading}
+            />
+          </div>
           <Button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
