@@ -218,7 +218,7 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="gap-1 bg-yellow-500/10 text-yellow-700 border-yellow-500/20">
                   <AlertCircle className="h-3 w-3" />
-                  {totalIssues} issues
+                  {totalIssues} {totalIssues === 1 ? 'issue' : 'issues'}
                 </Badge>
               </div>
             ) : content.trim() ? (
