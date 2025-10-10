@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, LogOut } from 'lucide-react';
-import lexiqLogo from '@/assets/lexiq-logo.png';
+import lexiqQLogo from '@/assets/lexiq-q-logo.png';
 import { useAuth } from '@/hooks/useAuth';
 import {
   AlertDialog,
@@ -63,10 +63,9 @@ export function WelcomeScreen({ onEnter }: WelcomeScreenProps) {
         {/* Logo Area */}
         <div className="mb-8 flex flex-col items-center">
           <img 
-            src={lexiqLogo} 
-            alt="LexiQ Logo" 
-            className="h-48 w-auto mb-6" 
-            style={{ marginTop: '20px' }}
+            src={lexiqQLogo} 
+            alt="LexiQ Q Logo" 
+            className="h-auto w-auto max-w-[120px] light-sweep-logo" 
           />
         </div>
 
