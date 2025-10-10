@@ -12,6 +12,7 @@ import { FloatingBackground } from '@/components/lexiq/FloatingBackground';
 import { useProjectScreenDarkMode } from '@/hooks/useProjectScreenDarkMode';
 import { Moon, Sun } from 'lucide-react';
 import lexiqLogo from '@/assets/lexiq-logo.png';
+import lexiqLogoWhite from '@/assets/lexiq-logo-white.png';
 const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -82,7 +83,11 @@ const Auth = () => {
           <Card className="w-full max-w-[610px] shadow-lexiq border-border/40 backdrop-blur-sm bg-card/95">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center mb-2">
-            <img src={lexiqLogo} alt="LexiQ Logo" className="h-16 hover-scale light-sweep-logo-signin" />
+            <img 
+              src={isDarkMode ? lexiqLogoWhite : lexiqLogo} 
+              alt="LexiQ Logo" 
+              className="h-16 hover-scale light-sweep-logo-signin" 
+            />
           </div>
           <CardDescription className="text-base mt-2">
             LQA. Simple.
