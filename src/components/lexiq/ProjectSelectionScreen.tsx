@@ -339,6 +339,17 @@ const SortableProjectCard: React.FC<SortableProjectCardProps> = ({
     isDragging,
   } = useSortable({ id: project.id });
 
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isHovering, setIsHovering] = useState(false);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePosition({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  };
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -357,10 +368,23 @@ const SortableProjectCard: React.FC<SortableProjectCardProps> = ({
     <Card 
       ref={setNodeRef} 
       style={style}
-      className="cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] bg-card/95 backdrop-blur-sm border-border/40 group relative" 
+      className="cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] bg-card/95 backdrop-blur-sm border-border/40 group relative overflow-hidden" 
       onClick={onSelect}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
     >
-      <CardContent className="p-6">
+      {/* Radial gradient pressure effect */}
+      {isHovering && (
+        <div
+          className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+          style={{
+            background: `radial-gradient(circle 200px at ${mousePosition.x}px ${mousePosition.y}px, hsl(var(--primary) / 0.15), transparent 70%)`,
+          }}
+        />
+      )}
+      
+      <CardContent className="p-6 relative z-10">
         <div className="flex items-start gap-3 mb-4">
           {/* Drag Handle */}
           <div 
