@@ -382,16 +382,16 @@ All colors MUST be HSL.
   }
 
   /* Tooltip fade-in with de-blur effect */
-  @keyframes tooltip-fade-deblur {
-    0% {
-      opacity: 0;
-      filter: blur(12px);
-    }
-    100% {
-      opacity: 1;
-      filter: blur(0);
-    }
+@keyframes tooltip-deblur {
+  0% {
+    filter: blur(12px);
+    opacity: 0.8;
   }
+  100% {
+    filter: blur(0);
+    opacity: 1;
+  }
+}
 
   .tooltip-gradient-border {
     position: relative;
