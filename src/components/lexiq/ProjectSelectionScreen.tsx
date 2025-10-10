@@ -361,20 +361,9 @@ const SortableProjectCard: React.FC<SortableProjectCardProps> = ({
 
           {/* Main Content */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-xl text-foreground font-light truncate">
-                {project.name}
-              </h3>
-              <Badge 
-                variant="outline" 
-                className={project.project_type === 'bilingual' 
-                  ? 'bg-blue-500/10 text-blue-700 border-blue-500/20 flex-shrink-0' 
-                  : 'bg-green-500/10 text-green-700 border-green-500/20 flex-shrink-0'
-                }
-              >
-                {project.project_type === 'bilingual' ? 'Bilingual' : 'Monolingual'}
-              </Badge>
-            </div>
+            <h3 className="text-xl text-foreground font-light truncate mb-2">
+              {project.name}
+            </h3>
             <div className="flex gap-3 text-sm text-muted-foreground flex-wrap">
               {project.project_type === 'bilingual' && project.source_language && (
                 <>
@@ -398,6 +387,15 @@ const SortableProjectCard: React.FC<SortableProjectCardProps> = ({
 
           {/* Actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            <Badge 
+              variant="outline" 
+              className={project.project_type === 'bilingual' 
+                ? 'bg-blue-500/10 text-blue-700 border-blue-500/20' 
+                : 'bg-green-500/10 text-green-700 border-green-500/20'
+              }
+            >
+              {project.project_type === 'bilingual' ? 'Bilingual' : 'Monolingual'}
+            </Badge>
             <FolderOpen className="w-6 h-6 text-primary" />
             
             <DropdownMenu>
