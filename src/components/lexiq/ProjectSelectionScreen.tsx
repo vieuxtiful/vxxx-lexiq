@@ -379,7 +379,7 @@ const SortableProjectCard: React.FC<SortableProjectCardProps> = ({
         <div
           className="absolute inset-0 pointer-events-none transition-opacity duration-300"
           style={{
-            background: `radial-gradient(circle 200px at ${mousePosition.x}px ${mousePosition.y}px, hsl(var(--primary) / 0.075), transparent 70%)`,
+            background: `radial-gradient(circle 140px at ${mousePosition.x}px ${mousePosition.y}px, hsl(var(--primary) / 0.06), transparent 70%)`,
           }}
         />
       )}
