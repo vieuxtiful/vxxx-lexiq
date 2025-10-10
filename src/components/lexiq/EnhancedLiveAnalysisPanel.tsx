@@ -628,38 +628,6 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                   </Label>
                 </div>
               )}
-              
-              {/* Grammar & Spelling Toggles - Only for monolingual projects */}
-              {!isBilingual && (
-                <>
-                  {onGrammarCheckingToggle && (
-                    <div className="flex items-center space-x-2">
-                      <Switch 
-                        id="grammar-check" 
-                        checked={grammarCheckingEnabled} 
-                        onCheckedChange={onGrammarCheckingToggle} 
-                      />
-                      <Label htmlFor="grammar-check" className="text-sm flex items-center gap-1">
-                        <CheckCircle className="h-3 w-3" />
-                        Grammar
-                      </Label>
-                    </div>
-                  )}
-                  {onSpellingCheckingToggle && (
-                    <div className="flex items-center space-x-2">
-                      <Switch 
-                        id="spelling-check" 
-                        checked={spellingCheckingEnabled} 
-                        onCheckedChange={onSpellingCheckingToggle} 
-                      />
-                      <Label htmlFor="spelling-check" className="text-sm flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" />
-                        Spelling
-                      </Label>
-                    </div>
-                  )}
-                </>
-              )}
             </div>
           </div>
           
