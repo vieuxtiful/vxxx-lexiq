@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PasswordStrengthIndicator } from '@/components/ui/password-strength-indicator';
 import { FloatingBackground } from '@/components/lexiq/FloatingBackground';
+import { useProjectScreenDarkMode } from '@/hooks/useProjectScreenDarkMode';
+import { Moon, Sun } from 'lucide-react';
 import lexiqLogo from '@/assets/lexiq-logo.png';
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -25,21 +27,10 @@ const Auth = () => {
     validatePassword
   } = usePasswordValidation();
   const navigate = useNavigate();
+  const { isDarkMode, shouldAnimate, toggleDarkMode } = useProjectScreenDarkMode();
 
   // Password validation for signup
   const passwordValidation = activeTab === 'signup' ? validatePassword(password) : null;
-
-  // Force light mode on auth page
-  useEffect(() => {
-    document.documentElement.classList.remove('dark');
-    return () => {
-      // Restore dark mode preference when leaving auth page
-      const savedDarkMode = localStorage.getItem('lexiq-dark-mode');
-      if (savedDarkMode === 'true') {
-        document.documentElement.classList.add('dark');
-      }
-    };
-  }, []);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -77,7 +68,7 @@ const Auth = () => {
     }
     setIsLoading(false);
   };
-  return <div className="min-h-screen relative overflow-hidden" style={{
+  return <div className={`min-h-screen relative overflow-hidden transition-colors ${shouldAnimate ? 'duration-[2000ms]' : 'duration-300'} ${isDarkMode ? 'dark' : ''}`} style={{
     background: 'var(--gradient-welcome)'
   }}>
       {/* Animated floating background */}
@@ -144,8 +135,19 @@ const Auth = () => {
         </CardContent>
       </Card>
       
-      {/* Copyright Footer */}
-      <div className="text-center mt-6">
+      {/* Dark Mode Toggle and Copyright Footer */}
+      <div className="text-center mt-6 space-y-3">
+        <div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={toggleDarkMode}
+            className="h-8 text-xs text-muted-foreground hover:text-foreground px-3 gap-2"
+          >
+            {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+          </Button>
+        </div>
         <p className="text-sm text-muted-foreground/60">
           © LexiQ Development Team
         </p>
