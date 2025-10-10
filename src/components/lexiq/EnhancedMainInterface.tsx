@@ -249,8 +249,8 @@ export function EnhancedMainInterface({
 
   // Source Editor Lock & Sync Mode states
   const [isSourceLocked, setIsSourceLocked] = useState(false);
-  const [syncMode, setSyncMode] = useState<'gatv' | 'linguistic' | 'both' | 'none'>('gatv');
-  const [linguisticSyncEnabled, setLinguisticSyncEnabled] = useState(false);
+  const [syncMode, setSyncMode] = useState<'gatv' | 'lqa' | 'both' | 'none'>('gatv');
+  const [lqaSyncEnabled, setLqaSyncEnabled] = useState(false);
 
   // Language validation state
   const [languageValidation, setLanguageValidation] = useState<{
@@ -405,9 +405,9 @@ export function EnhancedMainInterface({
     localStorage.setItem('lexiq-source-spelling-enabled', String(sourceSpellingEnabled));
   }, [sourceSpellingEnabled]);
 
-  // Toggle linguistic sync based on sync mode
+  // Toggle LQA sync based on sync mode
   useEffect(() => {
-    setLinguisticSyncEnabled(syncMode === 'linguistic' || syncMode === 'both');
+    setLqaSyncEnabled(syncMode === 'lqa' || syncMode === 'both');
   }, [syncMode]);
 
   // Real-time language validation with blocking
@@ -2021,16 +2021,16 @@ export function EnhancedMainInterface({
                             onChange={(e) => setSyncMode(e.target.value as any)}
                             className="rounded border p-1 text-sm bg-background"
                           >
-                            <option value="gatv">Glossary & Terminology Only</option>
-                            <option value="linguistic">Linguistic Sync Only</option>
-                            <option value="both">Both Systems</option>
-                            <option value="none">No Automatic Analysis</option>
+                            <option value="gatv">GTV Only</option>
+                            <option value="lqa">LQA Only</option>
+                            <option value="both">LQA & GTV</option>
+                            <option value="none">Manual Review</option>
                           </select>
 
-                          {linguisticSyncEnabled && (
+                          {lqaSyncEnabled && (
                             <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-500/20">
                               <RefreshCw className="h-3 w-3 mr-1" />
-                              Linguistic Sync Active
+                              LQA Sync Active
                             </Badge>
                           )}
                         </div>
@@ -2080,7 +2080,8 @@ export function EnhancedMainInterface({
                                   onValidateTerm={handleValidateTerm} 
                                   originalAnalyzedContent={hasLiveAnalysis ? originalAnalyzedContent : ''}
                                   syncMode={syncMode}
-                                  linguisticSyncEnabled={linguisticSyncEnabled}
+                                  lqaSyncEnabled={lqaSyncEnabled}
+                                  sourceContent={sourceContent}
                                 />
                               </div>
                             </ResizablePanel>
@@ -2122,7 +2123,8 @@ export function EnhancedMainInterface({
                               onValidateTerm={handleValidateTerm} 
                               originalAnalyzedContent={hasLiveAnalysis ? originalAnalyzedContent : ''}
                               syncMode={syncMode}
-                              linguisticSyncEnabled={linguisticSyncEnabled}
+                              lqaSyncEnabled={lqaSyncEnabled}
+                              sourceContent={sourceContent}
                             />
                           </div>
                         )}

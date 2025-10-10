@@ -58,8 +58,9 @@ interface EnhancedLiveAnalysisPanelProps {
   onValidateTerm?: (term: FlaggedTerm) => void;
   originalAnalyzedContent?: string;
   // Sync mode props
-  syncMode?: 'gatv' | 'linguistic' | 'both' | 'none';
-  linguisticSyncEnabled?: boolean;
+  syncMode?: 'gatv' | 'lqa' | 'both' | 'none';
+  lqaSyncEnabled?: boolean;
+  sourceContent?: string;
 }
 
 // Levenshtein distance-based similarity calculation
@@ -130,7 +131,8 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   onValidateTerm,
   originalAnalyzedContent = '',
   syncMode = 'gatv',
-  linguisticSyncEnabled = false
+  lqaSyncEnabled = false,
+  sourceContent = ''
 }) => {
   const {
     toast
@@ -563,11 +565,11 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                     {selectedDomain.charAt(0).toUpperCase() + selectedDomain.slice(1)}
                   </Badge>
                   
-                  {/* Linguistic Sync Indicator */}
-                  {linguisticSyncEnabled && (
+                  {/* LQA Sync Indicator */}
+                  {lqaSyncEnabled && (
                     <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-500/20 flex items-center gap-1">
                       <RefreshCw className="h-3 w-3" />
-                      Linguistic Sync
+                      LQA Sync
                     </Badge>
                   )}
                   
