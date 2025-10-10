@@ -249,8 +249,16 @@ export function EnhancedMainInterface({
 
   // Source Editor Lock & Sync Mode states
   const [isSourceLocked, setIsSourceLocked] = useState(false);
-  const [syncMode, setSyncMode] = useState<'gatv' | 'lqa' | 'both' | 'none'>('gatv');
+  const [syncMode, setSyncMode] = useState<'gtv' | 'lqa' | 'both' | 'none'>('gtv');
   const [lqaSyncEnabled, setLqaSyncEnabled] = useState(false);
+  
+  // Project type determines available features
+  const isBilingual = currentProject?.project_type === 'bilingual';
+  const isMonolingual = currentProject?.project_type === 'monolingual';
+  
+  // Analysis mode determines which features are active
+  const showGTVAnalysis = isBilingual && (syncMode === 'gtv' || syncMode === 'both');
+  const showLQAAnalysis = isBilingual && (syncMode === 'lqa' || syncMode === 'both');
 
   // Language validation state
   const [languageValidation, setLanguageValidation] = useState<{
@@ -2021,7 +2029,7 @@ export function EnhancedMainInterface({
                             onChange={(e) => setSyncMode(e.target.value as any)}
                             className="rounded border p-1 text-sm bg-background"
                           >
-                            <option value="gatv">GTV Only</option>
+                            <option value="gtv">GTV Only</option>
                             <option value="lqa">LQA Only</option>
                             <option value="both">LQA & GTV</option>
                             <option value="none">Manual Review</option>
@@ -2071,10 +2079,10 @@ export function EnhancedMainInterface({
                                   onContentChange={handleContentChange} 
                                   onReanalyze={hasLiveAnalysis ? () => handleReanalyze() : undefined} 
                                   isReanalyzing={isReanalyzing} 
-                                  grammarCheckingEnabled={grammarCheckingEnabled} 
-                                  onGrammarCheckingToggle={setGrammarCheckingEnabled} 
-                                  spellingCheckingEnabled={spellingCheckingEnabled} 
-                                  onSpellingCheckingToggle={setSpellingCheckingEnabled} 
+                                  grammarCheckingEnabled={showGTVAnalysis ? grammarCheckingEnabled : false} 
+                                  onGrammarCheckingToggle={showGTVAnalysis ? setGrammarCheckingEnabled : undefined} 
+                                  spellingCheckingEnabled={showGTVAnalysis ? spellingCheckingEnabled : false} 
+                                  onSpellingCheckingToggle={showGTVAnalysis ? setSpellingCheckingEnabled : undefined} 
                                   selectedLanguage={selectedLanguage} 
                                   selectedDomain={selectedDomain} 
                                   onValidateTerm={handleValidateTerm} 
@@ -2082,6 +2090,8 @@ export function EnhancedMainInterface({
                                   syncMode={syncMode}
                                   lqaSyncEnabled={lqaSyncEnabled}
                                   sourceContent={sourceContent}
+                                  isBilingual={isBilingual}
+                                  showGTVFeatures={showGTVAnalysis}
                                 />
                               </div>
                             </ResizablePanel>
@@ -2125,6 +2135,8 @@ export function EnhancedMainInterface({
                               syncMode={syncMode}
                               lqaSyncEnabled={lqaSyncEnabled}
                               sourceContent={sourceContent}
+                              isBilingual={false}
+                              showGTVFeatures={true}
                             />
                           </div>
                         )}

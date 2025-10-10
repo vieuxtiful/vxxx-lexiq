@@ -58,9 +58,12 @@ interface EnhancedLiveAnalysisPanelProps {
   onValidateTerm?: (term: FlaggedTerm) => void;
   originalAnalyzedContent?: string;
   // Sync mode props
-  syncMode?: 'gatv' | 'lqa' | 'both' | 'none';
+  syncMode?: 'gtv' | 'lqa' | 'both' | 'none';
   lqaSyncEnabled?: boolean;
   sourceContent?: string;
+  // Project type and feature flags
+  isBilingual?: boolean;
+  showGTVFeatures?: boolean;
 }
 
 // Levenshtein distance-based similarity calculation
@@ -130,9 +133,11 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   selectedDomain = 'general',
   onValidateTerm,
   originalAnalyzedContent = '',
-  syncMode = 'gatv',
+  syncMode = 'gtv',
   lqaSyncEnabled = false,
-  sourceContent = ''
+  sourceContent = '',
+  isBilingual = false,
+  showGTVFeatures = true
 }) => {
   const {
     toast
@@ -613,19 +618,53 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
             </div>
             
             <div className="flex items-center gap-4 px-[15px] my-0 py-0 mx-0">
-              {/* Semantic Types Toggle */}
-              <div className="flex items-center space-x-2">
-                <Switch id="semantic-types" checked={showSemanticTypes} onCheckedChange={setShowSemanticTypes} />
-                <Label htmlFor="semantic-types" className="text-sm flex items-center gap-1">
-                  <Palette className="h-3 w-3" />
-                  Types
-                </Label>
-              </div>
+              {/* Semantic Types Toggle - Only for GTV modes */}
+              {showGTVFeatures && (
+                <div className="flex items-center space-x-2">
+                  <Switch id="semantic-types" checked={showSemanticTypes} onCheckedChange={setShowSemanticTypes} />
+                  <Label htmlFor="semantic-types" className="text-sm flex items-center gap-1">
+                    <Palette className="h-3 w-3" />
+                    Types
+                  </Label>
+                </div>
+              )}
+              
+              {/* Grammar & Spelling Toggles - Only for monolingual projects */}
+              {!isBilingual && (
+                <>
+                  {onGrammarCheckingToggle && (
+                    <div className="flex items-center space-x-2">
+                      <Switch 
+                        id="grammar-check" 
+                        checked={grammarCheckingEnabled} 
+                        onCheckedChange={onGrammarCheckingToggle} 
+                      />
+                      <Label htmlFor="grammar-check" className="text-sm flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3" />
+                        Grammar
+                      </Label>
+                    </div>
+                  )}
+                  {onSpellingCheckingToggle && (
+                    <div className="flex items-center space-x-2">
+                      <Switch 
+                        id="spelling-check" 
+                        checked={spellingCheckingEnabled} 
+                        onCheckedChange={onSpellingCheckingToggle} 
+                      />
+                      <Label htmlFor="spelling-check" className="text-sm flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        Spelling
+                      </Label>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
           
-          {/* Enhanced Category Badges - Shown/hidden via Term Status toggle */}
-          {showTermStatus && <div className="flex justify-between items-center gap-2 text-xs mt-2">
+          {/* Enhanced Category Badges - Only shown for GTV modes */}
+          {showGTVFeatures && showTermStatus && <div className="flex justify-between items-center gap-2 text-xs mt-2">
               <div className="flex gap-2">
                 <Badge variant="outline" className="text-green-600 border-green-500 flex items-center gap-1">
                   <CheckCircle className="h-3 w-3" />
@@ -640,11 +679,23 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                   Critical ({categoryStats.critical})
                 </Badge>
                 
-                {grammarCheckingEnabled}
+                {/* Spelling & Grammar badges for monolingual only */}
+                {!isBilingual && (
+                  <>
+                    <Badge variant="outline" className="text-blue-600 border-blue-500 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      Spelling ({categoryStats.spelling})
+                    </Badge>
+                    <Badge variant="outline" className="text-purple-600 border-purple-500 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      Grammar ({categoryStats.grammar})
+                    </Badge>
+                  </>
+                )}
               </div>
               
-              {/* Legend button right-aligned when Types is enabled */}
-              {showSemanticTypes && flaggedTerms.length > 0 && <Button variant="outline" size="sm" onClick={() => {
+              {/* Legend button right-aligned when Types is enabled and GTV features are shown */}
+              {showGTVFeatures && showSemanticTypes && flaggedTerms.length > 0 && <Button variant="outline" size="sm" onClick={() => {
             const newValue = !showLegend;
             setShowLegend(newValue);
             userManuallySetLegendRef.current = true; // User manually changed it
