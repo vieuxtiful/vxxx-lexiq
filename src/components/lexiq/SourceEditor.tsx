@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { FileText, AlertCircle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
+import { FileText, AlertCircle, CheckCircle2, Loader2, RefreshCw, Undo2, Redo2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { AnimatedEllipsis } from '@/components/ui/animated-ellipsis';
 
@@ -41,8 +41,54 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<SourceAnalysis>({ grammarIssues: 0, spellingIssues: 0 });
+  
+  // Undo/Redo functionality
+  const [history, setHistory] = useState<string[]>([content]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const isUndoRedoAction = useRef(false);
+  
   const characterCount = content.length;
   const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+
+  // Track content changes for undo/redo
+  useEffect(() => {
+    if (isUndoRedoAction.current) {
+      isUndoRedoAction.current = false;
+      return;
+    }
+    
+    if (content !== history[historyIndex]) {
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(content);
+      // Limit history to 50 entries
+      if (newHistory.length > 50) {
+        newHistory.shift();
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+      } else {
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+      }
+    }
+  }, [content]);
+
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      isUndoRedoAction.current = true;
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      onContentChange(history[newIndex]);
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      isUndoRedoAction.current = true;
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      onContentChange(history[newIndex]);
+    }
+  };
 
   // Analyze source text for grammar/spelling only
   useEffect(() => {
@@ -56,13 +102,13 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
       try {
         const { data, error } = await supabase.functions.invoke('analyze-translation', {
           body: {
-            translationText: content,
-            glossary: '', // No glossary for source
+            translationContent: content, // Fixed: was translationText
+            glossaryContent: '', // Fixed: was glossary
             language,
             domain: 'general',
-            sourceTextOnly: true, // Special flag for source-only analysis
-            grammarEnabled,
-            spellingEnabled,
+            sourceTextOnly: true,
+            checkGrammar: grammarEnabled,
+            checkSpelling: spellingEnabled,
           },
         });
 
@@ -90,13 +136,39 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
     <Card className="h-full flex flex-col border-primary/20">
       <CardHeader className="border-b bg-muted/30 pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
-            Source Editor
-            <Badge variant="outline" className="ml-2 text-xs">
-              {language.toUpperCase()}
-            </Badge>
-          </CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Source Editor
+              <Badge variant="outline" className="ml-2 text-xs">
+                {language.toUpperCase()}
+              </Badge>
+            </CardTitle>
+            
+            {/* Undo/Redo buttons */}
+            <div className="flex items-center gap-1 ml-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleUndo}
+                disabled={historyIndex === 0 || readOnly}
+                className="h-7 w-7 p-0"
+                title="Undo (Ctrl+Z)"
+              >
+                <Undo2 className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRedo}
+                disabled={historyIndex === history.length - 1 || readOnly}
+                className="h-7 w-7 p-0"
+                title="Redo (Ctrl+Y)"
+              >
+                <Redo2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
           
           {/* Issue indicators */}
           <div className="flex items-center gap-3">
@@ -129,6 +201,15 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
           placeholder="Source text will appear here when you upload a bilingual file..."
           className="flex-1 resize-none font-mono text-sm leading-relaxed whitespace-pre-wrap break-words"
           readOnly={readOnly}
+          onKeyDown={(e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+              e.preventDefault();
+              handleUndo();
+            } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+              e.preventDefault();
+              handleRedo();
+            }
+          }}
         />
 
         {/* Bottom Bar: Toggles + Reanalyze + Character/Word Count */}
