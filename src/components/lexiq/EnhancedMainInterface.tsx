@@ -418,7 +418,7 @@ export function EnhancedMainInterface({
     setLqaSyncEnabled(syncMode === 'lqa' || syncMode === 'both');
   }, [syncMode]);
 
-  // Real-time language validation with blocking
+  // Real-time language validation with blocking - MAIN CONTENT (Term Validator)
   useEffect(() => {
     if (!currentProject || !currentContent.trim() || currentContent.length < 30) {
       if (realTimeValidation?.isOpen) {
@@ -429,7 +429,7 @@ export function EnhancedMainInterface({
 
     const timeoutId = setTimeout(async () => {
       try {
-        console.log('🌍 Real-time language detection triggered:', {
+        console.log('🌍 Real-time language detection triggered (Term Validator):', {
           contentLength: currentContent.length,
           expectedLanguage: currentProject.language
         });
@@ -437,7 +437,7 @@ export function EnhancedMainInterface({
         const validationResult = await validateContentLanguage(currentContent, currentProject.language);
         
         if (!validationResult.canProceed) {
-          console.log('🚨 Real-time validation blocking user:', {
+          console.log('🚨 Real-time validation blocking user (Term Validator):', {
             detected: validationResult.detectedLanguage,
             expected: currentProject.language,
             confidence: validationResult.validation.confidence
@@ -450,7 +450,7 @@ export function EnhancedMainInterface({
             expectedLanguage: currentProject.language,
             onContinue: () => {
               setRealTimeValidation(null);
-              console.log('✅ Real-time validation override by user');
+              console.log('✅ Real-time validation override by user (Term Validator)');
               setTimeout(() => {
                 toast({
                   title: "Language mismatch content allowed",
@@ -463,7 +463,7 @@ export function EnhancedMainInterface({
             onCancel: () => {
               setRealTimeValidation(null);
               setCurrentContent('');
-              console.log('❌ Real-time validation - content cleared by user');
+              console.log('❌ Real-time validation - content cleared by user (Term Validator)');
               toast({
                 title: "Content Cleared",
                 description: "Language mismatch detected",
@@ -476,12 +476,73 @@ export function EnhancedMainInterface({
           setRealTimeValidation(null);
         }
       } catch (error) {
-        console.error('Real-time language detection error:', error);
+        console.error('Real-time language detection error (Term Validator):', error);
       }
     }, 1500); // 1.5 second debounce (more sensitive)
 
     return () => clearTimeout(timeoutId);
   }, [currentContent, currentProject, toast]);
+
+  // Real-time language validation with blocking - SOURCE CONTENT (Source Editor)
+  useEffect(() => {
+    if (!currentProject || currentProject.project_type !== 'bilingual' || !sourceContent.trim() || sourceContent.length < 30) {
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const expectedSourceLanguage = currentProject.source_language || 'en';
+        console.log('🌍 Real-time language detection triggered (Source Editor):', {
+          contentLength: sourceContent.length,
+          expectedLanguage: expectedSourceLanguage
+        });
+
+        const validationResult = await validateContentLanguage(sourceContent, expectedSourceLanguage);
+        
+        if (!validationResult.canProceed) {
+          console.log('🚨 Real-time validation blocking user (Source Editor):', {
+            detected: validationResult.detectedLanguage,
+            expected: expectedSourceLanguage,
+            confidence: validationResult.validation.confidence
+          });
+          
+          // Show blocking dialog for source editor
+          setRealTimeValidation({
+            isOpen: true,
+            validation: validationResult.validation,
+            expectedLanguage: expectedSourceLanguage,
+            onContinue: () => {
+              setRealTimeValidation(null);
+              console.log('✅ Real-time validation override by user (Source Editor)');
+              setTimeout(() => {
+                toast({
+                  title: "Source language mismatch allowed",
+                  description: `Detected: ${getLanguageName(validationResult.detectedLanguage)} | Expected: ${getLanguageName(expectedSourceLanguage)}`,
+                  variant: "destructive",
+                  duration: 3000
+                });
+              }, 500);
+            },
+            onCancel: () => {
+              setRealTimeValidation(null);
+              setSourceContent('');
+              console.log('❌ Real-time validation - source content cleared by user');
+              toast({
+                title: "Source Content Cleared",
+                description: "Language mismatch detected in source editor",
+                variant: "default",
+                duration: 3000
+              });
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Real-time language detection error (Source Editor):', error);
+      }
+    }, 1500); // 1.5 second debounce (more sensitive)
+
+    return () => clearTimeout(timeoutId);
+  }, [sourceContent, currentProject, toast]);
 
   // Consolidated session loading with proper priority and race condition prevention
   React.useEffect(() => {
