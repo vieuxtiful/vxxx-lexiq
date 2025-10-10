@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Upload, FileText, Play, TrendingUp, CheckCircle, AlertCircle, BarChart3, Activity, BookOpen, Zap, ArrowLeft, Globe, Building, Download, Undo2, Redo2, Database, Save, User, LogOut, RefreshCw } from 'lucide-react';
@@ -246,6 +247,11 @@ export function EnhancedMainInterface({
   const [glossaryFileId, setGlossaryFileId] = useState<string | null>(null);
   const [showProjectSetup, setShowProjectSetup] = useState(false);
 
+  // Source Editor Lock & Sync Mode states
+  const [isSourceLocked, setIsSourceLocked] = useState(false);
+  const [syncMode, setSyncMode] = useState<'gatv' | 'linguistic' | 'both' | 'none'>('gatv');
+  const [linguisticSyncEnabled, setLinguisticSyncEnabled] = useState(false);
+
   // Language validation state
   const [languageValidation, setLanguageValidation] = useState<{
     isOpen: boolean;
@@ -398,6 +404,11 @@ export function EnhancedMainInterface({
   useEffect(() => {
     localStorage.setItem('lexiq-source-spelling-enabled', String(sourceSpellingEnabled));
   }, [sourceSpellingEnabled]);
+
+  // Toggle linguistic sync based on sync mode
+  useEffect(() => {
+    setLinguisticSyncEnabled(syncMode === 'linguistic' || syncMode === 'both');
+  }, [syncMode]);
 
   // Real-time language validation with blocking
   useEffect(() => {
@@ -1988,14 +1999,44 @@ export function EnhancedMainInterface({
 
               <ResizableHandle withHandle />
 
-              {/* Main Editor Area */}
+                  {/* Main Editor Area */}
               <ResizablePanel defaultSize={80}>
                 <div className="h-full flex flex-col">
-                  {/* Undo/Redo Controls */}
+                  {/* Undo/Redo Controls & Sync Mode */}
                   <div className="flex items-center justify-between px-6 py-3 border-b bg-card/50">
-                    <h3 className="text-lg font-semibold">
-                      {currentProject?.project_type === 'bilingual' ? 'Dual Editor' : 'Editor'}
-                    </h3>
+                    <div className="flex items-center gap-4">
+                      <h3 className="text-lg font-semibold">
+                        {currentProject?.project_type === 'bilingual' ? 'Dual Editor' : 'Editor'}
+                      </h3>
+                      
+                      {/* Sync Mode Selector for Bilingual Projects */}
+                      {currentProject?.project_type === 'bilingual' && (
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="sync-mode" className="text-sm font-medium text-muted-foreground">
+                            Analysis Mode:
+                          </Label>
+                          <select
+                            id="sync-mode"
+                            value={syncMode}
+                            onChange={(e) => setSyncMode(e.target.value as any)}
+                            className="rounded border p-1 text-sm bg-background"
+                          >
+                            <option value="gatv">Glossary & Terminology Only</option>
+                            <option value="linguistic">Linguistic Sync Only</option>
+                            <option value="both">Both Systems</option>
+                            <option value="none">No Automatic Analysis</option>
+                          </select>
+
+                          {linguisticSyncEnabled && (
+                            <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-500/20">
+                              <RefreshCw className="h-3 w-3 mr-1" />
+                              Linguistic Sync Active
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    
                     <div className="flex items-center gap-2">
                       <Button 
                         variant="ghost" 
@@ -2038,6 +2079,8 @@ export function EnhancedMainInterface({
                                   selectedDomain={selectedDomain} 
                                   onValidateTerm={handleValidateTerm} 
                                   originalAnalyzedContent={hasLiveAnalysis ? originalAnalyzedContent : ''}
+                                  syncMode={syncMode}
+                                  linguisticSyncEnabled={linguisticSyncEnabled}
                                 />
                               </div>
                             </ResizablePanel>
@@ -2055,6 +2098,8 @@ export function EnhancedMainInterface({
                                   spellingEnabled={sourceSpellingEnabled}
                                   onGrammarToggle={() => setSourceGrammarEnabled(!sourceGrammarEnabled)}
                                   onSpellingToggle={() => setSourceSpellingEnabled(!sourceSpellingEnabled)}
+                                  isLocked={isSourceLocked}
+                                  onLockToggle={() => setIsSourceLocked(!isSourceLocked)}
                                 />
                               </div>
                             </ResizablePanel>
@@ -2076,6 +2121,8 @@ export function EnhancedMainInterface({
                               selectedDomain={selectedDomain} 
                               onValidateTerm={handleValidateTerm} 
                               originalAnalyzedContent={hasLiveAnalysis ? originalAnalyzedContent : ''}
+                              syncMode={syncMode}
+                              linguisticSyncEnabled={linguisticSyncEnabled}
                             />
                           </div>
                         )}

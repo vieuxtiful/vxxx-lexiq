@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { FileText, AlertCircle, CheckCircle2, Loader2, RefreshCw, Undo2, Redo2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { FileText, AlertCircle, CheckCircle2, Loader2, RefreshCw, Undo2, Redo2, Lock, Unlock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { AnimatedEllipsis } from '@/components/ui/animated-ellipsis';
 
@@ -20,6 +21,8 @@ interface SourceEditorProps {
   onReanalyze?: () => void;
   isReanalyzing?: boolean;
   readOnly?: boolean;
+  isLocked?: boolean;
+  onLockToggle?: () => void;
 }
 
 interface SourceAnalysis {
@@ -38,6 +41,8 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
   onReanalyze,
   isReanalyzing = false,
   readOnly = false,
+  isLocked = false,
+  onLockToggle,
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<SourceAnalysis>({ grammarIssues: 0, spellingIssues: 0 });
@@ -133,45 +138,77 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
   const totalIssues = analysis.grammarIssues + analysis.spellingIssues;
 
   return (
-    <Card className="h-full flex flex-col border-primary/20">
-      <CardHeader className="border-b bg-muted/30 pb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              Source Editor
-              <Badge variant="outline" className="ml-2 text-xs">
-                {language.toUpperCase()}
-              </Badge>
-            </CardTitle>
-            
-            {/* Undo/Redo buttons */}
-            <div className="flex items-center gap-1 ml-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleUndo}
-                disabled={historyIndex === 0 || readOnly}
-                className="h-7 w-7 p-0"
-                title="Undo (Ctrl+Z)"
-              >
-                <Undo2 className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRedo}
-                disabled={historyIndex === history.length - 1 || readOnly}
-                className="h-7 w-7 p-0"
-                title="Redo (Ctrl+Y)"
-              >
-                <Redo2 className="h-3.5 w-3.5" />
-              </Button>
+    <TooltipProvider>
+      <Card className={`h-full flex flex-col border-primary/20 ${isLocked ? 'opacity-80 bg-muted/30' : ''}`}>
+        <CardHeader className="border-b bg-muted/30 pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                Source Editor
+                <Badge variant="outline" className="ml-2 text-xs">
+                  {language.toUpperCase()}
+                </Badge>
+                
+                {/* Lock Status Badge */}
+                {isLocked && (
+                  <Badge variant="secondary" className="bg-blue-500/10 text-blue-700 border-blue-500/20">
+                    <Lock className="h-3 w-3 mr-1" />
+                    Locked
+                  </Badge>
+                )}
+              </CardTitle>
+              
+              {/* Undo/Redo buttons */}
+              <div className="flex items-center gap-1 ml-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleUndo}
+                  disabled={historyIndex === 0 || readOnly || isLocked}
+                  className="h-7 w-7 p-0"
+                  title="Undo (Ctrl+Z)"
+                >
+                  <Undo2 className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRedo}
+                  disabled={historyIndex === history.length - 1 || readOnly || isLocked}
+                  className="h-7 w-7 p-0"
+                  title="Redo (Ctrl+Y)"
+                >
+                  <Redo2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
-          </div>
           
-          {/* Issue indicators */}
+          {/* Lock Toggle & Issue indicators */}
           <div className="flex items-center gap-3">
+            {/* Lock Toggle Button */}
+            {onLockToggle && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onLockToggle}
+                    className="h-8 w-8 p-0"
+                  >
+                    {isLocked ? (
+                      <Unlock className="h-4 w-4 text-blue-600" />
+                    ) : (
+                      <Lock className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isLocked ? 'Unlock source editor' : 'Lock source editor'}
+                </TooltipContent>
+              </Tooltip>
+            )}
+
             {isAnalyzing ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -197,11 +234,14 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
       <CardContent className="flex-1 p-4 flex flex-col min-h-0">
         <Textarea
           value={content}
-          onChange={(e) => onContentChange(e.target.value)}
-          placeholder="Source text will appear here when you upload a bilingual file..."
-          className="flex-1 resize-none font-mono text-sm leading-relaxed whitespace-pre-wrap break-words"
-          readOnly={readOnly}
+          onChange={(e) => !isLocked && onContentChange(e.target.value)}
+          placeholder={isLocked ? "Source editor is locked" : "Source text will appear here when you upload a bilingual file..."}
+          className={`flex-1 resize-none font-mono text-sm leading-relaxed whitespace-pre-wrap break-words ${
+            isLocked ? 'cursor-not-allowed bg-muted/50' : ''
+          }`}
+          readOnly={isLocked || readOnly}
           onKeyDown={(e) => {
+            if (isLocked) return;
             if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
               e.preventDefault();
               handleUndo();
@@ -280,5 +320,6 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
         </div>
       </CardContent>
     </Card>
+    </TooltipProvider>
   );
 };

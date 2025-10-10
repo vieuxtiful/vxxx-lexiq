@@ -57,6 +57,9 @@ interface EnhancedLiveAnalysisPanelProps {
   selectedDomain?: string;
   onValidateTerm?: (term: FlaggedTerm) => void;
   originalAnalyzedContent?: string;
+  // Sync mode props
+  syncMode?: 'gatv' | 'linguistic' | 'both' | 'none';
+  linguisticSyncEnabled?: boolean;
 }
 
 // Levenshtein distance-based similarity calculation
@@ -125,7 +128,9 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   selectedLanguage = 'en',
   selectedDomain = 'general',
   onValidateTerm,
-  originalAnalyzedContent = ''
+  originalAnalyzedContent = '',
+  syncMode = 'gatv',
+  linguisticSyncEnabled = false
 }) => {
   const {
     toast
@@ -557,6 +562,14 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                     <Building className="h-3 w-3" />
                     {selectedDomain.charAt(0).toUpperCase() + selectedDomain.slice(1)}
                   </Badge>
+                  
+                  {/* Linguistic Sync Indicator */}
+                  {linguisticSyncEnabled && (
+                    <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-500/20 flex items-center gap-1">
+                      <RefreshCw className="h-3 w-3" />
+                      Linguistic Sync
+                    </Badge>
+                  )}
                   
                   {/* Content validation warning with similarity percentage */}
                   {flaggedTerms.length > 0 && !isContentValid() && <Tooltip>
