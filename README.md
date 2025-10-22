@@ -49,19 +49,29 @@ LexiQ is an AI‑assisted eXperiential Linguistic Quality Assurance (XLQA) inter
 ---
 
 ## Architecture
+```
+flowchart LR
+    A[User] --> B[Source Editor]
+    A --> C[Term Validator]
+    B <--> C
+    B -->|content + flags| D[UI Renderers]
+    C -->|terms + classifications| D
+    D --> E[Edge Functions]
+    E -->|analysis terms & rationale| D
+    D --> F[Waveform QA]
+    F -->|progress| D
+```
 
-```mermaid
 flowchart LR
   A[User] --> B[Source Editor]
   A --> C[Term Validator]
   B <--> C
   B -->|content + flags| D[UI Renderers]
   C -->|terms + classifications| D
-  D --> E[Supabase Edge Functions (analyze-translation)]
+  D --> E["Supabase Edge Functions (analyze-translation)"]
   E -->|analysis terms & rationale| D
   D --> F[Waveform QA Button]
   F -->|progress| D
-```
 
 - **Front‑end**: React + TypeScript, Tailwind, Lucide icons.
 - **Backend (external)**: Supabase Edge Functions for analysis (grammar/spelling/terms).
@@ -188,3 +198,4 @@ Fork → feature branch → PR. Follow patterns in `SourceEditor.tsx`, `Enhanced
 ## License
 
 This project is licensed under the MIT License. See `LICENSE` for details.
+
