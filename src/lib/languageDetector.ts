@@ -64,7 +64,7 @@ export function getLanguageName(code: string): string {
 }
 
 /**
- * Detects the language of the given text using Lovable AI
+ * Detects the language of the given text using AI language detection
  */
 export async function detectLanguage(text: string): Promise<LanguageDetectionResult> {
   try {

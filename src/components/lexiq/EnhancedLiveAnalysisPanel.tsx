@@ -6,7 +6,23 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { CheckCircle, AlertCircle, XCircle, Zap, BookOpen, Palette, Check, RefreshCw, Globe, Building, AlertTriangle, Loader2 } from 'lucide-react';
+import { 
+  AlertCircle, 
+  CheckCircle, 
+  XCircle, 
+  BookOpen,
+  Zap,
+  Palette,
+  Check,
+  RefreshCw,
+  Globe,
+  Building,
+  AlertTriangle,
+  Loader2,
+  Undo2,
+  Redo2,
+  CheckSquare
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatSemanticType } from '@/utils/semanticTypeFormatter';
 import { AnimatedEllipsis } from '@/components/ui/animated-ellipsis';
@@ -19,6 +35,10 @@ interface FlaggedTerm {
   rationale: string;
   classification: 'valid' | 'review' | 'critical' | 'spelling' | 'grammar';
   suggestions?: string[];
+  position?: {
+    start: number;
+    end: number;
+  };
   // Enhanced fields from the new engine
   semantic_type?: {
     semantic_type: string;
@@ -41,6 +61,7 @@ interface FlaggedTerm {
     grammar_severity: string;
   };
 }
+
 interface EnhancedLiveAnalysisPanelProps {
   content: string;
   flaggedTerms: FlaggedTerm[];
@@ -64,6 +85,11 @@ interface EnhancedLiveAnalysisPanelProps {
   // Project type and feature flags
   isBilingual?: boolean;
   showGTVFeatures?: boolean;
+  // Live analyzer parity + cross-pane alignment
+  isAnalyzingLive?: boolean;
+  misalignmentActive?: boolean;
+  unmatchedSegments?: string[]; // Content segments not matched in counterpart panel
+  unmatchedCount?: number;
 }
 
 // Levenshtein distance-based similarity calculation
@@ -100,10 +126,10 @@ const calculateLevenshteinSimilarity = (str1: string, str2: string): number => {
     for (let i = 1; i <= text1.length; i += 1) {
       const indicator = text1[i - 1] === text2[j - 1] ? 0 : 1;
       track[j][i] = Math.min(track[j][i - 1] + 1,
-      // deletion
-      track[j - 1][i] + 1,
-      // insertion
-      track[j - 1][i - 1] + indicator // substitution
+        // deletion
+        track[j - 1][i] + 1,
+        // insertion
+        track[j - 1][i - 1] + indicator // substitution
       );
     }
   }
@@ -111,6 +137,7 @@ const calculateLevenshteinSimilarity = (str1: string, str2: string): number => {
   const maxLength = Math.max(text1.length, text2.length);
   return maxLength === 0 ? 1 : 1 - distance / maxLength;
 };
+
 const calculateContentSimilarity = (content1: string, content2: string): number => {
   if (!content1 || !content2) return 0;
   if (content1 === content2) return 1;
@@ -118,6 +145,7 @@ const calculateContentSimilarity = (content1: string, content2: string): number 
   // Use Levenshtein for more accurate similarity measurement
   return calculateLevenshteinSimilarity(content1, content2);
 };
+
 export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps> = ({
   content,
   flaggedTerms: allFlaggedTerms,
@@ -137,75 +165,145 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   lqaSyncEnabled = false,
   sourceContent = '',
   isBilingual = false,
-  showGTVFeatures = true
+  showGTVFeatures = true,
+  isAnalyzingLive = false,
+  misalignmentActive = false,
+  unmatchedSegments = [],
+  unmatchedCount
 }) => {
   // Filter flagged terms based on analysis mode
   const flaggedTerms = React.useMemo(() => {
     if (!isBilingual) return allFlaggedTerms; // Monolingual shows all terms
-    
+
     if (syncMode === 'lqa') {
       // LQA Only mode: Show only spelling and grammar issues
-      return allFlaggedTerms.filter(term => 
+      return allFlaggedTerms.filter(term =>
         term.classification === 'spelling' || term.classification === 'grammar'
       );
     }
-    
+
     if (syncMode === 'gtv') {
       // GTV Only mode: Show only GTV terms (valid, review, critical)
-      return allFlaggedTerms.filter(term => 
-        term.classification === 'valid' || 
-        term.classification === 'review' || 
+      return allFlaggedTerms.filter(term =>
+        term.classification === 'valid' ||
+        term.classification === 'review' ||
         term.classification === 'critical'
       );
     }
-    
+
     if (syncMode === 'both') {
       // LQA & GTV mode: Show all terms
       return allFlaggedTerms;
     }
-    
+
     // Default: show all
     return allFlaggedTerms;
   }, [allFlaggedTerms, isBilingual, syncMode]);
+
   const {
     toast
   } = useToast();
+
   const [hoveredTerm, setHoveredTerm] = useState<(FlaggedTerm & {
     position: {
       start: number;
       end: number;
     };
   }) | null>(null);
+
   const [tooltipPosition, setTooltipPosition] = useState<{
     x: number;
     y: number;
   } | null>(null);
+
   const [clickedTerm, setClickedTerm] = useState<FlaggedTerm & {
     position: {
       start: number;
       end: number;
     };
   } | null>(null);
+
   const [clickPosition, setClickPosition] = useState<{
     x: number;
     y: number;
   } | null>(null);
+
   const editorRef = useRef<HTMLDivElement>(null);
+
   const [isEditing, setIsEditing] = useState(false);
+
   const cursorPositionRef = useRef<number>(0);
+
   const tooltipHoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const [isTooltipHovered, setIsTooltipHovered] = useState(false);
+
   const reanalyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const [showSemanticTypes, setShowSemanticTypes] = useState(false);
+
   const [showLegend, setShowLegend] = useState(false);
+
   const [showTermStatus, setShowTermStatus] = useState(true);
+
   const [isComposing, setIsComposing] = useState(false);
+
   const warningShownRef = useRef(false);
+
   const semanticTypesJustEnabledRef = useRef(false);
+
   const userManuallySetLegendRef = useRef(false); // Track if user manually toggled legend
+
   const userLegendPreferenceRef = useRef(false); // Store user's legend preference
+
   const [hasContentChanged, setHasContentChanged] = useState(false);
+
   const [lastEditedContent, setLastEditedContent] = useState('');
+
+  // Undo/Redo functionality
+  const [history, setHistory] = useState<string[]>([content]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const isUndoRedoAction = useRef(false);
+
+  // Track content changes for history
+  useEffect(() => {
+    if (isUndoRedoAction.current) {
+      isUndoRedoAction.current = false;
+      return;
+    }
+    
+    if (content !== history[historyIndex]) {
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(content);
+      // Limit history to 50 entries
+      if (newHistory.length > 50) {
+        newHistory.shift();
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+      } else {
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+      }
+    }
+  }, [content]);
+
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      isUndoRedoAction.current = true;
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      onContentChange(history[newIndex]);
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      isUndoRedoAction.current = true;
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      onContentChange(history[newIndex]);
+    }
+  };
 
   // Track content changes for reanalyze button
   useEffect(() => {
@@ -282,6 +380,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
       currentPosition += textLength;
     }
   };
+
   useEffect(() => {
     const handleMouseOver = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -306,6 +405,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
         }
       }
     };
+
     const handleMouseOut = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.classList.contains('term-highlight')) {
@@ -317,6 +417,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
         }, 200);
       }
     };
+
     const handleDoubleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const editor = editorRef.current;
@@ -324,6 +425,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
         setIsEditing(true);
       }
     };
+
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const editor = editorRef.current;
@@ -332,6 +434,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
       if (editor && editor.contains(target) && !target.classList.contains('term-highlight')) {
         setIsEditing(true);
       }
+
       if (target.classList.contains('term-highlight') && !isEditing) {
         e.preventDefault();
         const start = parseInt(target.getAttribute('data-term-start') || '0', 10);
@@ -357,6 +460,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
         setClickPosition(null);
       }
     };
+
     const editor = editorRef.current;
     if (editor) {
       editor.addEventListener('mouseover', handleMouseOver);
@@ -364,7 +468,9 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
       editor.addEventListener('click', handleClick);
       editor.addEventListener('dblclick', handleDoubleClick);
     }
+
     document.addEventListener('click', handleClick);
+
     return () => {
       if (editor) {
         editor.removeEventListener('mouseover', handleMouseOver);
@@ -372,7 +478,9 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
         editor.removeEventListener('click', handleClick);
         editor.removeEventListener('dblclick', handleDoubleClick);
       }
+
       document.removeEventListener('click', handleClick);
+
       if (tooltipHoverTimeoutRef.current) {
         clearTimeout(tooltipHoverTimeoutRef.current);
       }
@@ -392,16 +500,16 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
    */
   // useEffect(() => {
   //   if (!isEditing || !onReanalyze) return;
-  //
+
   //   if (reanalyzeTimeoutRef.current) {
   //     clearTimeout(reanalyzeTimeoutRef.current);
   //   }
-  //
+
   //   reanalyzeTimeoutRef.current = setTimeout(() => {
   //     console.log('Triggering enhanced re-analysis of edited content...');
   //     onReanalyze(content);
   //   }, 25000);
-  //
+
   //   return () => {
   //     if (reanalyzeTimeoutRef.current) {
   //       clearTimeout(reanalyzeTimeoutRef.current);
@@ -426,6 +534,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
       warningShownRef.current = false;
     }
   }, [content.length, toast]);
+
   const getClassificationIcon = (classification: string) => {
     switch (classification) {
       case 'valid':
@@ -442,6 +551,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
         return <AlertCircle className="h-3 w-3" />;
     }
   };
+
   const getClassificationColor = (classification: string) => {
     switch (classification) {
       case 'valid':
@@ -458,6 +568,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
         return '#6b7280';
     }
   };
+
   const getSemanticTypeColor = (semanticType?: any) => {
     if (!semanticType?.ui_information?.color_code) {
       return '#6b7280';
@@ -476,95 +587,143 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
     const b = parseInt(hex.substring(4, 6), 16);
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
   };
+
   const renderContentWithUnderlines = () => {
-    if (!content || flaggedTerms.length === 0) {
-      // Show placeholder with brush fade animation when not editing and no content
-      if (!content && !isEditing) {
+    // Show placeholder when empty and not editing
+    if (!content) {
+      if (!isEditing) {
         const placeholderText = 'Start typing or paste your text here... (0 / 50,000 characters)';
         return `<span class="placeholder-light-sweep" style="opacity: 0.5; color: #9ca3af;">${placeholderText}</span>`;
       }
-      return content || '';
-    }
-    if (isEditing) {
-      return content;
+      return '';
     }
 
-    // Find all actual occurrences of terms in the content
-    const foundTermPositions: Array<{
-      start: number;
-      end: number;
-      term: FlaggedTerm;
-      actualText: string;
-    }> = [];
-    flaggedTerms.forEach(term => {
-      const searchText = term.text;
-      let searchIndex = 0;
-      while (searchIndex < content.length) {
-        const foundIndex = content.indexOf(searchText, searchIndex);
-        if (foundIndex === -1) break;
-        foundTermPositions.push({
-          start: foundIndex,
-          end: foundIndex + searchText.length,
-          term: term,
-          actualText: content.slice(foundIndex, foundIndex + searchText.length)
-        });
-        searchIndex = foundIndex + 1;
-      }
+    if (isEditing) return content;
+
+    // Collect highlight positions from flagged terms (spelling/grammar/etc.)
+    type Pos = { start: number; end: number; kind: 'term' | 'unmatched'; classification?: FlaggedTerm['classification']; text: string; term?: FlaggedTerm };
+    const positions: Pos[] = [];
+
+    if (flaggedTerms.length > 0) {
+      flaggedTerms.forEach(term => {
+        const searchText = term.text;
+        if (!searchText) return;
+        
+        // If term has explicit position data (e.g., from grammar checker), use it
+        if (term.position && typeof term.position.start === 'number' && typeof term.position.end === 'number') {
+          positions.push({
+            start: term.position.start,
+            end: term.position.end,
+            kind: 'term',
+            classification: term.classification,
+            text: content.slice(term.position.start, term.position.end),
+            term
+          });
+        } else {
+          // Otherwise, search for all occurrences
+          let searchIndex = 0;
+          while (searchIndex < content.length) {
+            const foundIndex = content.indexOf(searchText, searchIndex);
+            if (foundIndex === -1) break;
+            positions.push({
+              start: foundIndex,
+              end: foundIndex + searchText.length,
+              kind: 'term',
+              classification: term.classification,
+              text: content.slice(foundIndex, foundIndex + searchText.length),
+              term
+            });
+            searchIndex = foundIndex + 1;
+          }
+        }
+      });
+    }
+
+    // Add unmatched segment highlights (amber background) - only in LQA modes
+    if (isBilingual && (syncMode === 'lqa' || syncMode === 'both') && unmatchedSegments && unmatchedSegments.length > 0) {
+      unmatchedSegments.forEach(seg => {
+        const needle = (seg || '').trim();
+        if (!needle) return;
+        let idx = 0;
+        while (idx < content.length) {
+          const found = content.indexOf(needle, idx);
+          if (found === -1) break;
+          positions.push({ start: found, end: found + needle.length, kind: 'unmatched', text: content.slice(found, found + needle.length) });
+          idx = found + 1;
+        }
+      });
+    }
+
+    if (positions.length === 0) return escapeHtml(content);
+
+    // Sort by start, then prefer term over unmatched at same start, then longer first
+    positions.sort((a, b) => {
+      if (a.start !== b.start) return a.start - b.start;
+      if (a.kind !== b.kind) return a.kind === 'term' ? -1 : 1;
+      return (b.end - b.start) - (a.end - a.start);
     });
 
-    // Sort by start position, then by length (longest first) to prioritize longer matches
-    const sortedTerms = [...foundTermPositions].sort((a, b) => {
-      if (a.start === b.start) {
-        return b.end - b.start - (a.end - a.start); // Longer terms first when starting at same position
+    // Resolve overlaps so term spans take precedence and unmatched becomes an overlay
+    const nonOverlap: Pos[] = [];
+    positions.forEach(p => {
+      if (nonOverlap.length === 0) return void nonOverlap.push(p);
+      const prev = nonOverlap[nonOverlap.length - 1];
+      if (p.start < prev.end) {
+        if (prev.kind === 'unmatched' && p.kind === 'term') {
+          nonOverlap[nonOverlap.length - 1] = p;
+        }
+        return;
       }
-      return a.start - b.start;
+      nonOverlap.push(p);
     });
 
-    // Remove overlapping terms, keeping the longest at each position
-    const nonOverlappingTerms = sortedTerms.filter((termPos, index) => {
-      if (index === 0) return true;
-      const prevTermPos = sortedTerms[index - 1];
-      return termPos.start >= prevTermPos.end;
-    });
     let html = '';
-    let lastIndex = 0;
-    nonOverlappingTerms.forEach(termPos => {
-      // Add text before the flagged term
-      if (termPos.start > lastIndex) {
-        const textBefore = content.slice(lastIndex, termPos.start);
-        html += escapeHtml(textBefore);
-      }
-      const color = getClassificationColor(termPos.term.classification);
-      const semanticColor = showSemanticTypes ? getSemanticTypeColor(termPos.term.semantic_type) : color;
+    let last = 0;
+    nonOverlap.forEach(p => {
+      if (p.start > last) html += escapeHtml(content.slice(last, p.start));
 
-      // Enhanced styling with semantic type information (with text color)
-      let underlineStyle = '';
-      if (termPos.term.classification === 'grammar') {
-        const bgGradient = `linear-gradient(90deg, ${hexToRgba(color, 0.12)}, ${hexToRgba(semanticColor, 0.12)})`;
-        underlineStyle = `color: ${color}; border-bottom: 2px wavy ${color}; cursor: pointer; background: ${bgGradient}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
-      } else if (termPos.term.classification === 'spelling') {
-        underlineStyle = `color: ${color}; border-bottom: 2px dotted ${color}; cursor: pointer; background-color: ${hexToRgba(color, 0.08)}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
-      } else if (termPos.term.classification === 'valid') {
-        const displayColor = showSemanticTypes ? semanticColor : color;
-        underlineStyle = `color: ${displayColor}; border-bottom: 2px dashed ${displayColor}; cursor: pointer; background-color: ${hexToRgba(displayColor, 0.06)}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
+      if (p.kind === 'unmatched') {
+        const escaped = escapeHtml(p.text);
+        const style = `background-color: ${hexToRgba('#f59e0b', 0.3)}; border-bottom: 2px dashed #f59e0b; padding: 0 2px; border-radius: 2px; display: inline;`;
+        html += `<span class="term-highlight" data-unmatched="true" style="${style}">${escaped}</span>`;
       } else {
-        underlineStyle = `color: ${color}; border-bottom: 2px solid ${color}; cursor: pointer; background-color: ${hexToRgba(color, 0.06)}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
+        const color = getClassificationColor(p.classification as string);
+        const semanticColor = showSemanticTypes ? getSemanticTypeColor(p.term?.semantic_type) : color;
+        let underlineStyle = '';
+        const hasUnmatchedOverlap = positions.some(q => q.kind === 'unmatched' && !(q.end <= p.start || q.start >= p.end));
+        if (p.classification === 'grammar') {
+          const bgGradient = `linear-gradient(90deg, ${hexToRgba(color, 0.12)}, ${hexToRgba(semanticColor, 0.12)})`;
+          const overlayAmber = hasUnmatchedOverlap ? `linear-gradient(0deg, ${hexToRgba('#f59e0b', 0.3)}, ${hexToRgba('#f59e0b', 0.3)}), ` : '';
+          underlineStyle = `color: ${color}; border-bottom: 2px wavy ${color}; cursor: pointer; background: ${overlayAmber}${bgGradient}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
+        } else if (p.classification === 'spelling') {
+          const baseBg = hexToRgba(color, 0.08);
+          const background = hasUnmatchedOverlap ? `linear-gradient(0deg, ${hexToRgba('#f59e0b', 0.3)}, ${hexToRgba('#f59e0b', 0.3)}), linear-gradient(0deg, ${baseBg}, ${baseBg})` : baseBg;
+          underlineStyle = `color: ${color}; border-bottom: 2px dotted ${color}; cursor: pointer; background: ${background}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
+        } else if (p.classification === 'valid') {
+          const displayColor = showSemanticTypes ? semanticColor : color;
+          const baseBg = hexToRgba(displayColor, 0.06);
+          const background = hasUnmatchedOverlap ? `linear-gradient(0deg, ${hexToRgba('#f59e0b', 0.3)}, ${hexToRgba('#f59e0b', 0.3)}), linear-gradient(0deg, ${baseBg}, ${baseBg})` : baseBg;
+          underlineStyle = `color: ${displayColor}; border-bottom: 2px dashed ${displayColor}; cursor: pointer; background: ${background}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
+        } else {
+          const baseBg = hexToRgba(color, 0.06);
+          const background = hasUnmatchedOverlap ? `linear-gradient(0deg, ${hexToRgba('#f59e0b', 0.3)}, ${hexToRgba('#f59e0b', 0.3)}), linear-gradient(0deg, ${baseBg}, ${baseBg})` : baseBg;
+          underlineStyle = `color: ${color}; border-bottom: 2px solid ${color}; cursor: pointer; background: ${background}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
+        }
+        const escaped = escapeHtml(p.text);
+        html += `<span class="term-highlight" style="${underlineStyle}" data-term-start="${p.start}" data-term-end="${p.end}" data-term-class="${p.classification || ''}" data-term-text="${escapeHtml(p.text)}">${escaped}</span>`;
       }
-      const escapedText = escapeHtml(termPos.actualText);
-      html += `<span class="term-highlight" style="${underlineStyle}" data-term-start="${termPos.start}" data-term-end="${termPos.end}" data-term-class="${termPos.term.classification}" data-term-text="${escapeHtml(termPos.term.text)}">${escapedText}</span>`;
-      lastIndex = termPos.end;
+
+      last = p.end;
     });
 
-    // Add remaining text
-    if (lastIndex < content.length) {
-      const remainingText = content.slice(lastIndex);
-      html += escapeHtml(remainingText);
-    }
+    if (last < content.length) html += escapeHtml(content.slice(last));
     return html;
   };
+
   const escapeHtml = (text: string) => {
     return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/\n/g, '<br>');
   };
+
   const getCategoryStats = () => {
     const stats = {
       valid: 0,
@@ -573,20 +732,26 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
       spelling: 0,
       grammar: 0
     };
+
     flaggedTerms.forEach(term => {
       if (stats.hasOwnProperty(term.classification)) {
         stats[term.classification as keyof typeof stats]++;
       }
     });
+
     return stats;
   };
+
   const categoryStats = getCategoryStats();
-  return <TooltipProvider>
+
+  return (
+    <TooltipProvider>
       <Card className="h-full flex flex-col">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CardTitle className="text-lg flex items-center gap-2">
+                <CheckSquare className="h-5 w-5 text-primary" />
                 <span>Term Validator</span>
                 <div className="flex items-center gap-2 text-sm">
                   <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
@@ -597,222 +762,291 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                     <Building className="h-3 w-3" />
                     {selectedDomain.charAt(0).toUpperCase() + selectedDomain.slice(1)}
                   </Badge>
-                  
-                  {/* LQA Sync Indicator */}
-                  {lqaSyncEnabled && <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-500/20 flex items-center gap-1">
-                      <RefreshCw className="h-3 w-3" />
-                      LQA Sync
-                    </Badge>}
-                  
-                  {/* Content validation warning with similarity percentage */}
-                  {flaggedTerms.length > 0 && !isContentValid() && <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Badge variant="destructive" className="text-xs flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3" />
-                          Content Modified
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <div className="max-w-xs">
-                          <p className="font-medium mb-1">Content has been modified</p>
-                          <p className="text-xs">
-                            The current text differs significantly from the analyzed version. 
-                            Click the re-analyze button to update the analysis.
-                          </p>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>}
                 </div>
               </CardTitle>
-              
-              <Button variant="ghost" size="sm" onClick={() => setShowTermStatus(!showTermStatus)} className="h-6 text-xs text-muted-foreground hover:text-foreground px-2">
-                {showTermStatus ? 'Hide Term Status' : 'Show Term Status'}
-              </Button>
-              
+
+              {/* Removed from here - moved next to classification cards */}
+
+              {/* Undo/Redo buttons */}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleUndo}
+                  disabled={historyIndex === 0}
+                  className="h-7 w-7 p-0 transition-all hover:scale-110 active:scale-95 disabled:opacity-50"
+                  title="Undo (Ctrl+Z)"
+                >
+                  <Undo2 className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRedo}
+                  disabled={historyIndex === history.length - 1}
+                  className="h-7 w-7 p-0 transition-all hover:scale-110 active:scale-95 disabled:opacity-50"
+                  title="Redo (Ctrl+Y)"
+                >
+                  <Redo2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+
               {/* Reanalyze button - shown when content has changed from original analyzed content */}
-              {onReanalyze && hasContentChanged && content.trim().length > 0 && originalAnalyzedContent && <Button variant={isReanalyzing ? "outline" : "outline"} size="sm" onClick={() => {
-              onReanalyze(content);
-              setHasContentChanged(false);
-              setLastEditedContent('');
-            }} disabled={isReanalyzing} className={`h-6 text-xs gap-1.5 px-2 transition-all duration-200 ${isReanalyzing ? 'bg-transparent border-primary/50' : ''}`}>
-                {isReanalyzing ? <>
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    <AnimatedEllipsis text="Reanalyzing" />
-                  </> : <>
-                    <RefreshCw className="h-3 w-3" />
-                    Reanalyze
-                  </>}
-              </Button>}
+              {onReanalyze && hasContentChanged && content.trim().length > 0 && originalAnalyzedContent && (
+                <Button
+                  variant={isReanalyzing ? "outline" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    onReanalyze(content);
+                    setHasContentChanged(false);
+                    setLastEditedContent('');
+                  }}
+                  disabled={isReanalyzing}
+                  className={`h-6 text-xs gap-1.5 px-2 transition-all duration-200 ${isReanalyzing ? 'bg-transparent border-primary/50' : ''}`}
+                >
+                  {isReanalyzing ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <AnimatedEllipsis text="Reanalyzing" />
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-3 w-3" />
+                      Reanalyze
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
-            
+
             <div className="flex items-center gap-4 px-[15px] my-0 py-0 mx-0">
+              {/* Misalignment Indicator - Shows unmatched segment count (LQA modes only) */}
+              {isBilingual && (syncMode === 'lqa' || syncMode === 'both') && ((unmatchedCount ?? unmatchedSegments.length) > 0) && (
+                <Badge variant="outline" className="gap-1 bg-amber-500/10 text-amber-700 border-amber-400/50 shadow-sm">
+                  <AlertCircle className="h-3.5 w-3.5 fill-amber-500/20" />
+                  <span className="font-medium">{(unmatchedCount ?? unmatchedSegments.length)}</span> unmatched {(unmatchedCount ?? unmatchedSegments.length) === 1 ? 'segment' : 'segments'}
+                </Badge>
+              )}
+              
+              {/* Live analyzer-like status indicator - Spelling + Grammar only */}
+              <div className="flex items-center gap-2 text-xs">
+                {isAnalyzingLive || isReanalyzing ? (
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span className="text-xs">Analyzing...</span>
+                  </span>
+                ) : (() => {
+                  // Use allFlaggedTerms (unfiltered) for language quality badges
+                  // This ensures spelling/grammar counts are always accurate regardless of sync mode
+                  const spellingCount = allFlaggedTerms.filter(t => t.classification === 'spelling').length;
+                  const grammarCount = allFlaggedTerms.filter(t => t.classification === 'grammar').length;
+                  return (
+                    <>
+                      {spellingCount > 0 && (
+                        <Badge variant="outline" className="gap-1.5 bg-orange-50 text-orange-700 border-orange-300/50 shadow-sm">
+                          <span className="h-2 w-2 rounded-full bg-orange-500"></span>
+                          <span className="font-medium">{spellingCount}</span> spelling
+                        </Badge>
+                      )}
+                      {grammarCount > 0 && (
+                        <Badge variant="outline" className="gap-1.5 bg-purple-50 text-purple-700 border-purple-300/50 shadow-sm">
+                          <span className="h-2 w-2 rounded-full bg-purple-500"></span>
+                          <span className="font-medium">{grammarCount}</span> grammar
+                        </Badge>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+
               {/* Semantic Types Toggle - Only for GTV modes */}
               {showGTVFeatures && (
-                <div className="flex items-center space-x-2">
-                  <Switch id="semantic-types" checked={showSemanticTypes} onCheckedChange={setShowSemanticTypes} />
-                  <Label htmlFor="semantic-types" className="text-sm flex items-center gap-1">
-                    <Palette className="h-3 w-3" />
+                <div className="flex items-center space-x-2 animate-in fade-in-0 slide-in-from-right-2 duration-200">
+                  <Switch id="semantic-types" checked={showSemanticTypes} onCheckedChange={setShowSemanticTypes} className="transition-all" />
+                  <Label htmlFor="semantic-types" className="text-sm flex items-center gap-1 cursor-pointer hover:text-foreground transition-colors">
+                    <Palette className="h-3 w-3 transition-transform hover:rotate-12" />
                     Types
                   </Label>
                 </div>
               )}
+
+              {/* Term Status toggle - moved here next to Types */}
+              {syncMode !== 'lqa' && showGTVFeatures && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowTermStatus(!showTermStatus)} 
+                  className="h-6 text-xs text-muted-foreground hover:text-foreground px-2 transition-all hover:scale-105 active:scale-95"
+                >
+                  {showTermStatus ? 'Hide Term Status' : 'Show Term Status'}
+                </Button>
+              )}
             </div>
           </div>
-          
-          {/* Enhanced Category Badges - Only shown for GTV modes */}
-          {showGTVFeatures && showTermStatus && <div className="flex justify-between items-center gap-2 text-xs mt-2">
+
+          {/* Enhanced Category Badges - Only shown for GTV modes and not in LQA-only */}
+          {showGTVFeatures && syncMode !== 'lqa' && showTermStatus && (
+            <div className="flex justify-between items-center gap-2 text-xs mt-2">
               <div className="flex gap-2">
-                <Badge variant="outline" className="text-green-600 border-green-500 flex items-center gap-1">
+                <Badge variant="outline" className="text-green-600 border-green-500 flex items-center gap-1 haptic-pop-hover cursor-pointer">
                   <CheckCircle className="h-3 w-3" />
                   Valid ({categoryStats.valid})
                 </Badge>
-                <Badge variant="outline" className="text-yellow-600 border-yellow-500 flex items-center gap-1">
+                <Badge variant="outline" className="text-yellow-600 border-yellow-500 flex items-center gap-1 haptic-pop-hover cursor-pointer">
                   <AlertCircle className="h-3 w-3" />
                   Review ({categoryStats.review})
                 </Badge>
-                <Badge variant="outline" className="text-red-600 border-red-500 flex items-center gap-1">
+                <Badge variant="outline" className="text-red-600 border-red-500 flex items-center gap-1 haptic-pop-hover cursor-pointer">
                   <XCircle className="h-3 w-3" />
                   Critical ({categoryStats.critical})
                 </Badge>
-                
-                {/* Spelling & Grammar badges for monolingual only */}
-                {!isBilingual && (
-                  <>
-                    <Badge variant="outline" className="text-blue-600 border-blue-500 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      Spelling ({categoryStats.spelling})
-                    </Badge>
-                    <Badge variant="outline" className="text-purple-600 border-purple-500 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      Grammar ({categoryStats.grammar})
-                    </Badge>
-                  </>
-                )}
               </div>
-              
+
               {/* Legend button right-aligned when Types is enabled and GTV features are shown */}
-              {showGTVFeatures && showSemanticTypes && flaggedTerms.length > 0 && <Button variant="outline" size="sm" onClick={() => {
-            const newValue = !showLegend;
-            setShowLegend(newValue);
-            userManuallySetLegendRef.current = true; // User manually changed it
-            userLegendPreferenceRef.current = newValue; // Store preference
-          }} className="h-7 text-xs">
-                {showLegend ? 'Hide Legend' : 'Show Legend'}
-              </Button>}
-            </div>}
+              {showGTVFeatures && showSemanticTypes && flaggedTerms.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const newValue = !showLegend;
+                    setShowLegend(newValue);
+                    userManuallySetLegendRef.current = true; // User manually changed it
+                    userLegendPreferenceRef.current = newValue; // Store preference
+                  }}
+                  className="h-7 text-xs"
+                >
+                  {showLegend ? 'Hide Legend' : 'Show Legend'}
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* NEW LOCATION: Semantic Types Legend - Now directly under category badges */}
-          {showLegend && showSemanticTypes && flaggedTerms.length > 0 && <div className="mt-2 flex items-center gap-3 pb-2 border-b text-xs">
+          {showLegend && showSemanticTypes && flaggedTerms.length > 0 && (
+            <div className="mt-2 flex items-center gap-3 pb-2 border-b text-xs">
               {/* Dynamically generate legend from actual flagged terms */}
               {Array.from(new Set(flaggedTerms.filter(t => t.semantic_type?.semantic_type).map(t => t.semantic_type!.semantic_type))).map(type => {
-            const term = flaggedTerms.find(t => t.semantic_type?.semantic_type === type);
-            const color = getSemanticTypeColor(term?.semantic_type);
+                const term = flaggedTerms.find(t => t.semantic_type?.semantic_type === type);
+                const color = getSemanticTypeColor(term?.semantic_type);
 
-            // Priority: 1) Classification, 2) Semantic Type, 3) Display Name
-            let displayName = '';
+                // Priority: 1) Classification, 2) Semantic Type, 3) Display Name
+                let displayName = '';
 
-            // First priority: Classification (Entity, Event, etc.)
-            if (term?.semantic_type?.ui_information?.category) {
-              displayName = term.semantic_type.ui_information.category;
-            }
-            // First fallback: AI's semantic type
-            else if (type) {
-              displayName = type;
-            }
-            // Second fallback: Display name
-            else if (term?.semantic_type?.ui_information?.display_name) {
-              const rawDisplayName = term.semantic_type.ui_information.display_name;
-              if (typeof rawDisplayName === 'string' && rawDisplayName.length > 0 && !rawDisplayName.includes('[Max depth')) {
-                displayName = rawDisplayName;
-              }
-            }
+                if (term?.semantic_type?.ui_information?.category) {
+                  displayName = term.semantic_type.ui_information.category;
+                } else if (type) {
+                  displayName = type;
+                } else if (term?.semantic_type?.ui_information?.display_name) {
+                  const rawDisplayName = term.semantic_type.ui_information.display_name;
+                  if (typeof rawDisplayName === 'string' && rawDisplayName.length > 0 && !rawDisplayName.includes('[Max depth')) {
+                    displayName = rawDisplayName;
+                  }
+                }
 
-            // Proper title case with abbreviation handling
-            displayName = formatSemanticType(displayName);
-            return <div key={type} className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full" style={{
-                backgroundColor: color
-              }} />
+                displayName = formatSemanticType(displayName);
+                return (
+                  <div key={type} className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
                     <span className="text-muted-foreground">{displayName}</span>
-                  </div>;
-          })}
-            </div>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardHeader>
-        
-        <CardContent className="flex-1 overflow-auto relative pb-16">
-          {editorRef.current ? <div ref={editorRef} className="min-h-[400px] p-4 rounded-md border bg-background/50 font-mono text-sm leading-relaxed" contentEditable={isEditing} spellCheck={false} suppressContentEditableWarning onInput={e => {
-          if (!isEditing || isComposing) return;
-          saveCursorPosition();
-          const newContent = e.currentTarget.textContent || '';
-          onContentChange(newContent);
-        }} onBlur={e => {
-          setIsEditing(false);
-          setIsComposing(false);
-          // Use requestAnimationFrame for safer DOM updates
-          requestAnimationFrame(() => {
-            // Check if element still exists before setting innerHTML
-            if (e.currentTarget && document.contains(e.currentTarget)) {
-              e.currentTarget.innerHTML = renderContentWithUnderlines();
-            }
-          });
-        }} onKeyUp={saveCursorPosition} onClick={saveCursorPosition} onCompositionStart={() => {
-          // Pause state updates while user composes non-roman characters
-          setIsComposing(true);
-          saveCursorPosition();
-        }} onCompositionUpdate={() => {
-          // Continue tracking cursor during IME composition
-          saveCursorPosition();
-        }} onCompositionEnd={e => {
-          // Commit the composed text when user selects character
-          setIsComposing(false);
-          if (isEditing) {
-            const newContent = e.currentTarget.textContent || '';
-            onContentChange(newContent);
-            saveCursorPosition();
-          }
-        }} dangerouslySetInnerHTML={{
-          __html: renderContentWithUnderlines() || ''
-        }} /> : <div ref={editorRef} className="min-h-[400px] p-4 rounded-md border bg-background/50 font-mono text-sm leading-relaxed">
-              {content}
-            </div>}
 
-          {/* Bottom Bar: Word/Character Count and Grammar/Spelling Toggles */}
-          <div className="flex items-center justify-between mt-3 pt-3 border-t">
-            <div className="flex items-center gap-4">
+        <CardContent className="flex-1 overflow-auto relative pb-16">
+          {editorRef.current ? (
+            <div
+              ref={editorRef}
+              className="min-h-[400px] p-4 rounded-md border bg-background/50 font-mono text-sm leading-relaxed"
+              contentEditable={isEditing}
+              spellCheck={false}
+              suppressContentEditableWarning
+              onInput={e => {
+                if (!isEditing || isComposing) return;
+                saveCursorPosition();
+                const newContent = e.currentTarget.textContent || '';
+                onContentChange(newContent);
+              }}
+              onBlur={e => {
+                setIsEditing(false);
+                setIsComposing(false);
+                // Use requestAnimationFrame for safer DOM updates
+                requestAnimationFrame(() => {
+                  // Check if element still exists before setting innerHTML
+                  if (e.currentTarget && document.contains(e.currentTarget)) {
+                    e.currentTarget.innerHTML = renderContentWithUnderlines();
+                  }
+                });
+              }}
+              onKeyUp={saveCursorPosition}
+              onClick={saveCursorPosition}
+              onCompositionStart={() => {
+                // Pause state updates while user composes non-roman characters
+                setIsComposing(true);
+                saveCursorPosition();
+              }}
+              onCompositionUpdate={() => {
+                // Continue tracking cursor during IME composition
+                saveCursorPosition();
+              }}
+              onCompositionEnd={e => {
+                // Commit the composed text when user selects character
+                setIsComposing(false);
+                if (isEditing) {
+                  const newContent = e.currentTarget.textContent || '';
+                  onContentChange(newContent);
+                  saveCursorPosition();
+                }
+              }}
+              dangerouslySetInnerHTML={{
+                __html: renderContentWithUnderlines() || ''
+              }}
+            />
+          ) : (
+            <div ref={editorRef} className="min-h-[400px] p-4 rounded-md border bg-background/50 font-mono text-sm leading-relaxed">
+              {content}
+            </div>
+          )}
+
+          {/* Bottom Bar: Grammar/Spelling Toggles and Word/Character Count */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mt-3 pt-3 border-t">
+            <div className="flex flex-wrap items-center gap-4">
               {/* Grammar Toggle */}
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2">
                 <Switch id="term-grammar-bottom" checked={grammarCheckingEnabled} onCheckedChange={enabled => {
                 console.log('Grammar checking toggled:', enabled);
                 onGrammarCheckingToggle?.(enabled);
               }} />
-                <Label htmlFor="term-grammar-bottom" className="text-sm flex items-center gap-1 cursor-pointer">
+                <Label htmlFor="term-grammar-bottom" className="text-xs cursor-pointer whitespace-nowrap">
                   Grammar
-                  {grammarCheckingEnabled && flaggedTerms.filter(t => t.classification === 'grammar').length > 0 && <Badge variant="outline" className="ml-1 text-xs bg-purple-500/10 text-purple-700 border-purple-500/20">
+                  {grammarCheckingEnabled && flaggedTerms.filter(t => t.classification === 'grammar').length > 0 && <Badge variant="outline" className="ml-1.5 text-[10px] bg-purple-500/10 text-purple-700 border-purple-500/20">
                       {flaggedTerms.filter(t => t.classification === 'grammar').length}
                     </Badge>}
                 </Label>
               </div>
 
               {/* Spelling Toggle */}
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2">
                 <Switch id="term-spelling-bottom" checked={spellingCheckingEnabled} onCheckedChange={enabled => {
                 console.log('Spelling checking toggled:', enabled);
                 onSpellingCheckingToggle?.(enabled);
               }} />
-                <Label htmlFor="term-spelling-bottom" className="text-sm flex items-center gap-1 cursor-pointer">
+                <Label htmlFor="term-spelling-bottom" className="text-xs cursor-pointer whitespace-nowrap">
                   Spelling
-                  {spellingCheckingEnabled && flaggedTerms.filter(t => t.classification === 'spelling').length > 0 && <Badge variant="outline" className="ml-1 text-xs bg-red-500/10 text-red-700 border-red-500/20">
+                  {spellingCheckingEnabled && flaggedTerms.filter(t => t.classification === 'spelling').length > 0 && <Badge variant="outline" className="ml-1.5 text-[10px] bg-red-500/10 text-red-700 border-red-500/20">
                       {flaggedTerms.filter(t => t.classification === 'spelling').length}
                     </Badge>}
                 </Label>
               </div>
             </div>
 
-            <div className="flex gap-4 text-xs text-blue-600 dark:text-blue-400">
+            <div className="flex flex-wrap gap-2 text-[10px] text-blue-600 dark:text-blue-400 whitespace-nowrap">
               <span>{content.trim() ? content.trim().split(/\s+/).length : 0} words</span>
               <span>•</span>
               <span className={content.length > 45000 ? 'text-red-600 dark:text-red-400' : content.length > 35000 ? 'text-yellow-600 dark:text-yellow-400' : ''}>
-                {content.length.toLocaleString()} / 50,000 characters
+                {content.length.toLocaleString()} / 50k chars
               </span>
             </div>
           </div>
@@ -987,6 +1221,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
             </div>}
         </CardContent>
       </Card>
-    </TooltipProvider>;
+    </TooltipProvider>
+  );
 };
 export default EnhancedLiveAnalysisPanel;

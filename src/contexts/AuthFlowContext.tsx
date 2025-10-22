@@ -27,18 +27,21 @@ export const AuthFlowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     if (user && userProjects.length > 0) {
       const lastProjectId = localStorage.getItem('lastProjectId');
+      console.log('🔍 Checking last project ID from localStorage:', lastProjectId);
       if (lastProjectId) {
         const lastProject = userProjects.find(p => p.id === lastProjectId);
         if (lastProject && !selectedProject) {
-          console.log('Auto-loading last used project:', lastProject.name);
+          console.log('🔄 Auto-loading last used project:', lastProject.name);
           setSelectedProject(lastProject);
           setCurrentState('project_selected');
           return;
         } else if (!lastProject) {
           // Project was deleted - clear from localStorage and selected state
-          console.log('Last project no longer exists, clearing selection');
+          console.log('⚠️ Last project no longer exists, clearing selection');
           localStorage.removeItem('lastProjectId');
           setSelectedProject(null);
+        } else if (selectedProject) {
+          console.log('✓ Project already selected:', selectedProject.name);
         }
       }
     }
@@ -81,12 +84,15 @@ export const AuthFlowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const handleSetSelectedProject = (project: Project | null) => {
+    console.log('🎯 Setting selected project:', project?.name || 'null', project?.id);
     setSelectedProject(project);
     if (project) {
       localStorage.setItem('lastProjectId', project.id);
       setCurrentState('project_selected');
+      console.log('✅ Project selected and saved to localStorage:', project.name);
     } else {
       localStorage.removeItem('lastProjectId');
+      console.log('🗑️ Cleared project selection');
     }
   };
 

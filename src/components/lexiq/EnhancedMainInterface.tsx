@@ -25,6 +25,7 @@ import { useFileProcessor } from '@/hooks/useFileProcessor';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { transformAnalyzedTermsToFlagged } from '@/utils/analysisDataTransformer';
 import { EnhancedLiveAnalysisPanel } from './EnhancedLiveAnalysisPanel';
+import { useLQASync } from '@/hooks/useLQASync';
 import { EnhancedStatisticsTab } from './EnhancedStatisticsTab';
 import { SimplifiedStatisticsPanel } from './SimplifiedStatisticsPanel';
 import { DataManagementTab } from './DataManagementTab';
@@ -37,8 +38,10 @@ import { BatchProcessor } from './BatchProcessor';
 import { AnalyticsDashboard } from './AnalyticsDashboard';
 import { ProjectSetupWizard } from './ProjectSetupWizard';
 import { SourceEditor } from './SourceEditor';
+import { WaveformQAButton } from './WaveformQAButton';
 import { validateFile } from '@/utils/fileValidation';
-import lexiqLogo from '@/assets/lexiq-team-logo.png';
+import lexiqLogo from '@/assets/lexiq-q-logo.png';
+import lexiqLogoDark from '@/assets/lexiq-q-logo.png'; // Q logo works for both light and dark mode
 import glossaryIcon from '@/assets/glossary-icon.png';
 import translationIcon from '@/assets/translation-icon.png';
 import qaIcon from '@/assets/qa-support-icon.png';
@@ -192,6 +195,16 @@ export function EnhancedMainInterface({
   const glossaryInputRef = useRef<HTMLInputElement>(null);
   const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  const reanalysisTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Panel swap functionality
+  const [panelsSwapped, setPanelsSwapped] = useState(false);
+  const [isDraggingPanel, setIsDraggingPanel] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragCurrentX, setDragCurrentX] = useState(0);
+  const [showSwapPreview, setShowSwapPreview] = useState(false);
+  const [isSwapping, setIsSwapping] = useState(false);
+  const panelContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Clear cache when language check toggles change to force fresh analysis
   useEffect(() => {
@@ -251,6 +264,7 @@ export function EnhancedMainInterface({
   const [isSourceLocked, setIsSourceLocked] = useState(false);
   const [syncMode, setSyncMode] = useState<'gtv' | 'lqa' | 'both' | 'none'>('gtv');
   const [lqaSyncEnabled, setLqaSyncEnabled] = useState(false);
+  const sourceLanguage = currentProject?.source_language || 'en';
   
   // Project type determines available features
   const isBilingual = currentProject?.project_type === 'bilingual';
@@ -426,18 +440,174 @@ export function EnhancedMainInterface({
     setLqaSyncEnabled(syncMode === 'lqa' || syncMode === 'both');
   }, [syncMode]);
 
-  // Auto re-analysis when syncMode changes
-  useEffect(() => {
-    if (!currentContent.trim() || !analysisComplete || !hasLiveAnalysis) return;
+  // Cross-pane LQA sync: analyze alignment between source and translation (bilingual only)
+  const { issues: lqaIssues, isAnalyzing: lqaAnalyzing } = useLQASync(
+    sourceContent,
+    currentContent,
+    Boolean(isBilingual && lqaSyncEnabled && sourceContent.trim() && currentContent.trim()),
+    sourceLanguage,
+    selectedLanguage
+  );
+
+  // Calculate content differences for highlighting unmatched segments
+  // Uses simple 1:1 position-based matching (standard translation practice)
+  // Only flags extras when sentence counts differ
+  const calculateContentDifferences = (source: string, target: string) => {
+    console.log('🔄 calculateContentDifferences called:', { 
+      hasSource: !!source.trim(), 
+      hasTarget: !!target.trim(),
+      sourceLength: source.length,
+      targetLength: target.length 
+    });
     
-    console.log('🔄 Analysis mode changed, triggering re-analysis:', syncMode);
+    if (!source.trim() || !target.trim()) {
+      console.log('⚠️ Skipping content difference - empty source or target');
+      return { sourceUnmatched: [], targetUnmatched: [] };
+    }
     
-    // Clear cache to force fresh analysis with new mode
-    analysisCache.clear();
+    // Language-specific sentence splitting with support for multiple writing systems
+    const splitSentences = (text: string, language?: string): string[] => {
+      // Detect if text contains CJK characters (Chinese, Japanese, Korean)
+      const hasCJK = /[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF]/.test(text);
+      
+      console.log('🔤 Sentence splitting input:', {
+        textPreview: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
+        textLength: text.length,
+        hasCJK
+      });
+      
+      let sentences: string[] | null = null;
+      
+      if (hasCJK) {
+        // CJK languages: Use 。！？ as sentence terminators
+        // More permissive - split on any of these terminators
+        sentences = text.match(/[^.!?。！？]+[.!?。！？]+/g);
+        console.log('🌏 Using CJK sentence splitting, found:', sentences?.length || 0, 'sentences');
+      } else {
+        // Western languages: Split on .!? followed by space OR end of string
+        // More permissive to catch all sentences
+        sentences = text.match(/[^.!?]+[.!?]+/g);
+        console.log('🌍 Using Western sentence splitting, found:', sentences?.length || 0, 'sentences');
+      }
+      
+      if (sentences && sentences.length > 0) {
+        const result = sentences.map(s => s.trim()).filter(s => s.length > 0);
+        console.log('✂️ Split results:', result.map((s, i) => `[${i}] "${s.substring(0, 40)}..."`));
+        return result;
+      }
+      
+      // Fallback: treat entire text as one sentence
+      console.warn('⚠️ Fallback triggered - treating entire text as one sentence');
+      return text.trim() ? [text.trim()] : [];
+    };
     
-    // Trigger re-analysis
-    handleReanalyze();
-  }, [syncMode]);
+    const sourceSentences = splitSentences(source);
+    const targetSentences = splitSentences(target);
+    
+    console.log('📊 Content difference analysis:', {
+      sourceSentenceCount: sourceSentences.length,
+      targetSentenceCount: targetSentences.length,
+      sourceSentences: sourceSentences.map((s, i) => `[${i}] "${s.substring(0, 60)}${s.length > 60 ? '...' : ''}"`),
+      targetSentences: targetSentences.map((s, i) => `[${i}] "${s.substring(0, 60)}${s.length > 60 ? '...' : ''}"`),
+      sourceLength: source.length,
+      targetLength: target.length
+    });
+    
+    const sourceUnmatched: string[] = [];
+    const targetUnmatched: string[] = [];
+    
+    // Simple approach: Match by position (1:1 correspondence)
+    // This is the standard practice in translation - sentences stay in the same order
+    const minCount = Math.min(sourceSentences.length, targetSentences.length);
+    
+    console.log(`🔍 Position-based matching: Assuming 1:1 correspondence for first ${minCount} sentences`);
+    
+    // Log matched sentences (by position)
+    for (let i = 0; i < minCount; i++) {
+      console.log(`✅ Matched by position: Source[${i}] ↔ Target[${i}]`);
+      console.log(`   Source: "${sourceSentences[i].substring(0, 50)}..."`);
+      console.log(`   Target: "${targetSentences[i].substring(0, 50)}..."`);
+    }
+    
+    // Only flag EXTRA sentences when counts differ
+    if (sourceSentences.length > targetSentences.length) {
+      const extraCount = sourceSentences.length - targetSentences.length;
+      const extraSentences = sourceSentences.slice(minCount);
+      sourceUnmatched.push(...extraSentences);
+      console.log(`📌 Source has ${extraCount} EXTRA sentence(s) beyond target`);
+      extraSentences.forEach((sent, idx) => {
+        console.log(`❌ Source[${minCount + idx}] UNMATCHED (extra): "${sent.substring(0, 60)}${sent.length > 60 ? '...' : ''}"`);
+      });
+    }
+    
+    if (targetSentences.length > sourceSentences.length) {
+      const extraCount = targetSentences.length - sourceSentences.length;
+      const extraSentences = targetSentences.slice(minCount);
+      targetUnmatched.push(...extraSentences);
+      console.log(`📌 Target has ${extraCount} EXTRA sentence(s) beyond source`);
+      extraSentences.forEach((sent, idx) => {
+        console.log(`❌ Target[${minCount + idx}] UNMATCHED (extra): "${sent.substring(0, 60)}${sent.length > 60 ? '...' : ''}"`);
+      });
+    }
+    
+    if (sourceSentences.length === targetSentences.length) {
+      console.log(`✅ Perfect match: Both have ${sourceSentences.length} sentences - no unmatched segments`);
+    }
+    
+    console.log('🔍 Unmatched segments summary:', {
+      sourceUnmatchedCount: sourceUnmatched.length,
+      targetUnmatchedCount: targetUnmatched.length,
+      sourceMatchedCount: minCount,
+      targetMatchedCount: minCount,
+      matchRate: sourceSentences.length === targetSentences.length ? '100%' : `${((minCount / Math.max(sourceSentences.length, targetSentences.length)) * 100).toFixed(1)}%`,
+      sourceUnmatched: sourceUnmatched.map(s => s.trim().substring(0, 80)),
+      targetUnmatched: targetUnmatched.map(s => s.trim().substring(0, 80))
+    });
+    
+    return { sourceUnmatched, targetUnmatched };
+  };
+  
+  // Calculate unmatched content segments
+  const contentDifferences = React.useMemo(() => {
+    console.log('📍 contentDifferences useMemo triggered:', { 
+      isBilingual, 
+      hasSource: !!sourceContent, 
+      hasTarget: !!currentContent 
+    });
+    if (!isBilingual) {
+      console.log('⏭️ Skipping - not bilingual');
+      return { sourceUnmatched: [], targetUnmatched: [] };
+    }
+    return calculateContentDifferences(sourceContent, currentContent);
+  }, [isBilingual, sourceContent, currentContent]);
+
+  // Misalignment is active if we have unmatched content or LQA issues
+  const misalignmentActive = Boolean(
+    isBilingual && (
+      (lqaIssues && lqaIssues.length > 0) ||
+      contentDifferences.sourceUnmatched.length > 0 ||
+      contentDifferences.targetUnmatched.length > 0
+    )
+  );
+
+  // Shared unmatched count across both panels (union of unmatched sentences)
+  const sharedUnmatchedCount = React.useMemo(() => {
+    if (!isBilingual) return 0;
+    const normalize = (s: string) => s.trim().toLowerCase();
+    const set = new Set<string>();
+    contentDifferences.sourceUnmatched.forEach(s => set.add(normalize(s)));
+    contentDifferences.targetUnmatched.forEach(s => set.add(normalize(s)));
+    
+    console.log('🔢 Shared unmatched count calculated:', {
+      sourceUnmatchedCount: contentDifferences.sourceUnmatched.length,
+      targetUnmatchedCount: contentDifferences.targetUnmatched.length,
+      uniqueCount: set.size,
+      sourceUnmatched: contentDifferences.sourceUnmatched.map(s => s.substring(0, 40) + '...'),
+      targetUnmatched: contentDifferences.targetUnmatched.map(s => s.substring(0, 40) + '...')
+    });
+    
+    return set.size;
+  }, [isBilingual, contentDifferences.sourceUnmatched, contentDifferences.targetUnmatched]);
 
   // Real-time language validation with blocking - MAIN CONTENT (Term Validator)
   useEffect(() => {
@@ -448,7 +618,16 @@ export function EnhancedMainInterface({
       return;
     }
 
+    // Store the content at the time of timeout start
+    const contentSnapshot = currentContent;
+    
     const timeoutId = setTimeout(async () => {
+      // Check if content has changed or been cleared since timeout started
+      if (currentContent !== contentSnapshot || currentContent.length < 30) {
+        console.log('🔄 Content changed/cleared before validation - skipping');
+        return;
+      }
+      
       try {
         console.log('🌍 Real-time language detection triggered (Term Validator):', {
           contentLength: currentContent.length,
@@ -504,13 +683,25 @@ export function EnhancedMainInterface({
     return () => clearTimeout(timeoutId);
   }, [currentContent, currentProject, toast]);
 
-  // Real-time language validation with blocking - SOURCE CONTENT (Source Editor)
+  // Real-time language validation with blocking - SOURCE EDITOR
   useEffect(() => {
-    if (!currentProject || currentProject.project_type !== 'bilingual' || !sourceContent.trim() || sourceContent.length < 30) {
+    if (!isBilingual || !currentProject || !sourceContent.trim() || sourceContent.length < 30) {
+      if (realTimeValidation?.isOpen) {
+        setRealTimeValidation(null);
+      }
       return;
     }
 
+    // Store the content at the time of timeout start
+    const contentSnapshot = sourceContent;
+    
     const timeoutId = setTimeout(async () => {
+      // Check if content has changed or been cleared since timeout started
+      if (sourceContent !== contentSnapshot || sourceContent.length < 30) {
+        console.log('🔄 Source content changed/cleared before validation - skipping');
+        return;
+      }
+      
       try {
         const expectedSourceLanguage = currentProject.source_language || 'en';
         console.log('🌍 Real-time language detection triggered (Source Editor):', {
@@ -688,7 +879,6 @@ export function EnhancedMainInterface({
 
               // Initialize reanalysis state and prevent "Content Modified" warnings
               setLastAnalyzedContent(validSession.translation_content);
-              setOriginalAnalyzedContent(validSession.translation_content);
               setLastAnalysisParams({
                 language: validSession.language,
                 domain: validSession.domain,
@@ -1472,6 +1662,22 @@ export function EnhancedMainInterface({
       setTextManuallyEntered(false);
       setShowUploadIconTransition(false);
     }
+    
+    // Auto-reanalysis: If we have live analysis and content changed, trigger re-analysis
+    if (hasLiveAnalysis && analysisComplete && content.trim() && originalAnalyzedContent) {
+      const similarity = calculateContentSimilarity(content, originalAnalyzedContent);
+      // If content is similar enough (minor edits), trigger auto-reanalysis
+      if (similarity >= 0.8 && similarity < 0.99) {
+        console.log('🔄 Content changed, triggering auto-reanalysis');
+        // Debounce the reanalysis to avoid too many calls
+        if (reanalysisTimeoutRef.current) {
+          clearTimeout(reanalysisTimeoutRef.current);
+        }
+        reanalysisTimeoutRef.current = setTimeout(() => {
+          handleReanalyze();
+        }, 2000); // 2 second debounce
+      }
+    }
   };
   
   const handleSourceContentChange = (content: string) => {
@@ -1486,6 +1692,9 @@ export function EnhancedMainInterface({
     
     setSourceContent(content);
     setHasUnsavedChanges(true);
+    
+    // Trigger misalignment detection by updating LQA sync
+    // The useLQASync hook will automatically re-run when sourceContent changes
   };
   const handleValidateTerm = (term: any) => {
     if (!analysisResults || term.classification !== 'review') return;
@@ -1785,14 +1994,89 @@ export function EnhancedMainInterface({
     if (percentage <= 25) return 'from-red-500 to-red-600';
     if (percentage <= 50) return 'from-orange-500 to-yellow-500';
     if (percentage <= 75) return 'from-lime-500 to-green-400';
-    return 'from-green-500 to-green-600';
+    if (percentage <= 90) return 'from-green-500 to-green-600';
+    return 'from-emerald-500 to-emerald-600';
   };
-  return <div className="min-h-screen bg-gradient-subtle">
+
+  // Panel swap handlers
+  const handlePanelDragStart = (e: React.MouseEvent) => {
+    if (!panelContainerRef.current) return;
+    setIsDraggingPanel(true);
+    setDragStartX(e.clientX);
+    setDragCurrentX(e.clientX);
+  };
+
+  const handlePanelDragMove = (e: React.MouseEvent) => {
+    if (!isDraggingPanel || !panelContainerRef.current) return;
+    
+    setDragCurrentX(e.clientX);
+    const containerWidth = panelContainerRef.current.offsetWidth;
+    const dragDistance = Math.abs(e.clientX - dragStartX);
+    const dragPercentage = (dragDistance / containerWidth) * 100;
+    
+    // Show preview when drag reaches 50% of container width
+    if (dragPercentage >= 50) {
+      setShowSwapPreview(true);
+    } else {
+      setShowSwapPreview(false);
+    }
+  };
+
+  const handlePanelDragEnd = () => {
+    if (!isDraggingPanel || !panelContainerRef.current) return;
+    
+    const containerWidth = panelContainerRef.current.offsetWidth;
+    const dragDistance = Math.abs(dragCurrentX - dragStartX);
+    const dragPercentage = (dragDistance / containerWidth) * 100;
+    
+    // Execute swap if threshold met
+    if (dragPercentage >= 50) {
+      setIsSwapping(true);
+      setTimeout(() => {
+        setPanelsSwapped(!panelsSwapped);
+        setIsSwapping(false);
+        toast({
+          title: "Panels Swapped",
+          description: "Editor positions have been exchanged.",
+        });
+      }, 300);
+    }
+    
+    // Reset drag state
+    setIsDraggingPanel(false);
+    setShowSwapPreview(false);
+    setDragStartX(0);
+    setDragCurrentX(0);
+  };
+
+  // Add global mouse event listeners for drag
+  useEffect(() => {
+    if (isDraggingPanel) {
+      const handleGlobalMouseMove = (e: MouseEvent) => {
+        handlePanelDragMove(e as any);
+      };
+      const handleGlobalMouseUp = () => {
+        handlePanelDragEnd();
+      };
+      
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleGlobalMouseMove);
+        document.removeEventListener('mouseup', handleGlobalMouseUp);
+      };
+    }
+  }, [isDraggingPanel, dragStartX, dragCurrentX, panelsSwapped]);
+
+  return (
+    <div className="min-h-screen bg-gradient-subtle">
       {/* Modernized Header with Glossy Effect */}
       <div className="bg-gradient-to-br from-card/95 via-card/90 to-card/95 backdrop-blur-xl border-b border-border/40 shadow-[0_8px_32px_rgba(0,0,0,0.12)] sticky top-0 z-50 relative overflow-hidden">
         {/* Shine overlay */}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-shine pointer-events-none" />
         
+        {/* Rest of the code remains the same */}
         <div className="max-w-[1800px] mx-auto px-6 py-4 relative z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6">
@@ -1803,7 +2087,7 @@ export function EnhancedMainInterface({
                 setSelectedProject(null);
               }
             }} className="cursor-pointer transition-transform hover:scale-105" title="Return to project selection">
-                <img src={lexiqLogo} alt="LexiQ Logo" className="h-12 w-auto" />
+                <img src={isDarkMode ? lexiqLogoDark : lexiqLogo} alt="LexiQ Logo" className="h-12 w-auto" />
               </button>
               
               {/* Organization & Project Selectors - Conditionally render ProjectSelector */}
@@ -1813,7 +2097,19 @@ export function EnhancedMainInterface({
             
             <div className="flex items-center space-x-4">
               {/* Save Button */}
-              <Button variant="outline" className="gap-2" onClick={() => setShowSaveDialog(true)} disabled={!currentContent.trim()}>
+              <Button 
+                variant="outline" 
+                className="gap-2 menubar-inset-button radial-pressure-hover" 
+                onClick={() => setShowSaveDialog(true)} 
+                disabled={!currentContent.trim()}
+                onMouseMove={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = ((e.clientX - rect.left) / rect.width) * 100;
+                  const y = ((e.clientY - rect.top) / rect.height) * 100;
+                  e.currentTarget.style.setProperty('--mouse-x', `${x}%`);
+                  e.currentTarget.style.setProperty('--mouse-y', `${y}%`);
+                }}
+              >
                 <Save className="h-4 w-4" />
                 {hasUnsavedChanges ? 'Save*' : 'Versions'}
               </Button>
@@ -1821,7 +2117,18 @@ export function EnhancedMainInterface({
               {/* Download Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2" disabled={!analysisComplete}>
+                  <Button 
+                    variant="outline" 
+                    className="gap-2 menubar-inset-button radial-pressure-hover" 
+                    disabled={!analysisComplete}
+                    onMouseMove={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = ((e.clientX - rect.left) / rect.width) * 100;
+                      const y = ((e.clientY - rect.top) / rect.height) * 100;
+                      e.currentTarget.style.setProperty('--mouse-x', `${x}%`);
+                      e.currentTarget.style.setProperty('--mouse-y', `${y}%`);
+                    }}
+                  >
                     <Download className="h-4 w-4" />
                     Download
                   </Button>
@@ -1946,7 +2253,7 @@ export function EnhancedMainInterface({
                                 : 'border-border cursor-pointer hover:border-primary hover:bg-primary/5'
                         }`}>
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <img src={translationIcon} alt="Translation" className="h-4 w-4 flex-shrink-0" />
+                          <FileText className="h-4 w-4 flex-shrink-0 text-primary" />
                           <span className="text-xs truncate">
                             {isDraggingTranslation 
                               ? 'Drop file here...' 
@@ -2005,7 +2312,7 @@ export function EnhancedMainInterface({
                               : 'border-border hover:border-primary hover:bg-primary/5'
                         }`}>
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <img src={glossaryIcon} alt="Glossary" className="h-4 w-4 flex-shrink-0" />
+                          <BookOpen className="h-4 w-4 flex-shrink-0 text-accent" />
                           <span className="text-xs truncate">
                             {isDraggingGlossary 
                               ? 'Drop file here...' 
@@ -2032,33 +2339,18 @@ export function EnhancedMainInterface({
                 </p>
                       <input ref={glossaryInputRef} type="file" onChange={e => handleFileUpload(e, 'glossary')} className="hidden" accept=".csv,.txt" />
 
-                      <Button 
-                        onClick={runEnhancedAnalysis} 
+                      <WaveformQAButton
+                        onClick={runEnhancedAnalysis}
                         disabled={
                           !translationFile && !textManuallyEntered || 
                           !glossaryFile || 
                           isAnalyzing || 
                           (currentProject?.project_type === 'bilingual' && (!sourceContent.trim() || !currentContent.trim()))
-                        } 
-                        className="w-full relative overflow-hidden transition-all duration-300"
-                      >
-                        {isAnalyzing ? <div className="flex items-center justify-center w-full">
-                            {/* Animated gradient background */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary-glow to-primary animate-gradient-x"></div>
-                            
-                            {/* Shimmer overlay */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
-                            
-                            {/* Content */}
-                            <div className="relative z-10 flex items-center">
-                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                              Analyzing...
-                            </div>
-                          </div> : <div className="flex items-center">
-                            <Play className="h-4 w-4 mr-2" />
-                            Start QA
-                          </div>}
-                      </Button>
+                        }
+                        isAnalyzing={isAnalyzing}
+                        analysisProgress={engineProgress / 100}
+                        className="w-full"
+                      />
 
                       {isAnalyzing && <div className="space-y-2">
                           {/* Enhanced Progress Bar - only for chunked analysis */}
@@ -2151,20 +2443,30 @@ export function EnhancedMainInterface({
                       <div className="h-full">
                         {currentProject?.project_type === 'bilingual' ? (
                           // BILINGUAL: Horizontal dual-pane layout
-                          <ResizablePanelGroup direction="horizontal" className="h-full">
+                          <div className="h-full relative" ref={panelContainerRef}>
+                            {showSwapPreview && (
+                              <div className="panel-swap-indicator">
+                                Release to swap panels
+                              </div>
+                            )}
+                            <ResizablePanelGroup direction="horizontal" className="h-full">
                             {/* Target Text Editor (Terminology Validator) */}
                             <ResizablePanel defaultSize={50} minSize={30}>
-                              <div className="h-full overflow-auto p-4">
+                              <div 
+                                className={`h-full overflow-auto p-4 ${isDraggingPanel ? 'panel-grabbing' : 'panel-grabbable'} ${isSwapping ? 'panel-swapping' : ''}`}
+                                onMouseDown={handlePanelDragStart}
+                                style={{ order: panelsSwapped ? 2 : 1 }}
+                              >
                                 <EnhancedLiveAnalysisPanel 
                                   content={currentContent} 
                                   flaggedTerms={analysisResults?.terms ? transformAnalyzedTermsToFlagged(analysisResults.terms) : []} 
                                   onContentChange={handleContentChange} 
                                   onReanalyze={hasLiveAnalysis ? () => handleReanalyze() : undefined} 
                                   isReanalyzing={isReanalyzing} 
-                                  grammarCheckingEnabled={showGTVAnalysis ? grammarCheckingEnabled : false} 
-                                  onGrammarCheckingToggle={showGTVAnalysis ? setGrammarCheckingEnabled : undefined} 
-                                  spellingCheckingEnabled={showGTVAnalysis ? spellingCheckingEnabled : false} 
-                                  onSpellingCheckingToggle={showGTVAnalysis ? setSpellingCheckingEnabled : undefined} 
+                                  grammarCheckingEnabled={grammarCheckingEnabled} 
+                                  onGrammarCheckingToggle={setGrammarCheckingEnabled} 
+                                  spellingCheckingEnabled={spellingCheckingEnabled} 
+                                  onSpellingCheckingToggle={setSpellingCheckingEnabled} 
                                   selectedLanguage={selectedLanguage} 
                                   selectedDomain={selectedDomain} 
                                   onValidateTerm={handleValidateTerm} 
@@ -2174,6 +2476,10 @@ export function EnhancedMainInterface({
                                   sourceContent={sourceContent}
                                   isBilingual={isBilingual}
                                   showGTVFeatures={showGTVAnalysis}
+                                  isAnalyzingLive={isAnalyzing || isReanalyzing || engineAnalyzing}
+                                  misalignmentActive={misalignmentActive}
+                                  unmatchedSegments={contentDifferences.targetUnmatched}
+                                  unmatchedCount={sharedUnmatchedCount}
                                 />
                               </div>
                             </ResizablePanel>
@@ -2182,7 +2488,11 @@ export function EnhancedMainInterface({
 
                             {/* Source Text Editor */}
                             <ResizablePanel defaultSize={50} minSize={30}>
-                              <div className="h-full overflow-auto p-4">
+                              <div 
+                                className={`h-full overflow-auto p-4 ${isDraggingPanel ? 'panel-grabbing' : 'panel-grabbable'} ${isSwapping ? 'panel-swapping' : ''}`}
+                                onMouseDown={handlePanelDragStart}
+                                style={{ order: panelsSwapped ? 1 : 2 }}
+                              >
                                 <SourceEditor
                                   content={sourceContent}
                                   onContentChange={handleSourceContentChange}
@@ -2193,14 +2503,19 @@ export function EnhancedMainInterface({
                                   onSpellingToggle={() => setSourceSpellingEnabled(!sourceSpellingEnabled)}
                                   isLocked={isSourceLocked}
                                   onLockToggle={() => setIsSourceLocked(!isSourceLocked)}
+                                  isAnalyzingLive={isAnalyzing || isReanalyzing || engineAnalyzing}
+                                  misalignmentActive={misalignmentActive}
+                                  unmatchedSegments={contentDifferences.sourceUnmatched}
+                                  unmatchedCount={sharedUnmatchedCount}
                                 />
                               </div>
                             </ResizablePanel>
                           </ResizablePanelGroup>
+                          </div>
                         ) : (
                           // MONOLINGUAL: Single pane layout
                           <div className="h-full overflow-auto p-4">
-                            <EnhancedLiveAnalysisPanel 
+                              <EnhancedLiveAnalysisPanel 
                               content={currentContent} 
                               flaggedTerms={analysisResults?.terms ? transformAnalyzedTermsToFlagged(analysisResults.terms) : []} 
                               onContentChange={handleContentChange} 
@@ -2219,6 +2534,8 @@ export function EnhancedMainInterface({
                               sourceContent={sourceContent}
                               isBilingual={false}
                               showGTVFeatures={true}
+                              isAnalyzingLive={isAnalyzing || isReanalyzing || engineAnalyzing}
+                              misalignmentActive={misalignmentActive}
                             />
                           </div>
                         )}
@@ -2377,5 +2694,6 @@ export function EnhancedMainInterface({
           fileName={languageValidation.context.fileName}
         />
       )}
-    </div>;
+    </div>
+  );
 }

@@ -98,11 +98,11 @@ export const useAnalysisEngine = () => {
         throw new Error('Analysis cancelled by user');
       }
 
-      console.log('Starting analysis with Lovable AI...');
+      console.log('Starting analysis...');
 
-      // Add timeout wrapper for the API call
+      // Add timeout wrapper for the API call (5 minutes)
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Analysis timeout after 2 minutes. Please try with a smaller text (500-1000 words) or simplify your glossary.')), 120000);
+        setTimeout(() => reject(new Error('Analysis timeout after 5 minutes. Please try with a smaller text (500-1000 words) or simplify your glossary.')), 300000);
       });
 
       // Add abort handling

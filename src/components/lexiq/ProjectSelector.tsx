@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, Plus, FolderOpen, Trash2 } from 'lucide-react';
+import { ChevronDown, Plus, FolderOpen, Trash2, Pencil } from 'lucide-react';
 import { useProject } from '@/contexts/ProjectContext';
 import { ProjectSetupWizard } from './ProjectSetupWizard';
 import { Badge } from '@/components/ui/badge';
@@ -20,15 +20,27 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 
 export const ProjectSelector: React.FC = () => {
-  const { currentProject, projects, setCurrentProject, createProject, deleteProject, loading } = useProject();
+  const { currentProject, projects, setCurrentProject, createProject, updateProject, deleteProject, loading } = useProject();
   const { toast } = useToast();
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+  const [projectToRename, setProjectToRename] = useState<{ id: string; name: string } | null>(null);
+  const [newProjectName, setNewProjectName] = useState('');
 
   const handleProjectComplete = async (
     name: string, 
@@ -65,6 +77,57 @@ export const ProjectSelector: React.FC = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleRenameProject = async () => {
+    if (!projectToRename || !newProjectName.trim()) {
+      console.log('ProjectSelector: No project to rename or empty name');
+      return;
+    }
+
+    const trimmedName = newProjectName.trim();
+    
+    // Check if name is the same
+    if (trimmedName === projectToRename.name) {
+      setProjectToRename(null);
+      setNewProjectName('');
+      return;
+    }
+
+    // Check if name already exists
+    const nameExists = projects.some(
+      p => p.id !== projectToRename.id && p.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (nameExists) {
+      toast({
+        title: "Name already exists",
+        description: "A project with this name already exists. Please choose a different name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log('ProjectSelector: Renaming project:', projectToRename.id, 'to:', trimmedName);
+    
+    try {
+      await updateProject(projectToRename.id, { name: trimmedName });
+      console.log('ProjectSelector: Project renamed successfully');
+      setProjectToRename(null);
+      setNewProjectName('');
+    } catch (error) {
+      console.error('ProjectSelector: Failed to rename project:', error);
+      toast({
+        title: "Failed to rename project",
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openRenameDialog = (project: { id: string; name: string }) => {
+    setProjectToRename(project);
+    setNewProjectName(project.name);
   };
 
   if (loading) {
@@ -126,17 +189,30 @@ export const ProjectSelector: React.FC = () => {
                     </div>
                   </DropdownMenuItem>
                   
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 mr-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setProjectToDelete(project.id);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  <div className="flex items-center gap-1 mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openRenameDialog({ id: project.id, name: project.name });
+                      }}
+                    >
+                      <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setProjectToDelete(project.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
               ))
             )}
@@ -149,6 +225,54 @@ export const ProjectSelector: React.FC = () => {
         onComplete={handleProjectComplete}
         onSkip={() => setShowCreateWizard(false)}
       />
+
+      <Dialog open={!!projectToRename} onOpenChange={() => {
+        setProjectToRename(null);
+        setNewProjectName('');
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Project</DialogTitle>
+            <DialogDescription>
+              Enter a new name for your project.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="project-name">Project Name</Label>
+              <Input
+                id="project-name"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleRenameProject();
+                  }
+                }}
+                placeholder="Enter project name"
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setProjectToRename(null);
+                setNewProjectName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRenameProject}
+              disabled={!newProjectName.trim()}
+            >
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!projectToDelete} onOpenChange={() => setProjectToDelete(null)}>
         <AlertDialogContent>

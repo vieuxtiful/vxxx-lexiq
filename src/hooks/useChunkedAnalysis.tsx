@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAnalysisEngine, AnalysisResult, AnalyzedTerm } from './useAnalysisEngine';
 import { chunkText, mergeChunkedAnalysis, calculateStatistics } from '@/utils/textChunker';
 import { useToast } from './use-toast';
@@ -8,18 +8,64 @@ export const useChunkedAnalysis = () => {
   const { toast } = useToast();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [targetProgress, setTargetProgress] = useState(0);
   const [currentChunk, setCurrentChunk] = useState(0);
   const [totalChunks, setTotalChunks] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Smooth progress interpolation - updates every 250ms for fluid animation
+  useEffect(() => {
+    if (!isAnalyzing) {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+      return;
+    }
+
+    progressIntervalRef.current = setInterval(() => {
+      setProgress(currentProgress => {
+        if (currentProgress >= targetProgress) {
+          return currentProgress;
+        }
+        
+        // Increment by 1% every 250ms for smooth fluid effect
+        const increment = 1;
+        const newProgress = Math.min(currentProgress + increment, targetProgress);
+        
+        // Log progress updates for debugging
+        if (newProgress % 10 === 0 || newProgress === targetProgress) {
+          console.log(`🌊 Liquid progress: ${newProgress}% (target: ${targetProgress}%)`);
+        }
+        
+        return newProgress;
+      });
+    }, 250); // Update every 0.25 seconds
+
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+    };
+  }, [isAnalyzing, targetProgress]);
 
   const cancelAnalysis = () => {
     if (abortControllerRef.current) {
       console.log('🛑 User initiated analysis cancellation');
       abortControllerRef.current.abort();
       
+      // Clear progress interval
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+      
       // Immediate state reset
       setIsAnalyzing(false);
       setProgress(0);
+      setTargetProgress(0);
       setCurrentChunk(0);
       setTotalChunks(0);
       
@@ -38,15 +84,55 @@ export const useChunkedAnalysis = () => {
     checkGrammar: boolean,
     checkSpelling: boolean = true
   ): Promise<AnalysisResult | null> => {
+    // Start progress tracking
+    setIsAnalyzing(true);
+    setProgress(0);
+    setTargetProgress(0);
+
     // If content is within normal limits, use standard analysis
     if (content.length <= 5000) {
-      return analyzeTranslation(content, glossary, language, domain, checkGrammar, checkSpelling);
+      console.log('📝 Small file - using standard analysis with smooth progress');
+      
+      // Simulate smooth progress for small files
+      setTargetProgress(95); // Start filling to 95%
+      
+      try {
+        const result = await analyzeTranslation(content, glossary, language, domain, checkGrammar, checkSpelling);
+        
+        // Complete to 100%
+        setTargetProgress(100);
+        
+        // Wait for smooth interpolation to reach 100%
+        await new Promise(resolve => {
+          const checkProgress = setInterval(() => {
+            setProgress(current => {
+              if (current >= 100) {
+                clearInterval(checkProgress);
+                resolve(undefined);
+                return current;
+              }
+              return current;
+            });
+          }, 100);
+        });
+        
+        // Brief delay to show 100% before cleanup
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        return result;
+      } catch (error) {
+        console.error('Standard analysis error:', error);
+        return null;
+      } finally {
+        setIsAnalyzing(false);
+        setProgress(0);
+        setTargetProgress(0);
+      }
     }
 
     // Content is large - use chunking
+    console.log('📦 Large file - using chunked analysis with smooth progress');
     abortControllerRef.current = new AbortController();
-    setIsAnalyzing(true);
-    setProgress(0);
 
     try {
       const chunks = chunkText(content, 4000, 150);
@@ -67,7 +153,9 @@ export const useChunkedAnalysis = () => {
         }
 
         setCurrentChunk(i + 1);
-        setProgress(((i + 1) / chunks.length) * 100);
+        // Set target progress - smooth interpolation will handle the animation
+        const chunkProgress = ((i + 1) / chunks.length) * 100;
+        setTargetProgress(Math.min(chunkProgress, 95)); // Cap at 95% until complete
 
         console.log(`Processing chunk ${i + 1}/${chunks.length}`);
 
@@ -143,7 +231,25 @@ export const useChunkedAnalysis = () => {
         statistics
       };
 
-      setProgress(100);
+      // Complete to 100%
+      setTargetProgress(100);
+      
+      // Wait for smooth interpolation to reach 100%
+      await new Promise(resolve => {
+        const checkProgress = setInterval(() => {
+          setProgress(current => {
+            if (current >= 100) {
+              clearInterval(checkProgress);
+              resolve(undefined);
+              return current;
+            }
+            return current;
+          });
+        }, 100);
+      });
+      
+      // Brief delay to show 100% before cleanup
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       const successRate = (validResults.length / chunks.length * 100).toFixed(0);
       toast({
@@ -167,8 +273,15 @@ export const useChunkedAnalysis = () => {
       }
       return null;
     } finally {
+      // Clear progress interval
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+      
       setIsAnalyzing(false);
       setProgress(0);
+      setTargetProgress(0);
       setCurrentChunk(0);
       setTotalChunks(0);
       abortControllerRef.current = null;

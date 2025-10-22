@@ -29,6 +29,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ onRestoreSession }) 
   const [sessions, setSessions] = useState<AnalysisSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (currentProject) {
@@ -98,10 +99,15 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ onRestoreSession }) 
 
   const handleRestore = (session: AnalysisSession) => {
     onRestoreSession(session);
+    setSelectedSessionId(null); // Clear selection after restore
     toast({
       title: "Session Restored",
       description: `Loaded analysis from ${formatSessionTimestamp(session.created_at)} (${formatFullDateTime(session.created_at)})`,
     });
+  };
+
+  const handleCardClick = (sessionId: string) => {
+    setSelectedSessionId(selectedSessionId === sessionId ? null : sessionId);
   };
 
   const confirmDelete = async () => {
@@ -179,8 +185,12 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ onRestoreSession }) 
       ) : (
         <div className="space-y-4">
           {sessions.map(session => (
-            <Card key={session.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
+            <Card 
+              key={session.id} 
+              className={`history-card-selectable ${selectedSessionId === session.id ? 'history-card-selected' : ''} hover:shadow-md transition-shadow`}
+              onClick={() => handleCardClick(session.id)}
+            >
+              <CardContent className="p-4 relative">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="w-4 h-4" />

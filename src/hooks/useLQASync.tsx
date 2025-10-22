@@ -24,11 +24,24 @@ export const useLQASync = (
 
   useEffect(() => {
     if (!enabled || !sourceContent.trim() || !targetContent.trim()) {
+      console.log('🔍 LQA Sync skipped:', { 
+        enabled, 
+        hasSource: !!sourceContent.trim(), 
+        hasTarget: !!targetContent.trim() 
+      });
       setIssues([]);
       return;
     }
 
+    console.log('⏳ LQA Sync scheduled (2s delay):', {
+      sourceLength: sourceContent.length,
+      targetLength: targetContent.length,
+      sourceLanguage,
+      targetLanguage
+    });
+
     const analyzeSync = async () => {
+      console.log('🔄 LQA Sync starting analysis...');
       setIsAnalyzing(true);
       try {
         const syncIssues = await analyzeLQASync(
@@ -37,9 +50,10 @@ export const useLQASync = (
           sourceLanguage,
           targetLanguage
         );
+        console.log('✅ LQA Sync complete:', { issueCount: syncIssues.length, issues: syncIssues });
         setIssues(syncIssues);
       } catch (error) {
-        console.error('LQA sync analysis failed:', error);
+        console.error('❌ LQA sync analysis failed:', error);
         setIssues([]);
       } finally {
         setIsAnalyzing(false);

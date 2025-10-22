@@ -1,0 +1,221 @@
+/**
+ * QA Analysis Button Styles
+ * Comprehensive styling for the WaveformQAButton component
+ */
+
+/* Base button styles */
+.qa-analysis-btn {
+  position: relative;
+  overflow: hidden;
+  transition: background 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              border 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Filled state (idle) */
+.qa-analysis-btn--filled {
+  background: linear-gradient(to right, #0891b2, #14b8a6);
+  color: white;
+  border: 2px solid transparent;
+}
+
+/* Outlined state (analyzing) */
+.qa-analysis-btn--outlined {
+  background: transparent;
+  color: #22d3ee;
+  border: 2px solid #06b6d4;
+}
+
+/* Hover effects */
+.qa-analysis-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(6, 182, 212, 0.3),
+              0 8px 10px -6px rgba(6, 182, 212, 0.2);
+}
+
+.qa-analysis-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Focus visible for keyboard navigation */
+.qa-analysis-btn:focus-visible {
+  outline: none;
+  ring: 2px solid #06b6d4;
+  ring-offset: 2px;
+}
+
+/* Disabled state */
+.qa-analysis-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+/* Waveform SVG container */
+.waveform-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Progress bar styles */
+.qa-progress-bar {
+  height: 4px;
+  background: rgba(6, 182, 212, 0.2);
+  border-radius: 9999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.qa-progress-bar__fill {
+  height: 100%;
+  background: linear-gradient(to right, #06b6d4, #14b8a6, #22c55e);
+  border-radius: 9999px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Shimmer effect on progress bar */
+.qa-progress-bar__fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Glow effect when analyzing */
+.qa-analysis-btn--analyzing::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  background: radial-gradient(
+    circle at center,
+    rgba(6, 182, 212, 0.3) 0%,
+    transparent 70%
+  );
+  border-radius: inherit;
+  opacity: 0;
+  animation: glow-pulse 2s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .qa-analysis-btn,
+  .qa-progress-bar__fill,
+  .waveform-svg {
+    transition: none;
+    animation: none;
+  }
+  
+  .qa-analysis-btn--analyzing::before {
+    animation: none;
+    opacity: 0.3;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .qa-analysis-btn--outlined {
+    border-width: 3px;
+  }
+  
+  .qa-analysis-btn:focus-visible {
+    ring-width: 3px;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .qa-analysis-btn--filled {
+    background: linear-gradient(to right, #0e7490, #0f766e);
+  }
+  
+  .qa-analysis-btn--outlined {
+    border-color: #22d3ee;
+    color: #67e8f9;
+  }
+}
+
+/* Mobile touch optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .qa-analysis-btn {
+    min-height: 48px; /* Ensure touch target size */
+  }
+  
+  .qa-analysis-btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+}
+
+/* Loading spinner */
+.qa-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Status text animation */
+.qa-status-text {
+  animation: fade-in 0.3s ease-in-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Percentage counter */
+.qa-percentage {
+  font-variant-numeric: tabular-nums;
+  min-width: 3rem;
+  text-align: right;
+}

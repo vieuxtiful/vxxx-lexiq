@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LanguageCombobox } from '@/components/ui/language-combobox';
 import { DomainCombobox } from '@/components/ui/domain-combobox';
 import { useAuth } from '@/hooks/useAuth';
@@ -42,6 +42,9 @@ export const ProjectSetupWizard: React.FC<ProjectSetupWizardProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onSkip?.()}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0">
+        <DialogHeader>
+          <DialogTitle className="sr-only">Project Setup Wizard</DialogTitle>
+        </DialogHeader>
         <div className="p-6">
           {/* Header with Step-Specific Icons */}
           <div className="text-center mb-6">
