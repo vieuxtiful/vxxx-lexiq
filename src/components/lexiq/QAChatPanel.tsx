@@ -85,7 +85,7 @@ export const QAChatPanel: React.FC<QAChatPanelProps> = ({ analysisContext }) => 
           <div className="space-y-3">
             {messages.length === 0 && (
               <div className="text-center text-muted-foreground text-xs py-6">
-                Ask about quality assurance for your translation
+                Ask about QA for your translation.
               </div>
             )}
             {messages.map((msg, idx) => (

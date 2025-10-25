@@ -40,6 +40,15 @@ export const LiveAnalysisPanel: React.FC<LiveAnalysisPanelProps> = ({
   const [isTooltipHovered, setIsTooltipHovered] = useState(false);
   const reanalyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Accurately count occurrences of a term in content (Unicode safe)
+  const escapeForRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const countOccurrences = (haystack: string, needle: string) => {
+    if (!needle) return 0;
+    const re = new RegExp(escapeForRegex(needle), 'g');
+    const matches = haystack.match(re);
+    return matches ? matches.length : 0;
+  };
+
   // Save cursor position before any update
   const saveCursorPosition = () => {
     const selection = window.getSelection();
@@ -445,9 +454,12 @@ export const LiveAnalysisPanel: React.FC<LiveAnalysisPanelProps> = ({
                     </div>
                   )}
                   
-                  {/* Frequency */}
+                  {/* Frequency (computed from current content) */}
                   <div className="text-xs text-muted-foreground">
-                    Appears {hoveredTerm.hits} time{hoveredTerm.hits !== 1 ? 's' : ''}
+                    {(() => {
+                      const c = countOccurrences(content, hoveredTerm.text);
+                      return `Appears ${c} time${c !== 1 ? 's' : ''}`;
+                    })()}
                   </div>
                   
                   {/* Recommendations */}
@@ -538,9 +550,12 @@ export const LiveAnalysisPanel: React.FC<LiveAnalysisPanelProps> = ({
                     </div>
                   )}
 
-                  {/* Frequency */}
+                  {/* Frequency (computed from current content) */}
                   <div className="text-xs text-muted-foreground">
-                    Appears {clickedTerm.hits} time{clickedTerm.hits !== 1 ? 's' : ''} in translation
+                    {(() => {
+                      const c = countOccurrences(content, clickedTerm.text);
+                      return `Appears ${c} time${c !== 1 ? 's' : ''} in translation`;
+                    })()}
                   </div>
 
                   {/* Recommendations */}

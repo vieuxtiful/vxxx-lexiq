@@ -233,21 +233,25 @@ export function MainInterface({ onReturn }: MainInterfaceProps) {
             <Card>
               <CardContent className="pt-6">
                 <Button
-                  onClick={runAnalysis}
-                  disabled={!translationFile || !glossaryFile || isAnalyzing}
-                  className="w-full bg-primary hover:bg-primary/80 text-primary-foreground font-bold py-3"
+                  onClick={() => { if (!isAnalyzing) runAnalysis(); }}
+                  disabled={!translationFile || !glossaryFile}
+                  className={`w-full bg-primary hover:bg-primary/80 text-primary-foreground font-bold py-3 transition-none focus-visible:ring-0 active:opacity-100 ${isAnalyzing ? 'opacity-100 cursor-wait [aria-busy=true]:opacity-100 [aria-busy=true]:text-primary-foreground [aria-busy=true]:bg-primary' : ''}`}
+                  aria-busy={isAnalyzing}
+                  style={isAnalyzing ? { transition: 'none', filter: 'none' } : { transition: 'none' }}
                 >
-                  {isAnalyzing ? (
-                    <>
-                      <Activity className="h-4 w-4 mr-2 animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="h-4 w-4 mr-2" />
-                      Start QA
-                    </>
-                  )}
+                  <span className="inline-flex items-center transition-none">
+                    {isAnalyzing ? (
+                      <>
+                        <Activity className="h-4 w-4 mr-2 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-4 w-4 mr-2" />
+                        Start QA
+                      </>
+                    )}
+                  </span>
                 </Button>
               </CardContent>
             </Card>

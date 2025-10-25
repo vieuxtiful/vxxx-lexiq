@@ -301,14 +301,22 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
     // Collect term positions
     type TermPos = { start: number; end: number; term: any };
     const termPositions: TermPos[] = [];
-    if (analysisTerms.length > 0) {
-      analysisTerms.forEach((term: any) => {
+    const filteredTerms = (analysisTerms || []).filter((t: any) => {
+      if (t?.classification === 'grammar') return grammarEnabled;
+      if (t?.classification === 'spelling') return spellingEnabled;
+      return true;
+    });
+
+    if (filteredTerms.length > 0) {
+      filteredTerms.forEach((term: any) => {
         if (!term?.text) return;
         let idx = 0;
         while (idx < content.length) {
           const found = content.indexOf(term.text, idx);
           if (found === -1) break;
-          termPositions.push({ start: found, end: found + term.text.length, term });
+          const start = found;
+          const end = found + term.text.length;
+          termPositions.push({ start, end, term });
           idx = found + 1;
         }
       });
@@ -405,7 +413,7 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
     if (!el) return;
     if (isEditing) return;
     el.innerHTML = renderContentWithUnderlines();
-  }, [content, analysisTerms, unmatchedSegments, isEditing]);
+  }, [content, analysisTerms, unmatchedSegments, isEditing, grammarEnabled, spellingEnabled]);
 
   // Attach hover event listeners to term spans (bilingual projects only)
   useEffect(() => {
@@ -451,7 +459,7 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
         clearTimeout(tooltipHoverTimeoutRef.current);
       }
     };
-  }, [analysisTerms, unmatchedSegments, isEditing, isTooltipHovered]);
+  }, [analysisTerms, unmatchedSegments, isEditing, isTooltipHovered, grammarEnabled, spellingEnabled]);
 
   return (
     <TooltipProvider>
@@ -556,13 +564,13 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
                 </span>
               ) : (
                 <>
-                  {analysis.spellingIssues > 0 && (
+                  {spellingEnabled && analysis.spellingIssues > 0 && (
                     <Badge variant="outline" className="gap-1.5 bg-orange-50 text-orange-700 border-orange-300/50 shadow-sm">
                       <span className="h-2 w-2 rounded-full bg-orange-500"></span>
                       <span className="font-medium">{analysis.spellingIssues}</span> spelling
                     </Badge>
                   )}
-                  {analysis.grammarIssues > 0 && (
+                  {grammarEnabled && analysis.grammarIssues > 0 && (
                     <Badge variant="outline" className="gap-1.5 bg-purple-50 text-purple-700 border-purple-300/50 shadow-sm">
                       <span className="h-2 w-2 rounded-full bg-purple-500"></span>
                       <span className="font-medium">{analysis.grammarIssues}</span> grammar

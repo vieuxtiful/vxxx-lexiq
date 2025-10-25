@@ -173,44 +173,49 @@ export const WaveformQAButton: React.FC<WaveformQAButtonProps> = ({
             preserveAspectRatio="none"
           >
             <defs>
-              {/* Mask for BLACK text - shows ABOVE wave */}
+              {/* Masks use same waveform math as WaveformSVG, scaled to 100x100 */}
               <mask id="wave-text-mask-above">
-                {/* Start with white (visible everywhere) */}
                 <rect x="0" y="0" width="100" height="100" fill="white" />
-                {/* Black out the wave area (hide text in liquid) */}
                 <polygon
-                  points={`
-                    0,${100 - progress * 100}
-                    ${[...Array(21)].map((_, i) => {
-                      const x = (i / 20) * 100;
-                      const baseY = 100 - progress * 100;
-                      const waveOffset = Math.sin((i / 20) * Math.PI * 4 + Date.now() / 500) * 3;
-                      const y = Math.max(0, baseY + waveOffset);
-                      return `${x},${y}`;
-                    }).join(' ')}
-                    100,100 0,100
-                  `}
+                  points={`${(() => {
+                    const segments = 100; const pts: string[] = [];
+                    const t = performance.now() / 1000; const baseY = 100 - (progress * 100);
+                    const amp1 = (8 / 96) * 100; const amp2 = (4 / 96) * 100; const amp3 = (2 / 96) * 100;
+                    const lift = 1.5; // lift mask upward to match highest crests
+                    for (let i = 0; i <= segments; i++) {
+                      const nx = i / segments; const x = nx * 100;
+                      const y = baseY 
+                        + Math.sin(nx * Math.PI * 4 + t * 2) * amp1
+                        + Math.sin(nx * Math.PI * 6 - t * 1.5) * amp2
+                        + Math.sin(nx * Math.PI * 8 + t * 3) * amp3;
+                      pts.push(`${x.toFixed(2)},${Math.max(0, y - lift).toFixed(2)}`);
+                    }
+                    pts.push('100,100','0,100');
+                    return pts.join(' ');
+                  })()}`}
                   fill="black"
                 />
               </mask>
               
-              {/* Mask for WHITE text - shows BELOW wave (inverse of above) */}
               <mask id="wave-text-mask-below">
-                {/* Start with black (hidden everywhere) */}
                 <rect x="0" y="0" width="100" height="100" fill="black" />
-                {/* White in the wave area (show text in liquid) */}
                 <polygon
-                  points={`
-                    0,${100 - progress * 100}
-                    ${[...Array(21)].map((_, i) => {
-                      const x = (i / 20) * 100;
-                      const baseY = 100 - progress * 100;
-                      const waveOffset = Math.sin((i / 20) * Math.PI * 4 + Date.now() / 500) * 3;
-                      const y = Math.max(0, baseY + waveOffset);
-                      return `${x},${y}`;
-                    }).join(' ')}
-                    100,100 0,100
-                  `}
+                  points={`${(() => {
+                    const segments = 100; const pts: string[] = [];
+                    const t = performance.now() / 1000; const baseY = 100 - (progress * 100);
+                    const amp1 = (8 / 96) * 100; const amp2 = (4 / 96) * 100; const amp3 = (2 / 96) * 100;
+                    const lift = 1.5; // lift mask upward to match highest crests
+                    for (let i = 0; i <= segments; i++) {
+                      const nx = i / segments; const x = nx * 100;
+                      const y = baseY 
+                        + Math.sin(nx * Math.PI * 4 + t * 2) * amp1
+                        + Math.sin(nx * Math.PI * 6 - t * 1.5) * amp2
+                        + Math.sin(nx * Math.PI * 8 + t * 3) * amp3;
+                      pts.push(`${x.toFixed(2)},${Math.max(0, y - lift).toFixed(2)}`);
+                    }
+                    pts.push('100,100','0,100');
+                    return pts.join(' ');
+                  })()}`}
                   fill="white"
                 />
               </mask>
