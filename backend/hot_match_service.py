@@ -312,3 +312,129 @@ class HotMatchService:
         except Exception as e:
             logger.error(f"Failed to get trending terms: {e}")
             return []
+    
+    async def get_context_aware_recommendations(
+        self,
+        term: str,
+        domain: str,
+        language: str,
+        context: str,
+        llm_annotations: Optional[List[Dict[str, Any]]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Get context-aware recommendations using HotMatch + LLM annotations
+        
+        Args:
+            term: Term to get recommendations for
+            domain: Domain context
+            language: Language code
+            context: Surrounding text context
+            llm_annotations: Optional LLM-annotated suggestions
+        
+        Returns:
+            List of context-aware recommendations
+        """
+        try:
+            recommendations = []
+            
+            # Get base term hash
+            base_term_hash = self.generate_base_term_hash(term, domain)
+            
+            # Get HotMatch percentages from history
+            hot_match_data = await self._get_selections_from_database(base_term_hash)
+            
+            # Calculate term frequencies
+            term_frequencies = {}
+            if hot_match_data:
+                for selection in hot_match_data:
+                    selected = selection.get('selected_term', '').lower()
+                    if selected:
+                        term_frequencies[selected] = term_frequencies.get(selected, 0) + 1
+            
+            # Add HotMatch-based recommendations
+            for term_text, count in sorted(term_frequencies.items(), key=lambda x: x[1], reverse=True)[:5]:
+                percentage = (count / len(hot_match_data)) * 100 if hot_match_data else 0
+                recommendations.append({
+                    'term': term_text,
+                    'source': 'hot_match',
+                    'confidence': percentage / 100,
+                    'usage_count': count,
+                    'rationale': f'Used by {percentage:.1f}% of users in similar contexts'
+                })
+            
+            # Integrate LLM annotations if provided
+            if llm_annotations:
+                for annotation in llm_annotations[:3]:
+                    # Check if not already in recommendations
+                    if not any(r['term'].lower() == annotation.get('term', '').lower() for r in recommendations):
+                        recommendations.append({
+                            'term': annotation.get('term', ''),
+                            'source': 'llm_annotation',
+                            'confidence': annotation.get('confidence', 0.7),
+                            'rationale': annotation.get('rationale', 'AI-suggested based on context'),
+                            'semantic_info': annotation.get('semantic_info', {})
+                        })
+            
+            # Filter by domain relevance using context
+            context_lower = context.lower()
+            for rec in recommendations:
+                # Boost confidence if term appears in context
+                if rec['term'].lower() in context_lower:
+                    rec['confidence'] = min(rec['confidence'] * 1.2, 1.0)
+                    rec['context_match'] = True
+                else:
+                    rec['context_match'] = False
+            
+            # Sort by confidence
+            recommendations.sort(key=lambda x: x['confidence'], reverse=True)
+            
+            logger.info(f"Generated {len(recommendations)} context-aware recommendations for '{term}'")
+            
+            return recommendations[:5]  # Return top 5
+            
+        except Exception as e:
+            logger.error(f"Failed to get context-aware recommendations: {e}")
+            return []
+    
+    async def rank_recommendations_by_context(
+        self,
+        recommendations: List[Dict[str, Any]],
+        context: str,
+        domain_keywords: List[str]
+    ) -> List[Dict[str, Any]]:
+        """
+        Rank recommendations based on context and domain keywords
+        
+        Args:
+            recommendations: List of recommendation dictionaries
+            context: Text context
+            domain_keywords: List of domain-specific keywords
+        
+        Returns:
+            Ranked list of recommendations
+        """
+        context_lower = context.lower()
+        
+        for rec in recommendations:
+            score = rec.get('confidence', 0.5)
+            
+            # Boost if term in context
+            if rec['term'].lower() in context_lower:
+                score += 0.2
+            
+            # Boost if domain keywords nearby
+            term_pos = context_lower.find(rec['term'].lower())
+            if term_pos >= 0:
+                window_start = max(0, term_pos - 50)
+                window_end = min(len(context_lower), term_pos + 50)
+                window = context_lower[window_start:window_end]
+                
+                keyword_count = sum(1 for kw in domain_keywords if kw.lower() in window)
+                score += min(keyword_count * 0.1, 0.3)
+            
+            rec['ranked_score'] = min(score, 1.0)
+        
+        # Sort by ranked score
+        recommendations.sort(key=lambda x: x.get('ranked_score', 0), reverse=True)
+        
+        return recommendations

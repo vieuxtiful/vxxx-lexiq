@@ -469,11 +469,14 @@ export function EnhancedMainInterface({
     const splitSentences = (text: string, language?: string): string[] => {
       // Detect if text contains CJK characters (Chinese, Japanese, Korean)
       const hasCJK = /[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF]/.test(text);
+      // Detect Thai script (Thai often lacks explicit sentence-ending punctuation)
+      const hasThai = /[\u0E00-\u0E7F]/.test(text);
       
       console.log('🔤 Sentence splitting input:', {
         textPreview: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
         textLength: text.length,
-        hasCJK
+        hasCJK,
+        hasThai
       });
       
       let sentences: string[] | null = null;
@@ -483,11 +486,19 @@ export function EnhancedMainInterface({
         // More permissive - split on any of these terminators
         sentences = text.match(/[^.!?。！？]+[.!?。！？]+/g);
         console.log('🌏 Using CJK sentence splitting, found:', sentences?.length || 0, 'sentences');
+      } else if (hasThai) {
+        // Thai: Fall back to line/paragraph-based segmentation since Thai typically lacks .!? delimiters
+        const paras = text
+          .split(/\r?\n{2,}|\r?\n/g)
+          .map(s => s.trim())
+          .filter(s => s.length > 0);
+        sentences = paras.length > 0 ? paras : [text.trim()].filter(Boolean);
+        console.log('🌺 Using Thai line-based segmentation, found:', sentences.length, 'segments');
       } else {
-        // Western languages: Split on .!? followed by space OR end of string
-        // More permissive to catch all sentences
-        sentences = text.match(/[^.!?]+[.!?]+/g);
-        console.log('🌍 Using Western sentence splitting, found:', sentences?.length || 0, 'sentences');
+        // Western languages: Split on .!? or line breaks
+        // More permissive to catch all sentences and respect manual line breaks
+        sentences = text.match(/[^.!?\n\r]+[.!?\n\r]+/g);
+        console.log('🌍 Using Western sentence/line splitting, found:', sentences?.length || 0, 'sentences');
       }
       
       if (sentences && sentences.length > 0) {

@@ -33,7 +33,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: Deno.env.get('LLM_MODEL') || Deno.env.get('DEFAULT_LLM_MODEL') || 'llm/default',
         messages: [
           {
             role: 'system',

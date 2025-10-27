@@ -8,17 +8,25 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PasswordStrengthIndicator } from '@/components/ui/password-strength-indicator';
-import { FloatingBackground } from '@/components/lexiq/FloatingBackground';
-import { useProjectScreenDarkMode } from '@/hooks/useProjectScreenDarkMode';
-import { Moon, Sun } from 'lucide-react';
+import { TitleScreen } from '@/components/lexiq/TitleScreen';
+import jupiterPng from '@/components/lexiq/Jupiter.png';
+import mercuryPng from '@/components/lexiq/Mercury.png';
+import saturnPng from '@/components/lexiq/Saturn.png';
+import theSunPng from '@/components/lexiq/The Sun.png';
+import theMoonPng from '@/components/lexiq/The Moon.png';
+import { useTimeBasedTheme } from '@/hooks/useTimeBasedTheme';
+import { Moon, Sun, Clock, Paintbrush } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import lexiqLogo from '@/assets/lexiq-logo.png';
 import lexiqLogoWhite from '@/assets/lexiq-logo-white.png';
+
 const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('signin');
+  const [themeOpen, setThemeOpen] = useState(false);
   const {
     signIn,
     signUp,
@@ -28,7 +36,7 @@ const Auth = () => {
     validatePassword
   } = usePasswordValidation();
   const navigate = useNavigate();
-  const { isDarkMode, shouldAnimate, toggleDarkMode } = useProjectScreenDarkMode();
+  const { currentTheme, currentDate, themeVersion, isDarkMode, themeMode, isTransitioning, toggleDarkMode, enableAutoMode, setManualTheme } = useTimeBasedTheme();
 
   // Password validation for signup
   const passwordValidation = activeTab === 'signup' ? validatePassword(password) : null;
@@ -69,13 +77,14 @@ const Auth = () => {
     }
     setIsLoading(false);
   };
-  return <div className={`min-h-screen relative overflow-hidden transition-colors ${shouldAnimate ? 'duration-[2000ms]' : 'duration-300'} ${isDarkMode ? 'dark' : ''}`} style={{
-    background: 'var(--gradient-welcome)'
-  }}>
-      {/* Animated floating background */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <FloatingBackground />
-      </div>
+  return <div className={`min-h-screen relative overflow-hidden transition-colors ${isTransitioning ? 'duration-[3000ms]' : 'duration-300'} ${isDarkMode ? 'dark' : ''}`}>
+      {/* Time-based animated background with floating terminology */}
+      <TitleScreen 
+        daySunImageSrc={theSunPng}
+        nightMoonImageSrc={theMoonPng}
+        nightPlanetImageSrcs={[jupiterPng, saturnPng, mercuryPng]}
+        controller={{ currentTheme, isTransitioning, currentDate, themeVersion }}
+      />
       
       {/* Auth content */}
       <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
@@ -140,21 +149,64 @@ const Auth = () => {
         </CardContent>
       </Card>
       
-      {/* Dark Mode Toggle and Copyright Footer */}
-      <div className="text-center mt-6 space-y-3">
-        <div>
+      {/* Theme Mode Toggle and Copyright Footer */}
+      <div className={`text-center mt-6 space-y-3 ${currentTheme === 'night' ? 'text-white' : ''}`}>
+        <div className="flex items-center justify-center gap-2">
           <Button 
-            variant="ghost" 
+            variant={themeMode === 'light' ? 'default' : 'ghost'}
             size="sm" 
-            onClick={toggleDarkMode}
-            className="h-8 text-xs text-muted-foreground hover:text-foreground px-3 gap-2"
+            onClick={() => themeMode !== 'light' && toggleDarkMode()}
+            className={`h-8 text-xs px-3 gap-2 ${currentTheme === 'night' ? 'text-white' : ''}`}
           >
-            {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+            <Sun className="h-4 w-4" />
+            Light
           </Button>
+          <Button 
+            variant={themeMode === 'dark' ? 'default' : 'ghost'}
+            size="sm" 
+            onClick={() => themeMode !== 'dark' && toggleDarkMode()}
+            className={`h-8 text-xs px-3 gap-2 ${currentTheme === 'night' ? 'text-white' : ''}`}
+          >
+            <Moon className="h-4 w-4" />
+            Dark
+          </Button>
+          <DropdownMenu open={themeOpen} onOpenChange={setThemeOpen}>
+            <DropdownMenuTrigger 
+              asChild 
+              onMouseEnter={() => setThemeOpen(true)} 
+              onMouseLeave={() => setThemeOpen(false)}
+            >
+              <Button 
+                variant="ghost"
+                size="sm"
+                className={`h-8 text-xs px-3 gap-2 ${currentTheme === 'night' ? 'text-white' : ''}`}
+                aria-label="Theme selector"
+                title="Theme"
+              >
+                <Paintbrush className="h-4 w-4" />
+                Theme
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent 
+              align="end" 
+              className={`min-w-[160px] ${currentTheme === 'night' ? 'bg-slate-900/95 text-slate-100 border-slate-700' : ''}`}
+              onMouseEnter={() => setThemeOpen(true)}
+              onMouseLeave={() => setThemeOpen(false)}
+            >
+              <DropdownMenuItem onClick={() => { enableAutoMode(); setThemeOpen(false); }}>
+                <Clock className="mr-2 h-3.5 w-3.5" /> Auto
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setManualTheme('day'); setThemeOpen(false); }}>
+                <Sun className="mr-2 h-3.5 w-3.5" /> Day
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setManualTheme('night'); setThemeOpen(false); }}>
+                <Moon className="mr-2 h-3.5 w-3.5" /> Night
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <p className="text-sm text-muted-foreground/60">
-          © LexiQ Development Team
+        <p className={`text-sm ${currentTheme === 'night' ? 'text-white/70' : 'text-muted-foreground/60'}`}>
+          © LexiQ™ Development Team
         </p>
       </div>
         </div>

@@ -1,7 +1,25 @@
+import React, { useEffect } from 'react';
 import { MantineProvider as BaseMantineProvider } from '@mantine/core';
 import '@mantine/core/styles.css';
 
+const THEME_KEY = 'lexiq-dark-mode';
+
 export function MantineProvider({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    const applyTheme = () => {
+      const isDark = localStorage.getItem(THEME_KEY) === 'true';
+      document.documentElement.classList.toggle('dark', isDark);
+    };
+    // Apply on mount
+    applyTheme();
+    // Sync across tabs/components via storage events
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === THEME_KEY) applyTheme();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
   return (
     <BaseMantineProvider
       theme={{

@@ -814,4 +814,280 @@ All colors MUST be HSL.
       box-shadow: 0 0 0 4px hsl(var(--primary) / 0.1);
     }
   }
+
+  /* ========================================
+     TitleScreen Theme Animations
+     ======================================== */
+
+  /* Cloud animations */
+  @keyframes float-cloud {
+    0% {
+      transform: translateX(-100px) translateY(0);
+    }
+    50% {
+      transform: translateX(calc(50vw + 50px)) translateY(-10px);
+    }
+    100% {
+      transform: translateX(calc(100vw + 100px)) translateY(0);
+    }
+  }
+
+  /* Floating particles */
+  @keyframes float-up {
+    0% {
+      transform: translateY(0) translateX(0);
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-100vh) translateX(20px);
+      opacity: 0;
+    }
+  }
+
+  /* Sun ray rotation */
+  @keyframes rotate-rays {
+    0% {
+      transform: rotate(0deg);
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 0.6;
+    }
+    100% {
+      transform: rotate(360deg);
+      opacity: 0.3;
+    }
+  }
+
+  /* Star twinkling */
+  @keyframes twinkle {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.3;
+      transform: scale(0.8);
+    }
+  }
+
+  /* Shooting star */
+  @keyframes shooting-star {
+    0% {
+      transform: translate(0, 0);
+      opacity: 1;
+    }
+    70% {
+      opacity: 1;
+    }
+    100% {
+      transform: translate(-300px, 300px);
+      opacity: 0;
+    }
+  }
+
+  .shooting-star {
+    animation: shooting-star 2s ease-out infinite;
+    box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.8),
+                -150px 150px 10px 0px rgba(255, 255, 255, 0.4);
+  }
+
+  /* Aurora borealis */
+  @keyframes aurora {
+    0%, 100% {
+      transform: translateX(-10%) skewX(-5deg);
+      opacity: 0.3;
+    }
+    50% {
+      transform: translateX(10%) skewX(5deg);
+      opacity: 0.6;
+    }
+  }
+
+  @keyframes aurora-reverse {
+    0%, 100% {
+      transform: translateX(10%) skewX(5deg);
+      opacity: 0.4;
+    }
+    50% {
+      transform: translateX(-10%) skewX(-5deg);
+      opacity: 0.7;
+    }
+  }
+
+  /* Slow floating for planets */
+  @keyframes float-slow {
+    0%, 100% {
+      transform: translateY(0) translateX(0);
+    }
+    25% {
+      transform: translateY(-15px) translateX(5px);
+    }
+    50% {
+      transform: translateY(-25px) translateX(0);
+    }
+    75% {
+      transform: translateY(-15px) translateX(-5px);
+    }
+  }
+
+  .animate-float-slow {
+    animation: float-slow 20s ease-in-out infinite;
+  }
+
+  /* Sunrise/Sunset ray animations */
+  @keyframes fade-in-rays {
+    0%, 100% {
+      opacity: 0.2;
+    }
+    50% {
+      opacity: 0.6;
+    }
+  }
+
+  @keyframes fade-out-rays {
+    0%, 100% {
+      opacity: 0.4;
+    }
+    50% {
+      opacity: 0.1;
+    }
+  }
+
+  /* Star fade in/out for transitions */
+  @keyframes fade-in {
+    0% {
+      opacity: 0;
+      transform: scale(0);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes fade-out {
+    0% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 2s ease-out forwards;
+  }
+
+  .animate-fade-out {
+    animation: fade-out 2s ease-in forwards;
+  }
+
+  /* Seamless fade overlay for manual theme switching */
+  @keyframes fade-overlay {
+    0% { opacity: 0; }
+    25% { opacity: 1; }
+    75% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  .animate-fade-overlay {
+    animation: fade-overlay 900ms ease-in-out;
+  }
+
+  /* Gaussian blur overlay (seamless transition) */
+  @keyframes blur-overlay {
+    0% {
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
+      opacity: 0;
+    }
+    25% {
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      opacity: 1;
+    }
+    75% {
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      opacity: 1;
+    }
+    100% {
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
+      opacity: 0;
+    }
+  }
+
+  .animate-blur-overlay {
+    animation: blur-overlay 900ms ease-in-out;
+  }
+
+  /* Firefly animation */
+  @keyframes firefly {
+    0%, 100% {
+      opacity: 0.2;
+      transform: translateY(0) translateX(0);
+    }
+    25% {
+      opacity: 1;
+      transform: translateY(-20px) translateX(10px);
+    }
+    50% {
+      opacity: 0.4;
+      transform: translateY(-10px) translateX(-10px);
+    }
+    75% {
+      opacity: 1;
+      transform: translateY(-30px) translateX(5px);
+    }
+  }
+
+  .animate-firefly {
+    animation: firefly 4s ease-in-out infinite;
+  }
+
+  /* Pulse animations with different speeds */
+  @keyframes pulse-slow {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+  }
+
+  .animate-pulse-slow {
+    animation: pulse-slow 4s ease-in-out infinite;
+  }
+
+  @keyframes pulse-slower {
+    0%, 100% {
+      opacity: 0.8;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+  }
+
+  .animate-pulse-slower {
+    animation: pulse-slower 6s ease-in-out infinite;
+  }
+
+  /* Twinkle animation */
+  .animate-twinkle {
+    animation: twinkle 3s ease-in-out infinite;
+  }
 }

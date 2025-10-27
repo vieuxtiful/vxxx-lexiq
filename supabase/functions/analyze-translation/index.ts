@@ -219,7 +219,7 @@ CRITICAL: Only return grammar and/or spelling issues. Do NOT analyze terminology
           },
           signal: controller.signal,
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
+            model: Deno.env.get("LLM_MODEL") || Deno.env.get("DEFAULT_LLM_MODEL") || "llm/default",
             messages: [
               { role: "system", content: `Return compact minified JSON only. No markdown. Brief text fields. All content in ${language}.` },
               { role: "user", content: sourceOnlyPrompt }
@@ -599,7 +599,7 @@ CRITICAL REQUIREMENTS:
         },
         signal: controller.signal,
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: Deno.env.get("LLM_MODEL") || Deno.env.get("DEFAULT_LLM_MODEL") || "llm/default",
           messages: [
             { role: "system", content: `Return compact minified JSON only. No markdown. Brief text fields. All content in ${language}.` },
             { role: "user", content: prompt }

@@ -36,7 +36,7 @@ ${context}
 
 Based on this analysis, answer the user's questions about quality assurance decisions, terminology choices, and best practices. Be concise, professional, and actionable.`;
 
-    // Call Lovable AI with google/gemini-2.5-flash
+    // Call Lovable AI with configured LLM model
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -44,7 +44,7 @@ Based on this analysis, answer the user's questions about quality assurance deci
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: Deno.env.get('LLM_MODEL') || Deno.env.get('DEFAULT_LLM_MODEL') || 'llm/default',
         messages: [
           { role: 'system', content: systemPrompt },
           ...messages
