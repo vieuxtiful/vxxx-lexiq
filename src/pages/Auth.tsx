@@ -150,13 +150,13 @@ const Auth = () => {
       </Card>
       
       {/* Theme Mode Toggle and Copyright Footer */}
-      <div className={`text-center mt-6 space-y-3 ${currentTheme === 'night' ? 'text-white' : ''}`}>
+      <div className={`text-center mt-6 space-y-3 ${currentTheme === 'night' ? 'text-white' : 'text-slate-800'}`}>
         <div className="flex items-center justify-center gap-2">
           <Button 
             variant={themeMode === 'light' ? 'default' : 'ghost'}
             size="sm" 
             onClick={() => themeMode !== 'light' && toggleDarkMode()}
-            className={`h-8 text-xs px-3 gap-2 ${currentTheme === 'night' ? 'text-white' : ''}`}
+            className={`h-8 text-xs px-3 gap-2 ${currentTheme === 'night' ? 'text-white' : 'text-slate-800 hover:bg-white/60'}`}
           >
             <Sun className="h-4 w-4" />
             Light
@@ -165,7 +165,7 @@ const Auth = () => {
             variant={themeMode === 'dark' ? 'default' : 'ghost'}
             size="sm" 
             onClick={() => themeMode !== 'dark' && toggleDarkMode()}
-            className={`h-8 text-xs px-3 gap-2 ${currentTheme === 'night' ? 'text-white' : ''}`}
+            className={`h-8 text-xs px-3 gap-2 ${currentTheme === 'night' ? 'text-white' : 'text-slate-800 hover:bg-white/60'}`}
           >
             <Moon className="h-4 w-4" />
             Dark
@@ -179,7 +179,7 @@ const Auth = () => {
               <Button 
                 variant="ghost"
                 size="sm"
-                className={`h-8 text-xs px-3 gap-2 ${currentTheme === 'night' ? 'text-white' : ''}`}
+                className={`h-8 text-xs px-3 gap-2 ${currentTheme === 'night' ? 'text-white' : 'text-slate-800 hover:bg-white/60'}`}
                 aria-label="Theme selector"
                 title="Theme"
               >
@@ -205,7 +205,7 @@ const Auth = () => {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <p className={`text-sm ${currentTheme === 'night' ? 'text-white/70' : 'text-muted-foreground/60'}`}>
+        <p className={`text-sm ${currentTheme === 'night' ? 'text-white/70' : 'text-slate-700'}`}>
           © LexiQ™ Development Team
         </p>
       </div>

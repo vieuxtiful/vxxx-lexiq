@@ -4,29 +4,41 @@ import React from 'react';
  * SunsetTheme component - Transition from day to night
  * Features warm orange/purple gradient with setting sun
  */
-export const SunsetTheme: React.FC = () => {
+export interface SunsetThemeProps {
+  sunImageSrc?: string; // Optional sun PNG image
+}
+
+export const SunsetTheme: React.FC<SunsetThemeProps> = ({ sunImageSrc }) => {
   return (
     <div className="absolute inset-0 overflow-hidden">
       {/* Sunset gradient - blue to orange to purple */}
       <div className="absolute inset-0 bg-gradient-to-b from-blue-400 via-orange-500 to-purple-900" />
       
-      {/* Setting sun at horizon */}
-      <div className="absolute bottom-[15%] right-[15%] w-36 h-36 rounded-full bg-gradient-to-b from-orange-400 to-red-500 shadow-[0_0_100px_50px_rgba(249,115,22,0.6)] animate-pulse-slow" />
-      
-      {/* Sun rays fading */}
-      <div className="absolute inset-0 pointer-events-none">
-        {Array.from({ length: 14 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute bottom-[15%] right-[15%] w-2 h-52 bg-gradient-to-t from-orange-400/30 to-transparent origin-bottom"
+      {/* Setting sun at horizon with PNG and sunset overlay */}
+      {sunImageSrc ? (
+        <div className="absolute bottom-[15%] right-[15%] w-36 h-36">
+          {/* Sun PNG */}
+          <img
+            src={sunImageSrc}
+            alt="Setting Sun"
+            className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none animate-pulse-slow"
             style={{
-              transform: `rotate(${i * 25.7}deg) translateX(-50%)`,
-              animation: `fade-out-rays 4s ease-in infinite`,
-              animationDelay: `${i * 0.15}s`,
+              filter: 'drop-shadow(0 0 80px rgba(249, 115, 22, 0.7))'
             }}
           />
-        ))}
-      </div>
+          {/* Sunset gradient overlay */}
+          <div 
+            className="absolute inset-0 rounded-full"
+            style={{
+              background: 'radial-gradient(circle, rgba(255, 120, 0, 0.6) 0%, rgba(220, 38, 38, 0.5) 50%, rgba(147, 51, 234, 0.3) 100%)',
+              mixBlendMode: 'overlay'
+            }}
+          />
+        </div>
+      ) : (
+        // Fallback gradient sun if no PNG provided
+        <div className="absolute bottom-[15%] right-[15%] w-36 h-36 rounded-full bg-gradient-to-b from-orange-400 to-red-500 shadow-[0_0_100px_50px_rgba(249,115,22,0.6)] animate-pulse-slow" />
+      )}
       
       {/* Clouds with warm sunset tint */}
       {Array.from({ length: 6 }).map((_, i) => (

@@ -35,7 +35,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 
 export const ProjectSelector: React.FC = () => {
-  const { currentProject, projects, setCurrentProject, createProject, updateProject, deleteProject, loading } = useProject();
+  const { currentProject, projects, setCurrentProject, setCurrentProjectWithReset, createProject, updateProject, deleteProject, loading } = useProject();
   const { toast } = useToast();
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
@@ -169,7 +169,7 @@ export const ProjectSelector: React.FC = () => {
                   className="flex items-center justify-between group hover:bg-accent rounded-sm transition-colors"
                 >
                   <DropdownMenuItem
-                    onClick={() => setCurrentProject(project)}
+                    onClick={() => setCurrentProjectWithReset(project)}
                     className={`flex-1 cursor-pointer ${
                       project.id === currentProject?.id 
                         ? 'bg-accent text-accent-foreground' 

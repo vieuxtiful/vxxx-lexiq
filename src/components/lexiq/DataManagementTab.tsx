@@ -32,18 +32,37 @@ export const DataManagementTab: React.FC<DataManagementTabProps> = ({
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [processedTerms, setProcessedTerms] = useState<AnalyzedTerm[]>([]);
 
-  // Use editedTerms (deduplicated) and enhance context if needed
+  // Use editedTerms (deduplicated) and enhance context to extract ONLY the sentence
   useEffect(() => {
     if (editedTerms && editedTerms.length > 0 && currentFullText) {
       const enhancedTerms = editedTerms.map(term => {
-        // If context seems incomplete, try to enhance it
-        if (term.context && term.context.length < 50 && !term.context.includes('.')) {
-          const fullContext = extractSentenceContext(
+        // Always extract sentence-level context to ensure we only get the containing sentence
+        // This prevents entire text blocks from appearing in the context field
+        if (term.startPosition >= 0 && term.endPosition > term.startPosition) {
+          const sentenceContext = extractSentenceContext(
             currentFullText, 
             term.startPosition, 
-            term.endPosition
+            term.endPosition,
+            300 // Max length for sentence context
           );
-          return { ...term, context: fullContext };
+          
+          // Verify it's actually a sentence (contains at most 2 sentence delimiters)
+          const sentenceDelimiters = sentenceContext.match(/[.!?]/g);
+          const delimiterCount = sentenceDelimiters ? sentenceDelimiters.length : 0;
+          
+          // If it has 0-2 delimiters, it's a valid sentence context
+          // If more, the extraction may have failed, so truncate more aggressively
+          if (delimiterCount <= 2) {
+            return { ...term, context: sentenceContext };
+          } else {
+            // Fallback: extract smaller window around the term
+            const termLength = term.endPosition - term.startPosition;
+            const windowSize = Math.min(150, termLength + 100);
+            const start = Math.max(0, term.startPosition - 50);
+            const end = Math.min(currentFullText.length, term.endPosition + 50);
+            const smallContext = currentFullText.substring(start, end).trim();
+            return { ...term, context: smallContext };
+          }
         }
         return term;
       });

@@ -90,6 +90,10 @@ interface EnhancedLiveAnalysisPanelProps {
   misalignmentActive?: boolean;
   unmatchedSegments?: string[]; // Content segments not matched in counterpart panel
   unmatchedCount?: number;
+  // Term Validator settings
+  renderValidatedAsNormal?: boolean; // If true, validated terms render as normal text instead of green highlighting
+  // Hot Match mode
+  hotMatchModeEnabled?: boolean; // If true, use pink color scheme like semantic types
 }
 
 // Levenshtein distance-based similarity calculation
@@ -169,7 +173,9 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
   isAnalyzingLive = false,
   misalignmentActive = false,
   unmatchedSegments = [],
-  unmatchedCount
+  unmatchedCount,
+  renderValidatedAsNormal = false,
+  hotMatchModeEnabled = false
 }) => {
   // Filter flagged terms based on analysis mode
   const flaggedTerms = React.useMemo(() => {
@@ -494,6 +500,20 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
     }
   }, [content, isEditing]);
 
+  // Force re-render highlighting when flaggedTerms change or component becomes visible
+  // This ensures highlighting persists when switching between tabs
+  useEffect(() => {
+    if (!isEditing && editorRef.current) {
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        const editor = editorRef.current;
+        if (editor && document.contains(editor)) {
+          editor.innerHTML = renderContentWithUnderlines();
+        }
+      });
+    }
+  }, [flaggedTerms, content, isEditing, showSemanticTypes]);
+
   /**
    * Auto-reanalysis feature DISABLED to prevent unexpected AI credit usage
    * Users must manually trigger analysis via the "Start QA" button or the "Reanalyze" button
@@ -574,6 +594,24 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
       return '#6b7280';
     }
     return semanticType.ui_information.color_code;
+  };
+
+  // Hot Match pink color scheme (like semantic types, but pink-based)
+  const getHotMatchColor = (classification: string) => {
+    switch (classification) {
+      case 'valid':
+        return '#ec4899'; // pink-500 - lightest pink for valid terms
+      case 'review':
+        return '#db2777'; // pink-600 - medium pink for review terms
+      case 'critical':
+        return '#be185d'; // pink-700 - darker pink for critical terms
+      case 'spelling':
+        return '#f472b6'; // pink-400 - light pink for spelling
+      case 'grammar':
+        return '#9d174d'; // pink-800 - deep pink for grammar
+      default:
+        return '#ec4899'; // default to pink-500
+    }
   };
 
   // Helper to convert hex color to rgba with opacity
@@ -688,26 +726,37 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
         html += `<span class="term-highlight" data-unmatched="true" style="${style}">${escaped}</span>`;
       } else {
         const color = getClassificationColor(p.classification as string);
-        const semanticColor = showSemanticTypes ? getSemanticTypeColor(p.term?.semantic_type) : color;
+        // Hot Match mode: use pink colors; Semantic Types: use semantic colors; Default: use classification colors
+        const displayColor = hotMatchModeEnabled 
+          ? getHotMatchColor(p.classification as string)
+          : (showSemanticTypes ? getSemanticTypeColor(p.term?.semantic_type) : color);
         let underlineStyle = '';
         const hasUnmatchedOverlap = positions.some(q => q.kind === 'unmatched' && !(q.end <= p.start || q.start >= p.end));
         if (p.classification === 'grammar') {
-          const bgGradient = `linear-gradient(90deg, ${hexToRgba(color, 0.12)}, ${hexToRgba(semanticColor, 0.12)})`;
+          const bgGradient = `linear-gradient(90deg, ${hexToRgba(displayColor, 0.12)}, ${hexToRgba(displayColor, 0.12)})`;
           const overlayAmber = hasUnmatchedOverlap ? `linear-gradient(0deg, ${hexToRgba('#f59e0b', 0.3)}, ${hexToRgba('#f59e0b', 0.3)}), ` : '';
-          underlineStyle = `color: ${color}; border-bottom: 2px wavy ${color}; cursor: pointer; background: ${overlayAmber}${bgGradient}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
+          underlineStyle = `color: ${displayColor}; border-bottom: 2px wavy ${displayColor}; cursor: pointer; background: ${overlayAmber}${bgGradient}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
         } else if (p.classification === 'spelling') {
-          const baseBg = hexToRgba(color, 0.08);
+          const baseBg = hexToRgba(displayColor, 0.08);
           const background = hasUnmatchedOverlap ? `linear-gradient(0deg, ${hexToRgba('#f59e0b', 0.3)}, ${hexToRgba('#f59e0b', 0.3)}), linear-gradient(0deg, ${baseBg}, ${baseBg})` : baseBg;
-          underlineStyle = `color: ${color}; border-bottom: 2px dotted ${color}; cursor: pointer; background: ${background}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
+          underlineStyle = `color: ${displayColor}; border-bottom: 2px dotted ${displayColor}; cursor: pointer; background: ${background}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
         } else if (p.classification === 'valid') {
-          const displayColor = showSemanticTypes ? semanticColor : color;
+          if (renderValidatedAsNormal) {
+            // Render validated terms as normal text (no special styling)
+            const escaped = escapeHtml(p.text);
+            html += escaped;
+            last = p.end;
+            return; // Skip the standard term-highlight span
+          } else {
+            // Highlighting for validated terms (respects Hot Match / Semantic Types)
+            const baseBg = hexToRgba(displayColor, 0.06);
+            const background = hasUnmatchedOverlap ? `linear-gradient(0deg, ${hexToRgba('#f59e0b', 0.3)}, ${hexToRgba('#f59e0b', 0.3)}), linear-gradient(0deg, ${baseBg}, ${baseBg})` : baseBg;
+            underlineStyle = `color: ${displayColor}; border-bottom: 2px dashed ${displayColor}; cursor: pointer; background: ${background}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
+          }
+        } else {
           const baseBg = hexToRgba(displayColor, 0.06);
           const background = hasUnmatchedOverlap ? `linear-gradient(0deg, ${hexToRgba('#f59e0b', 0.3)}, ${hexToRgba('#f59e0b', 0.3)}), linear-gradient(0deg, ${baseBg}, ${baseBg})` : baseBg;
-          underlineStyle = `color: ${displayColor}; border-bottom: 2px dashed ${displayColor}; cursor: pointer; background: ${background}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
-        } else {
-          const baseBg = hexToRgba(color, 0.06);
-          const background = hasUnmatchedOverlap ? `linear-gradient(0deg, ${hexToRgba('#f59e0b', 0.3)}, ${hexToRgba('#f59e0b', 0.3)}), linear-gradient(0deg, ${baseBg}, ${baseBg})` : baseBg;
-          underlineStyle = `color: ${color}; border-bottom: 2px solid ${color}; cursor: pointer; background: ${background}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
+          underlineStyle = `color: ${displayColor}; border-bottom: 2px solid ${displayColor}; cursor: pointer; background: ${background}; padding: 0 2px; border-radius: 2px; display: inline; font-weight: 500;`;
         }
         const escaped = escapeHtml(p.text);
         html += `<span class="term-highlight" style="${underlineStyle}" data-term-start="${p.start}" data-term-end="${p.end}" data-term-class="${p.classification || ''}" data-term-text="${escapeHtml(p.text)}">${escaped}</span>`;
@@ -1072,9 +1121,17 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                   {/* Enhanced Header */}
                   <div className="flex items-center justify-between gap-2 pb-2 border-b">
                     <div className="flex items-center gap-2">
-                      {getClassificationIcon(hoveredTerm.classification)}
+                      <span style={{
+                        color: hotMatchModeEnabled 
+                          ? getHotMatchColor(hoveredTerm.classification)
+                          : (showSemanticTypes ? getSemanticTypeColor(hoveredTerm.semantic_type) : getClassificationColor(hoveredTerm.classification))
+                      }}>
+                        {getClassificationIcon(hoveredTerm.classification)}
+                      </span>
                       <Badge style={{
-                      backgroundColor: getClassificationColor(hoveredTerm.classification)
+                      backgroundColor: hotMatchModeEnabled 
+                        ? getHotMatchColor(hoveredTerm.classification)
+                        : (showSemanticTypes ? getSemanticTypeColor(hoveredTerm.semantic_type) : getClassificationColor(hoveredTerm.classification))
                     }} className="text-white">
                         {hoveredTerm.classification.toUpperCase()}
                       </Badge>
@@ -1093,8 +1150,8 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                     <div className="text-sm font-semibold">{hoveredTerm.text}</div>
                   </div>
                   
-                  {/* Semantic Type Information */}
-                  {hoveredTerm.semantic_type?.ui_information && showSemanticTypes && <div>
+                  {/* Semantic Type Information (hidden when Hot Match overrides) */}
+                  {hoveredTerm.semantic_type?.ui_information && showSemanticTypes && !hotMatchModeEnabled && <div>
                       <div className="text-xs text-muted-foreground mb-1">Semantic Type:</div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full" style={{

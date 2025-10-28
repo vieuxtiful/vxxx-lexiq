@@ -12,8 +12,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import { Upload, FileText, Play, TrendingUp, CheckCircle, AlertCircle, BarChart3, Activity, BookOpen, Zap, ArrowLeft, Globe, Building, Download, Undo2, Redo2, Database, Save, User, LogOut, RefreshCw } from 'lucide-react';
+import { Upload, FileText, Play, TrendingUp, CheckCircle, AlertCircle, BarChart3, Activity, BookOpen, Zap, ArrowLeft, Globe, Building, Download, Undo2, Redo2, Database, Save, User, LogOut, RefreshCw, Settings, Flame, CheckSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useChunkedAnalysis } from '@/hooks/useChunkedAnalysis';
 import { useAnalysisEngine } from '@/hooks/useAnalysisEngine';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,6 +24,9 @@ import { useProject } from '@/contexts/ProjectContext';
 import { useAnalysisSession, AnalysisSession } from '@/hooks/useAnalysisSession';
 import { useFileProcessor } from '@/hooks/useFileProcessor';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { useHotMatch } from '@/hooks/useHotMatch';
+import HotMatchIcon from './HotMatchIcon';
+import { SettingsDialog } from './SettingsDialog';
 import { transformAnalyzedTermsToFlagged } from '@/utils/analysisDataTransformer';
 import { EnhancedLiveAnalysisPanel } from './EnhancedLiveAnalysisPanel';
 import { useLQASync } from '@/hooks/useLQASync';
@@ -162,9 +166,6 @@ export function EnhancedMainInterface({
   const [isDraggingTranslation, setIsDraggingTranslation] = useState(false);
   const [isDraggingGlossary, setIsDraggingGlossary] = useState(false);
 
-  // Track previous project to detect changes
-  const [previousProjectId, setPreviousProjectId] = useState<string | null>(null);
-
   // Track loading state to prevent race conditions
   const [isLoadingSession, setIsLoadingSession] = useState(false);
 
@@ -177,6 +178,9 @@ export function EnhancedMainInterface({
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const [showQuitDialog, setShowQuitDialog] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [hotMatchModeEnabled, setHotMatchModeEnabled] = useState(false);
+  const [renderValidatedAsNormal, setRenderValidatedAsNormal] = useState(false);
 
   // Smart reanalysis state
   const [lastAnalyzedContent, setLastAnalyzedContent] = useState('');
@@ -256,6 +260,14 @@ export function EnhancedMainInterface({
     logProjectCreated,
     logSessionRestored
   } = useAuditLog();
+  const {
+    detectHotMatches,
+    isDetecting: isDetectingHotMatches
+  } = useHotMatch();
+  
+  // Track previous project to detect changes (initialize with current project to avoid reset on mount)
+  const [previousProjectId, setPreviousProjectId] = useState<string | null>(currentProject?.id || null);
+  
   const [translationFileId, setTranslationFileId] = useState<string | null>(null);
   const [glossaryFileId, setGlossaryFileId] = useState<string | null>(null);
   const [showProjectSetup, setShowProjectSetup] = useState(false);
@@ -1271,7 +1283,9 @@ export function EnhancedMainInterface({
 
     // Check if we have either a file or manually entered text
     const hasTranslation = translationFile || textManuallyEntered && currentContent.length > 0;
-    if (!hasTranslation || !glossaryFile) {
+    // Hot Match mode: glossary is optional; otherwise glossary is required
+    const needsGlossary = !hotMatchModeEnabled;
+    if (!hasTranslation || (needsGlossary && !glossaryFile)) {
       toast({
         title: "Missing Files",
         description: !hasTranslation ? "Please upload a translation file or enter text in the editor." : "Please upload a glossary file.",
@@ -1303,15 +1317,16 @@ export function EnhancedMainInterface({
     try {
       // Use either file content or manually entered content
       const translationContent = translationFile ? await translationFile.text() : currentContent;
-      const glossaryContent = await glossaryFile.text();
+      const glossaryContent = glossaryFile ? await glossaryFile.text() : '';
       console.log('Calling analyzeWithChunking with:', {
         translationLength: translationContent.length,
         glossaryLength: glossaryContent.length,
         language: selectedLanguage,
         domain: selectedDomain,
-        checkGrammar: grammarCheckingEnabled
+        checkGrammar: grammarCheckingEnabled,
+        hotMatchMode: hotMatchModeEnabled
       });
-      const result = await analyzeWithChunking(translationContent, glossaryContent, selectedLanguage, selectedDomain, grammarCheckingEnabled);
+      let result = await analyzeWithChunking(translationContent, glossaryContent, selectedLanguage, selectedDomain, grammarCheckingEnabled);
       
       // If analysis was cancelled, reset to pre-QA state
       if (!result) {
@@ -1350,6 +1365,58 @@ export function EnhancedMainInterface({
             grammar_issues: t.grammar_issues
           })));
         }
+
+        // HOT MATCH: If enabled, run Hot Match detection on GTV flagged terms
+        if (hotMatchModeEnabled && result.terms.length > 0) {
+          console.log('🔥 Hot Match Mode: Running detection on', result.terms.length, 'GTV terms');
+          try {
+            // Extract GTV terms for Hot Match analysis
+            const gtvTerms = result.terms.map((t: any) => ({
+              text: t.text,
+              classification: t.classification,
+              score: t.score
+            }));
+
+            const hotMatchData = await detectHotMatches({
+              terms: gtvTerms,
+              domain: selectedDomain,
+              language: selectedLanguage,
+              content: translationContent,
+              projectId: currentProject?.id
+            });
+
+            console.log(`🔥 Hot Match Detection: Found ${hotMatchData.length} matches`);
+
+            // Annotate terms with Hot Match data
+            if (hotMatchData.length > 0) {
+              result.terms = result.terms.map((term: any) => {
+                const hotMatch = hotMatchData.find(hm => hm.detectedTerm === term.text);
+                if (hotMatch) {
+                  return {
+                    ...term,
+                    hotMatch: {
+                      baseTerm: hotMatch.baseTerm,
+                      interchangeableTerms: hotMatch.interchangeableTerms,
+                      percentages: hotMatch.percentages,
+                      confidence: hotMatch.confidence
+                    }
+                  };
+                }
+                return term;
+              });
+              console.log(`🔥 Annotated ${hotMatchData.length} terms with Hot Match data`);
+            }
+          } catch (hotMatchError) {
+            console.error('Hot Match detection failed:', hotMatchError);
+            // Don't block analysis on Hot Match failure
+            toast({
+              title: "Hot Match Detection Failed",
+              description: "Analysis completed but Hot Match recommendations unavailable.",
+              variant: "destructive"
+            });
+          }
+        }
+
         const processingTime = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : undefined;
 
         // Store last analyzed content and parameters for smart reanalysis
@@ -1402,7 +1469,9 @@ export function EnhancedMainInterface({
         }
         toast({
           title: "Analysis Complete",
-          description: `Analyzed ${result.statistics.totalTerms} terms with ${result.statistics.qualityScore.toFixed(1)}% quality score`
+          description: hotMatchModeEnabled 
+            ? `Analyzed ${result.statistics.totalTerms} terms with Hot Match recommendations`
+            : `Analyzed ${result.statistics.totalTerms} terms with ${result.statistics.qualityScore.toFixed(1)}% quality score`
         });
       }
     } catch (error) {
@@ -2165,6 +2234,13 @@ export function EnhancedMainInterface({
                 {engineReady ? 'Engine Ready' : 'Engine Not Ready'}
               </Badge>
 
+              {hotMatchModeEnabled && (
+                <Badge variant="outline" className="bg-pink-500/10 text-pink-700 border-pink-500/20">
+                  <HotMatchIcon size={12} className="mr-1" />
+                  Hot Match Active
+                </Badge>
+              )}
+
               {/* User Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -2177,6 +2253,16 @@ export function EnhancedMainInterface({
                     <p className="text-sm font-medium">{user?.email}</p>
                     <p className="text-xs text-muted-foreground">Signed in</p>
                   </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setShowSettings(true)}>
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                    {hotMatchModeEnabled && (
+                      <Badge variant="outline" className="ml-auto text-xs bg-pink-500/10 text-pink-700">
+                        <Flame className="h-3 w-3" />
+                      </Badge>
+                    )}
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setShowSignOutDialog(true)}>
                     <LogOut className="h-4 w-4 mr-2" />
@@ -2221,7 +2307,8 @@ export function EnhancedMainInterface({
                   <QAChatPanel analysisContext={currentContent + '\n\nAnalysis: ' + JSON.stringify(analysisResults || {})} />
                   
                   {/* Abbreviated Statistics */}
-                  {analysisComplete && analysisResults && <Card>
+                  {analysisComplete && analysisResults && (
+                    <Card>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-sm">Quality Overview</CardTitle>
                       </CardHeader>
@@ -2244,7 +2331,8 @@ export function EnhancedMainInterface({
                           </div>
                         </div>
                       </CardContent>
-                    </Card>}
+                    </Card>
+                  )}
 
                   {/* Compact File Upload */}
                   <Card>
@@ -2291,14 +2379,14 @@ export function EnhancedMainInterface({
                           <Upload className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0 ml-2" />
                         )}
                       </div>
-                <p className="text-[10px] text-muted-foreground px-1">
-                  {textManuallyEntered 
-                    ? 'Paste or type in editor • Clear text to upload files' 
-                    : currentProject?.project_type === 'bilingual'
-                      ? '.xliff, .tmx, .po (and TMS/CAT variants) • Max 50MB'
-                      : '.txt, .docx, .json, .csv, .xml, .yml, .odt, .xlsx • Max 50MB'
-                  }
-                </p>
+                      <p className="text-[10px] text-muted-foreground px-1">
+                        {textManuallyEntered 
+                          ? 'Paste or type in editor • Clear text to upload files' 
+                          : currentProject?.project_type === 'bilingual'
+                            ? '.xliff, .tmx, .po (and TMS/CAT variants) • Max 50MB'
+                            : '.txt, .docx, .json, .csv, .xml, .yml, .odt, .xlsx • Max 50MB'
+                        }
+                      </p>
                       <input 
                         ref={translationInputRef} 
                         type="file" 
@@ -2345,17 +2433,17 @@ export function EnhancedMainInterface({
                           <Upload className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0 ml-2" />
                         )}
                       </div>
-                <p className="text-[10px] text-muted-foreground px-1">
-                  .csv or .txt format • Max 50MB
-                </p>
+                      <p className="text-[10px] text-muted-foreground px-1">
+                        .csv or .txt format • Max 50MB
+                      </p>
                       <input ref={glossaryInputRef} type="file" onChange={e => handleFileUpload(e, 'glossary')} className="hidden" accept=".csv,.txt" />
 
                       <WaveformQAButton
                         onClick={runEnhancedAnalysis}
                         disabled={
-                          !translationFile && !textManuallyEntered || 
-                          !glossaryFile || 
-                          isAnalyzing || 
+                          (!translationFile && !textManuallyEntered) ||
+                          (!hotMatchModeEnabled && !glossaryFile) ||
+                          isAnalyzing ||
                           (currentProject?.project_type === 'bilingual' && (!sourceContent.trim() || !currentContent.trim()))
                         }
                         isAnalyzing={isAnalyzing}
@@ -2363,28 +2451,29 @@ export function EnhancedMainInterface({
                         className="w-full"
                       />
 
-                      {isAnalyzing && <div className="space-y-2">
+                      {isAnalyzing && (
+                        <div className="space-y-2">
                           {/* Enhanced Progress Bar - only for chunked analysis */}
-                          {totalChunks > 1 && <>
+                          {totalChunks > 1 && (
+                            <>
                               <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden">
-                                <div className="h-full bg-gradient-to-r from-primary to-primary-glow transition-all duration-500 ease-out relative" style={{
-                            width: `${engineProgress}%`
-                          }}>
+                                <div className="h-full bg-gradient-to-r from-primary to-primary-glow transition-all duration-500 ease-out relative" style={{ width: `${engineProgress}%` }}>
                                   {/* Progress bar shimmer */}
                                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
                                 </div>
                               </div>
-                              
                               <p className="text-xs text-muted-foreground text-center">
                                 Processing chunk {currentChunk} of {totalChunks}
                               </p>
-                            </>}
+                            </>
+                          )}
 
                           {/* Cancel Button */}
                           <Button variant="outline" size="sm" onClick={cancelAnalysis} className="w-full">
                             Cancel Analysis
                           </Button>
-                        </div>}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
@@ -2491,6 +2580,8 @@ export function EnhancedMainInterface({
                                   misalignmentActive={misalignmentActive}
                                   unmatchedSegments={contentDifferences.targetUnmatched}
                                   unmatchedCount={sharedUnmatchedCount}
+                                  renderValidatedAsNormal={renderValidatedAsNormal}
+                                  hotMatchModeEnabled={hotMatchModeEnabled}
                                 />
                               </div>
                             </ResizablePanel>
@@ -2547,6 +2638,8 @@ export function EnhancedMainInterface({
                               showGTVFeatures={true}
                               isAnalyzingLive={isAnalyzing || isReanalyzing || engineAnalyzing}
                               misalignmentActive={misalignmentActive}
+                              renderValidatedAsNormal={renderValidatedAsNormal}
+                              hotMatchModeEnabled={hotMatchModeEnabled}
                             />
                           </div>
                         )}
@@ -2629,6 +2722,33 @@ export function EnhancedMainInterface({
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Unified Settings Dialog */}
+      <SettingsDialog
+        open={showSettings}
+        onOpenChange={setShowSettings}
+        hotMatchModeEnabled={hotMatchModeEnabled}
+        onHotMatchToggle={(enabled) => {
+          setHotMatchModeEnabled(enabled);
+          toast({
+            title: enabled ? 'Hot Match Enabled' : 'Hot Match Disabled',
+            description: enabled ? 'Hot Match will analyze GTV-flagged terms for crowd-sourced recommendations.' : 'GTV checks restored.',
+          });
+        }}
+        lqaCompatible={grammarCheckingEnabled || spellingCheckingEnabled}
+        onLQAToggle={(enabled) => {
+          setGrammarCheckingEnabled(enabled);
+          setSpellingCheckingEnabled(enabled);
+        }}
+        renderValidatedAsNormal={renderValidatedAsNormal}
+        onValidatedRenderToggle={(enabled) => {
+          setRenderValidatedAsNormal(enabled);
+          toast({
+            title: enabled ? 'Validated Terms as Normal Text' : 'Validated Terms with Green Highlight',
+            description: enabled ? 'Validated terms will blend into normal text.' : 'Validated terms will show green highlighting.',
+          });
+        }}
+      />
 
       {/* Project Setup Wizard */}
       <ProjectSetupWizard isOpen={showProjectSetup} onComplete={handleProjectSetupComplete} onSkip={handleSetupSkip} />

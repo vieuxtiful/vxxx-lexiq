@@ -1,14 +1,5 @@
 import React, { useMemo, useEffect, useState } from 'react';
 
-interface Star {
-  id: number;
-  x: number;
-  y: number;
-  size: number;
-  twinkleDelay: number;
-  twinkleDuration: number;
-}
-
 interface ShootingStar {
   id: number;
   startX: number;
@@ -26,9 +17,17 @@ interface Planet {
   glowColor: string;
 }
 
+interface DistantStar {
+  id: number;
+  x: number;
+  y: number;
+  flickerDuration: number;
+  flickerDelay: number;
+}
+
 /**
- * NightTheme component - Starry sky with shooting stars, planets, and atmospheric effects
- * Stars are randomly generated on each render for variety
+ * NightTheme component - Starry sky with rare shooting stars, planets, and atmospheric effects
+ * Stars have stable positions with subtle flicker animations
  */
 export interface NightThemeProps {
   planetImageSrcs?: string[]; // Optional PNGs for planets in order
@@ -37,75 +36,44 @@ export interface NightThemeProps {
 }
 
 export const NightTheme: React.FC<NightThemeProps> = ({ planetImageSrcs, moonImageSrc, currentDate }) => {
-  // Generate random stars (new positions each time)
-  const stars = useMemo<Star[]>(() => {
-    return Array.from({ length: 200 }, (_, i) => ({
+  // Rare shooting star state (18% chance every 5 seconds)
+  const [showShootingStar, setShowShootingStar] = useState(false);
+  const [currentShootingStar, setCurrentShootingStar] = useState<ShootingStar | null>(null);
+
+  // Shooting star appearance logic (18% chance every 5 seconds)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (Math.random() < 0.18) { // 18% chance
+        const newStar: ShootingStar = {
+          id: Date.now(),
+          startX: 20 + Math.random() * 60,
+          startY: 10 + Math.random() * 40,
+          delay: 0,
+          duration: 1.5 + Math.random() * 1,
+        };
+        setCurrentShootingStar(newStar);
+        setShowShootingStar(true);
+        
+        // Hide after animation completes
+        setTimeout(() => {
+          setShowShootingStar(false);
+          setCurrentShootingStar(null);
+        }, (newStar.duration + 0.5) * 1000);
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+
+  // Generate distant stars with stable positions and flicker properties
+  const distantStars = useMemo<DistantStar[]>(() => {
+    return Array.from({ length: 300 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 100,
-      size: 1 + Math.random() * 2,
-      twinkleDelay: Math.random() * 4, // staggered baseline delays
-      twinkleDuration: 3 + Math.random() * 3, // slower baseline: 3-6s
-    }));
-  }, []); // Empty dependency array means new stars on each component mount
-
-  // Active twinkles: map of starId -> duration (seconds)
-  const [activeTwinkles, setActiveTwinkles] = useState<Record<number, number>>({});
-
-  // Helper to trigger a wave of twinkles
-  const triggerTwinkles = () => {
-    // Randomly choose how many stars to twinkle this wave (1..stars.length)
-    const count = Math.max(1, Math.floor(Math.random() * stars.length));
-    const chosen = new Set<number>();
-    while (chosen.size < count) {
-      const idx = Math.floor(Math.random() * stars.length);
-      chosen.add(stars[idx].id);
-    }
-    // Apply random duration between 1 and 4 seconds (slower, more subtle)
-    const updates: Record<number, number> = {};
-    chosen.forEach((id) => {
-      const duration = 1 + Math.random() * 3; // 1-4s
-      updates[id] = duration;
-      // Clear after duration
-      setTimeout(() => {
-        setActiveTwinkles(prev => {
-          const next = { ...prev };
-          delete next[id];
-          return next;
-        });
-      }, duration * 1000);
-    });
-    setActiveTwinkles(prev => ({ ...prev, ...updates }));
-  };
-
-  // Schedule 5 triggers every 10 seconds, staggered by 2s (0,2,4,6,8)
-  useEffect(() => {
-    // Fire an initial staggered sequence immediately
-    const offsets = [0, 2000, 4000, 6000, 8000];
-    const timeouts: number[] = offsets.map((ms) => window.setTimeout(triggerTwinkles, ms));
-
-    // Then repeat every 10 seconds
-    const interval = window.setInterval(() => {
-      offsets.forEach((ms) => {
-        timeouts.push(window.setTimeout(triggerTwinkles, ms));
-      });
-    }, 10000);
-
-    return () => {
-      timeouts.forEach((t) => clearTimeout(t));
-      clearInterval(interval);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stars.length]);
-
-  // Generate shooting stars
-  const shootingStars = useMemo<ShootingStar[]>(() => {
-    return Array.from({ length: 5 }, (_, i) => ({
-      id: i,
-      startX: 20 + Math.random() * 60,
-      startY: 10 + Math.random() * 40,
-      delay: i * 8 + Math.random() * 5,
-      duration: 1.5 + Math.random() * 1,
+      flickerDuration: 0.5 + Math.random() * 1.5, // 0.5-2 seconds
+      flickerDelay: Math.random() * 5, // Staggered start times
     }));
   }, []);
 
@@ -149,46 +117,18 @@ export const NightTheme: React.FC<NightThemeProps> = ({ planetImageSrcs, moonIma
         <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-blue-600/20 rounded-full blur-[100px] animate-pulse-slower" />
       </div>
       
-      {/* Stars */}
-      {stars.map((star) => {
-        const activeDuration = activeTwinkles[star.id];
-        const isActive = typeof activeDuration === 'number';
-        const baseGlow = star.size * 1.5;
-        const activeGlow = baseGlow * 1.6; // faint increase when twinkling
-        const duration = isActive ? activeDuration : star.twinkleDuration;
-        const delay = isActive ? 0 : star.twinkleDelay;
-        // animation shorthand: name duration timing-function delay
-        const animation = `twinkle ${duration}s ease-in-out ${delay}s`;
-        return (
-          <div
-            key={star.id}
-            className="absolute bg-white rounded-full"
-            style={{
-              left: `${star.x}%`,
-              top: `${star.y}%`,
-              width: `${star.size}px`,
-              height: `${star.size}px`,
-              animation,
-              boxShadow: `0 0 ${isActive ? activeGlow : baseGlow}px rgba(255, 255, 255, ${isActive ? 0.55 : 0.35})`,
-              filter: isActive ? 'brightness(1.05)' : 'brightness(0.9)',
-            }}
-          />
-        );
-      })}
-      
-      {/* Shooting stars */}
-      {shootingStars.map((star) => (
+      {/* Rare shooting star */}
+      {showShootingStar && currentShootingStar && (
         <div
-          key={star.id}
+          key={currentShootingStar.id}
           className="absolute w-1 h-1 bg-white rounded-full shooting-star"
           style={{
-            left: `${star.startX}%`,
-            top: `${star.startY}%`,
-            animationDelay: `${star.delay}s`,
-            animationDuration: `${star.duration}s`,
+            left: `${currentShootingStar.startX}%`,
+            top: `${currentShootingStar.startY}%`,
+            animationDuration: `${currentShootingStar.duration}s`,
           }}
         />
-      ))}
+      )}
       
       {/* Planets (PNG render if provided, otherwise vector fallback) */}
       {planets.map((planet, idx) => {
@@ -252,15 +192,17 @@ export const NightTheme: React.FC<NightThemeProps> = ({ planetImageSrcs, moonIma
       
       {/* Distant stars (milky way effect) */}
       <div className="absolute inset-0 opacity-40">
-        {Array.from({ length: 300 }).map((_, i) => (
+        {distantStars.map((star) => (
           <div
-            key={`distant-${i}`}
+            key={`distant-${star.id}`}
             className="absolute bg-white/60 rounded-full"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              width: '0.5px',
-              height: '0.5px',
+              left: `${star.x}%`,
+              top: `${star.y}%`,
+              width: '2.5px',
+              height: '2.5px',
+              animation: `starFlicker ${star.flickerDuration}s ease-in-out infinite`,
+              animationDelay: `${star.flickerDelay}s`,
             }}
           />
         ))}

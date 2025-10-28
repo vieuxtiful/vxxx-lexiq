@@ -17,7 +17,24 @@ export const AppRouter: React.FC = () => {
     moveToProjectCreation,
     refetchProjects 
   } = useAuthFlow();
-  const { createProject, deletionState } = useProject();
+  const { createProject, deletionState, setCurrentProjectWithReset } = useProject();
+
+  // Sync AuthFlow selectedProject into ProjectContext so Main Window has a currentProject
+  React.useEffect(() => {
+    if (selectedProject) {
+      setCurrentProjectWithReset(selectedProject);
+    } else {
+      setCurrentProjectWithReset(null);
+    }
+  }, [selectedProject, setCurrentProjectWithReset]);
+
+  // Proactively refresh projects when a project is selected to avoid stale lists
+  React.useEffect(() => {
+    if (selectedProject) {
+      // Fire and forget; ensures userProjects catches up in background
+      refetchProjects();
+    }
+  }, [selectedProject, refetchProjects]);
 
   const handleProjectSelect = (project: any) => {
     console.log('Project selected:', project.name);
@@ -104,22 +121,9 @@ export const AppRouter: React.FC = () => {
     );
   }
 
-  // User has selected a project - show main interface
-  if (selectedProject && currentState === 'project_selected') {
-    // Verify the selected project still exists
-    const projectExists = userProjects.some(p => p.id === selectedProject.id);
-    
-    if (!projectExists) {
-      return (
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-            <p className="text-muted-foreground">Updating workspace...</p>
-          </div>
-        </div>
-      );
-    }
-    
+  // User has selected a project - show main interface immediately
+  // We render as soon as selectedProject exists to avoid blocking on a stale userProjects list
+  if (selectedProject) {
     return <EnhancedMainInterface />;
   }
 

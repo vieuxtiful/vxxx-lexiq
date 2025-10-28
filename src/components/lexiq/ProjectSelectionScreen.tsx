@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { FolderOpen, Plus, Clock, Search, Trash2, MoreVertical, Edit2, GripVertical, Moon, Sun } from 'lucide-react';
+import { FolderOpen, Plus, Clock, Search, Trash2, MoreVertical, Edit2, GripVertical, Moon, Sun, Palette } from 'lucide-react';
 import { Project } from '@/hooks/useProjects';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { FloatingBackground } from './FloatingBackground';
+import { StandardTheme } from './themes/StandardTheme';
 import { useProject } from '@/contexts/ProjectContext';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -16,6 +17,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '@/hooks/useAuth';
 import { useProjectScreenDarkMode } from '@/hooks/useProjectScreenDarkMode';
 import lexiqQLogo from '@/assets/lexiq-q-logo.png';
+
 interface ProjectSelectionScreenProps {
   onProjectSelect: (project: Project) => void;
   onCreateNewProject: () => void;
@@ -27,6 +29,7 @@ interface ProjectSelectionScreenProps {
     progress: number;
   };
 }
+
 export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
   onProjectSelect,
   onCreateNewProject,
@@ -52,6 +55,14 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [renamingProject, setRenamingProject] = useState<Project | null>(null);
   const [newProjectName, setNewProjectName] = useState('');
+  const [selectedTheme, setSelectedTheme] = useState<string>(() => {
+    return localStorage.getItem('lexiq-project-screen-theme') || 'Standard';
+  });
+
+  // Save theme preference
+  useEffect(() => {
+    localStorage.setItem('lexiq-project-screen-theme', selectedTheme);
+  }, [selectedTheme]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -89,6 +100,7 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
       setFilteredProjects(orderedProjects);
     }
   }, [searchTerm, orderedProjects]);
+
   const handleDeleteProject = async (projectId: string, projectName: string, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
 
@@ -165,11 +177,13 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
       year: 'numeric'
     });
   };
+
   if (loading) {
     return <div className={`min-h-screen relative overflow-hidden ${isDarkMode ? 'dark' : ''}`} style={{
-      background: 'var(--gradient-welcome)'
+      background: selectedTheme === 'Standard' ? 'transparent' : 'var(--gradient-welcome)'
     }}>
         <div className="fixed inset-0 z-0 pointer-events-none">
+          {selectedTheme === 'Standard' && <StandardTheme />}
           <FloatingBackground />
         </div>
         <div className="relative z-10 flex items-center justify-center min-h-screen">
@@ -180,14 +194,33 @@ export const ProjectSelectionScreen: React.FC<ProjectSelectionScreenProps> = ({
         </div>
       </div>;
   }
+
   return <div className={`min-h-screen relative overflow-hidden transition-colors ${shouldAnimate ? 'duration-[2000ms]' : 'duration-300'} ${isDarkMode ? 'dark' : ''}`} style={{
-    background: 'var(--gradient-welcome)'
+    background: selectedTheme === 'Standard' ? 'transparent' : 'var(--gradient-welcome)'
   }}>
       <div className="fixed inset-0 z-0 pointer-events-none">
+        {selectedTheme === 'Standard' && <StandardTheme />}
         <FloatingBackground />
       </div>
       
       <div className="relative z-10 container mx-auto px-6 py-8">
+        {/* Theme Selector - Right-aligned at top */}
+        <div className="absolute top-4 right-6 z-20">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-2 h-8 text-xs">
+                <Palette className="h-4 w-4" />
+                {selectedTheme}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setSelectedTheme('Standard')}>
+                Standard
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        
         {/* Header with Animated Q Logo */}
         <div className="text-center mb-12 mt-8">
           <div className="flex justify-center mb-6">
