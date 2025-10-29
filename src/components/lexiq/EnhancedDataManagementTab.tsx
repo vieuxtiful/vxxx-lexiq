@@ -17,8 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { lexiqApi, TermData } from '@/lib/lexiqApiClient';
 import { useRecommendations } from '@/hooks/useRecommendations';
-import { EnhancedTermTooltip } from './EnhancedTermTooltip';
-import { extractSentenceContext } from '@/utils/contextExtractor';
+import { EnhancedTermTooltip } from './TermTooltip';
 
 interface EnhancedDataManagementTabProps {
   terms: AnalyzedTerm[];
@@ -48,43 +47,10 @@ export const EnhancedDataManagementTab: React.FC<EnhancedDataManagementTabProps>
   const [syncStatus, setSyncStatus] = useState<string>('');
   const [showTooltipFor, setShowTooltipFor] = useState<string | null>(null);
 
-  // Initialize processed terms with sentence-level context extraction
+  // Initialize processed terms
   useEffect(() => {
-    if (terms && terms.length > 0 && currentFullText) {
-      const enhancedTerms = terms.map(term => {
-        // Always extract sentence-level context to ensure we only get the containing sentence
-        // This prevents entire text blocks from appearing in the context field
-        if (term.startPosition >= 0 && term.endPosition > term.startPosition) {
-          const sentenceContext = extractSentenceContext(
-            currentFullText, 
-            term.startPosition, 
-            term.endPosition,
-            300 // Max length for sentence context
-          );
-          
-          // Verify it's actually a sentence (contains at most 2 sentence delimiters)
-          const sentenceDelimiters = sentenceContext.match(/[.!?]/g);
-          const delimiterCount = sentenceDelimiters ? sentenceDelimiters.length : 0;
-          
-          // If it has 0-2 delimiters, it's a valid sentence context
-          // If more, the extraction may have failed, so truncate more aggressively
-          if (delimiterCount <= 2) {
-            return { ...term, context: sentenceContext };
-          } else {
-            // Fallback: extract smaller window around the term
-            const start = Math.max(0, term.startPosition - 50);
-            const end = Math.min(currentFullText.length, term.endPosition + 50);
-            const smallContext = currentFullText.substring(start, end).trim();
-            return { ...term, context: smallContext };
-          }
-        }
-        return term;
-      });
-      setProcessedTerms(enhancedTerms);
-    } else {
-      setProcessedTerms(terms);
-    }
-  }, [terms, currentFullText]);
+    setProcessedTerms(terms);
+  }, [terms]);
 
   // Auto-fetch recommendations for low-confidence terms
   useEffect(() => {
