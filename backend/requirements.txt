@@ -1,0 +1,20 @@
+# LexiQ Backend Dependencies
+# FastAPI and server
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+
+# Data processing
+pandas==2.2.3
+pydantic==2.9.2
+
+# Environment and configuration
+python-dotenv==1.0.1
+
+# Database (optional - for Supabase integration)
+supabase==2.7.4
+
+# Caching (optional - for Redis integration)
+redis==5.2.0
+
+# Utilities
+python-multipart==0.0.9

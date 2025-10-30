@@ -325,6 +325,38 @@ class LexiQApiClient {
   async healthCheck(): Promise<any> {
     return this.request('/api/v2/lexiq/health');
   }
+
+  async listCustomRules(): Promise<{ rules: any[] }> {
+    try {
+      const raw = localStorage.getItem('lexiq-custom-rules');
+      const rules = raw ? JSON.parse(raw) : [];
+      return { rules };
+    } catch {
+      return { rules: [] };
+    }
+  }
+
+  async addCustomRule(rule: any): Promise<void> {
+    try {
+      const raw = localStorage.getItem('lexiq-custom-rules');
+      const rules = raw ? JSON.parse(raw) : [];
+      rules.push({ ...rule, enabled: true });
+      localStorage.setItem('lexiq-custom-rules', JSON.stringify(rules));
+    } catch {
+      throw new Error('Failed to save rule');
+    }
+  }
+
+  async deleteCustomRule(ruleId: string): Promise<void> {
+    try {
+      const raw = localStorage.getItem('lexiq-custom-rules');
+      const rules = raw ? JSON.parse(raw) : [];
+      const next = rules.filter((r: any) => r.rule_id !== ruleId);
+      localStorage.setItem('lexiq-custom-rules', JSON.stringify(next));
+    } catch {
+      throw new Error('Failed to delete rule');
+    }
+  }
 }
 
 // Export singleton instance

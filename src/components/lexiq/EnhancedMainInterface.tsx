@@ -181,6 +181,22 @@ export function EnhancedMainInterface({
   const [showSettings, setShowSettings] = useState(false);
   const [hotMatchModeEnabled, setHotMatchModeEnabled] = useState(false);
   const [renderValidatedAsNormal, setRenderValidatedAsNormal] = useState(false);
+  const [consistencyChecksEnabled, setConsistencyChecksEnabled] = useState(() => {
+    const saved = localStorage.getItem('lexiq-consistency-enabled');
+    return saved === 'true';
+  });
+  const [structuralValidationEnabled, setStructuralValidationEnabled] = useState(() => {
+    const saved = localStorage.getItem('lexiq-structural-enabled');
+    return saved === 'true';
+  });
+  const [customRulesEnabled, setCustomRulesEnabled] = useState(() => {
+    const saved = localStorage.getItem('lexiq-custom-rules-enabled');
+    return saved === 'true';
+  });
+  const [tmConsistencyEnabled, setTMConsistencyEnabled] = useState(() => {
+    const saved = localStorage.getItem('lexiq-tm-consistency-enabled');
+    return saved === 'true';
+  });
 
   // Smart reanalysis state
   const [lastAnalyzedContent, setLastAnalyzedContent] = useState('');
@@ -447,9 +463,31 @@ export function EnhancedMainInterface({
     localStorage.setItem('lexiq-source-spelling-enabled', String(sourceSpellingEnabled));
   }, [sourceSpellingEnabled]);
 
+  // Persist QA engine toggles
+  useEffect(() => {
+    localStorage.setItem('lexiq-consistency-enabled', String(consistencyChecksEnabled));
+  }, [consistencyChecksEnabled]);
+  useEffect(() => {
+    localStorage.setItem('lexiq-structural-enabled', String(structuralValidationEnabled));
+  }, [structuralValidationEnabled]);
+  useEffect(() => {
+    localStorage.setItem('lexiq-custom-rules-enabled', String(customRulesEnabled));
+  }, [customRulesEnabled]);
+  useEffect(() => {
+    localStorage.setItem('lexiq-tm-consistency-enabled', String(tmConsistencyEnabled));
+  }, [tmConsistencyEnabled]);
+
   // Toggle LQA sync based on sync mode
   useEffect(() => {
     setLqaSyncEnabled(syncMode === 'lqa' || syncMode === 'both');
+  }, [syncMode]);
+
+  // Consistency checks are active when LQA is active (lqa or both)
+  useEffect(() => {
+    const active = (syncMode === 'lqa' || syncMode === 'both');
+    if (consistencyChecksEnabled !== active) {
+      setConsistencyChecksEnabled(active);
+    }
   }, [syncMode]);
 
   // Cross-pane LQA sync: analyze alignment between source and translation (bilingual only)
@@ -2748,6 +2786,14 @@ export function EnhancedMainInterface({
             description: enabled ? 'Validated terms will blend into normal text.' : 'Validated terms will show green highlighting.',
           });
         }}
+        consistencyChecksEnabled={consistencyChecksEnabled}
+        onConsistencyToggle={setConsistencyChecksEnabled}
+        structuralValidationEnabled={structuralValidationEnabled}
+        onStructuralToggle={setStructuralValidationEnabled}
+        customRulesEnabled={customRulesEnabled}
+        onCustomRulesToggle={setCustomRulesEnabled}
+        tmConsistencyEnabled={tmConsistencyEnabled}
+        onTMConsistencyToggle={setTMConsistencyEnabled}
       />
 
       {/* Project Setup Wizard */}

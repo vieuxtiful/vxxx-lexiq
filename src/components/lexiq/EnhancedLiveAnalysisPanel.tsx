@@ -631,7 +631,7 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
     if (!content) {
       if (!isEditing) {
         const placeholderText = 'Start typing or paste your text here... (0 / 50,000 characters)';
-        return `<span class="placeholder-light-sweep" style="opacity: 0.5; color: #9ca3af;">${placeholderText}</span>`;
+        return `<span style="opacity: 0.5; color: #9ca3af;">${placeholderText}</span>`;
       }
       return '';
     }

@@ -5,7 +5,10 @@ from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from typing import Dict, Any, List, Optional
 import logging
 from pydantic import BaseModel, Field
-import pandas as pd
+try:
+    import pandas as pd  # Optional; only needed for CSV import/export
+except Exception:  # pragma: no cover
+    pd = None
 from io import StringIO
 
 from .enhanced_lexiq_engine import EnhancedLexiQEngine, TermValidationResult, FallbackTier
@@ -301,6 +304,8 @@ async def export_csv(
     user_id: str = Depends(get_current_user)
 ):
     try:
+        if pd is None:
+            raise HTTPException(status_code=503, detail="Pandas not available on server")
         success = await pandas_sync.export_to_csv(filepath)
         if not success:
             raise HTTPException(status_code=500, detail="Export failed")
@@ -319,6 +324,8 @@ async def import_csv(
     user_id: str = Depends(get_current_user)
 ):
     try:
+        if pd is None:
+            raise HTTPException(status_code=503, detail="Pandas not available on server")
         contents = await file.read()
         df = pd.read_csv(StringIO(contents.decode('utf-8')))
         
