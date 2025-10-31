@@ -30,6 +30,8 @@ import { SettingsDialog } from './SettingsDialog';
 import { transformAnalyzedTermsToFlagged } from '@/utils/analysisDataTransformer';
 import { EnhancedLiveAnalysisPanel } from './EnhancedLiveAnalysisPanel';
 import { useLQASync } from '@/hooks/useLQASync';
+import { useConsistencyGrade } from '@/hooks/useConsistencyGradeSimple';
+import { ConsistencyCheckerIndicator } from './ConsistencyCheckerIndicator';
 import { EnhancedStatisticsTab } from './EnhancedStatisticsTab';
 import { SimplifiedStatisticsPanel } from './SimplifiedStatisticsPanel';
 import { DataManagementTab } from './DataManagementTab';
@@ -497,6 +499,26 @@ export function EnhancedMainInterface({
     Boolean(isBilingual && lqaSyncEnabled && sourceContent.trim() && currentContent.trim()),
     sourceLanguage,
     selectedLanguage
+  );
+
+  // Consistency grade monitoring: live quality assessment for bilingual mode
+  const {
+    overallScore,
+    totalIssues,
+    issuesBySeverity,
+    sourceEditorMetrics,
+    termValidatorMetrics,
+    allIssues,
+    statistics,
+    isAnalyzing: isConsistencyAnalyzing,
+    lastAnalyzed,
+    refreshAnalysis
+  } = useConsistencyGrade(
+    sourceContent,
+    currentContent,
+    sourceLanguage,
+    selectedLanguage,
+    Boolean(isBilingual && lqaSyncEnabled && sourceContent.trim() && currentContent.trim())
   );
 
   // Calculate content differences for highlighting unmatched segments
@@ -2529,6 +2551,22 @@ export function EnhancedMainInterface({
                         {currentProject?.project_type === 'bilingual' ? 'Dual Editor' : 'Editor'}
                       </h3>
                       
+                      {/* Consistency Checker Indicator */}
+                      {isBilingual && lqaSyncEnabled && (
+                        <ConsistencyCheckerIndicator
+                          qualityScore={overallScore}
+                          totalIssues={totalIssues}
+                          criticalIssues={issuesBySeverity.critical}
+                          majorIssues={issuesBySeverity.major}
+                          minorIssues={issuesBySeverity.minor}
+                          infoIssues={issuesBySeverity.info}
+                          isAnalyzing={isConsistencyAnalyzing}
+                          onViewDetails={() => setActiveMainTab('statistics')}
+                          compact={false}
+                          showTrend={false}
+                        />
+                      )}
+                      
                       {/* Sync Mode Selector for Bilingual Projects */}
                       {currentProject?.project_type === 'bilingual' && (
                         <div className="flex items-center gap-2">
@@ -2728,7 +2766,21 @@ export function EnhancedMainInterface({
               </TabsList>
               
               <TabsContent value="enhanced">
-                {analysisComplete && analysisResults ? <EnhancedStatisticsTab statistics={analysisResults.statistics} /> : <Card className="p-12">
+                {analysisComplete && analysisResults ? (
+                  <EnhancedStatisticsTab 
+                    statistics={analysisResults.statistics}
+                    consistencyMetrics={{
+                      overallScore,
+                      sourceEditorMetrics,
+                      termValidatorMetrics,
+                      allIssues,
+                      statistics,
+                      isAnalyzing: isConsistencyAnalyzing,
+                      lastAnalyzed,
+                      onRefresh: refreshAnalysis
+                    }}
+                  />
+                ) : <Card className="p-12">
                     <div className="text-center text-muted-foreground">
                       <BarChart3 className="h-16 w-16 mx-auto mb-4 opacity-30" />
                       <h3 className="text-lg font-semibold mb-2">No Analysis Data</h3>

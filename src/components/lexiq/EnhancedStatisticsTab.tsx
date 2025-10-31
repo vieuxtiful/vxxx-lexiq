@@ -1,16 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { TrendingUp, AlertCircle, CheckCircle, Target, PieChart, BarChart3, TrendingDown, Trophy } from 'lucide-react';
+import { TrendingUp, AlertCircle, CheckCircle, Target, PieChart, BarChart3, TrendingDown, Trophy, CheckSquare, Globe, BookOpen, Zap, Hash, Tag, Code, ChevronUp, ChevronDown } from 'lucide-react';
 import { AnalysisStatistics } from '@/hooks/useAnalysisEngine';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ConsistencyMetricsCard } from './ConsistencyMetricsCard';
+import type { PanelMetrics } from '@/hooks/useConsistencyGradeSimple';
 
 interface EnhancedStatisticsTabProps {
   statistics: AnalysisStatistics;
+  consistencyMetrics?: {
+    overallScore: number;
+    overallGrade: string;
+    sourceEditorMetrics: PanelMetrics;
+    termValidatorMetrics: PanelMetrics;
+    allIssues: any[];
+    statistics: any;
+    isAnalyzing: boolean;
+    lastAnalyzed: Date | null;
+    onRefresh: () => void;
+  };
 }
 
-export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ statistics }) => {
+export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ statistics, consistencyMetrics }) => {
   // Add null safety for all statistics properties
   const totalTerms = statistics?.totalTerms ?? 0;
   const validTerms = statistics?.validTerms ?? 0;
@@ -42,6 +55,20 @@ export const EnhancedStatisticsTab: React.FC<EnhancedStatisticsTabProps> = ({ st
           View Benchmark
         </Button>
       </div>
+
+      {/* Consistency Metrics Card */}
+      {consistencyMetrics && (
+        <ConsistencyMetricsCard
+          overallScore={consistencyMetrics.overallScore}
+          sourceEditorMetrics={consistencyMetrics.sourceEditorMetrics}
+          termValidatorMetrics={consistencyMetrics.termValidatorMetrics}
+          allIssues={consistencyMetrics.allIssues}
+          statistics={consistencyMetrics.statistics}
+          isAnalyzing={consistencyMetrics.isAnalyzing}
+          lastAnalyzed={consistencyMetrics.lastAnalyzed}
+          onRefresh={consistencyMetrics.onRefresh}
+        />
+      )}
 
       {/* Key Metrics Grid */}
       <div className="grid md:grid-cols-6 gap-4">

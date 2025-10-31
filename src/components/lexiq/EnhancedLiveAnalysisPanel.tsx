@@ -26,6 +26,9 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { formatSemanticType } from '@/utils/semanticTypeFormatter';
 import { AnimatedEllipsis } from '@/components/ui/animated-ellipsis';
+import { HotMatchTooltip } from './HotMatchTooltip';
+import { HotMatchData, SEMANTIC_COLOR_INDEX } from '@/types/hotMatch';
+import { useHotMatch } from '@/hooks/useHotMatch';
 interface FlaggedTerm {
   text: string;
   start: number;
@@ -60,6 +63,10 @@ interface FlaggedTerm {
     has_grammar_issues: boolean;
     grammar_severity: string;
   };
+  // Hot Match integration fields
+  hotMatchData?: HotMatchData;        // Full Hot Match object from backend
+  interchangeableTerms?: string[];    // Quick access to alternative terms
+  domainAligned?: boolean;            // Domain verification status
 }
 
 interface EnhancedLiveAnalysisPanelProps {
@@ -210,6 +217,10 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
     toast
   } = useToast();
 
+  // Hot Match integration
+  const { detectHotMatches, isDetecting: isDetectingHotMatches } = useHotMatch();
+  const [hotMatchCache, setHotMatchCache] = useState<Map<string, HotMatchData>>(new Map());
+
   const [hoveredTerm, setHoveredTerm] = useState<(FlaggedTerm & {
     position: {
       start: number;
@@ -321,6 +332,57 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
     }
   }, [content, originalAnalyzedContent]);
 
+  // Hot Match: Fetch interchangeable terms when mode is enabled
+  useEffect(() => {
+    if (!hotMatchModeEnabled) {
+      console.log('❌ Hot Match: Mode disabled (hotMatchModeEnabled=false)');
+      return;
+    }
+    if (flaggedTerms.length === 0) {
+      console.log('❌ Hot Match: No flagged terms to detect');
+      return;
+    }
+    if (!content) {
+      console.log('❌ Hot Match: No content available');
+      return;
+    }
+    
+    const fetchHotMatches = async () => {
+      // Only detect Hot Matches for valid/review terms (not spelling/grammar)
+      const termsForDetection = flaggedTerms
+        .filter(t => t.classification === 'valid' || t.classification === 'review')
+        .map(t => ({ text: t.text, context: content }));
+      
+      if (termsForDetection.length === 0) return;
+      
+      try {
+        const results = await detectHotMatches({
+          terms: termsForDetection,
+          domain: selectedDomain,
+          language: selectedLanguage,
+          content: content,
+          projectId: selectedDomain // Use domain as project type for alignment
+        });
+        
+        // Cache results by term text for quick lookup
+        const newCache = new Map<string, HotMatchData>();
+        results.forEach(match => {
+          newCache.set(match.detectedTerm, match);
+        });
+        setHotMatchCache(newCache);
+        
+        console.log(`🔥 Hot Match: Cached ${newCache.size} terms with interchangeable alternatives`);
+        console.log('🔥 Hot Match: Cache contents:', Array.from(newCache.keys()));
+      } catch (error) {
+        console.error('Hot Match detection failed:', error);
+      }
+    };
+    
+    // Debounce to avoid excessive API calls
+    const timeoutId = setTimeout(fetchHotMatches, 500);
+    return () => clearTimeout(timeoutId);
+  }, [hotMatchModeEnabled, flaggedTerms.length, selectedDomain, selectedLanguage, content]);
+
   // Auto-enable legend ONLY when semantic types are first enabled AND user hasn't manually set it
   useEffect(() => {
     if (showSemanticTypes && !semanticTypesJustEnabledRef.current) {
@@ -332,12 +394,31 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
         // Restore user's manual preference when re-enabling types
         setShowLegend(userLegendPreferenceRef.current);
       }
-      semanticTypesJustEnabledRef.current = true;
+      semanticTypesJustEnabledRef.current = true; // Mark that types were just enabled
     } else if (!showSemanticTypes) {
-      // When types are disabled, remember the current legend state but mark that first-enable has passed
+      // If user disables semantic types, auto-hide legend
+      if (!userManuallySetLegendRef.current) {
+        setShowLegend(false);
+      }
+      // Reset the flag when types are disabled
       semanticTypesJustEnabledRef.current = false;
     }
   }, [showSemanticTypes]);
+
+  // Debug logging for tooltip rendering decisions
+  useEffect(() => {
+    if (hoveredTerm) {
+      const shouldShowHotMatch = hotMatchModeEnabled && hotMatchCache.has(hoveredTerm.text);
+      console.log('🎯 Tooltip Decision:', {
+        term: hoveredTerm.text,
+        hotMatchMode: hotMatchModeEnabled,
+        inCache: hotMatchCache.has(hoveredTerm.text),
+        cacheSize: hotMatchCache.size,
+        cacheKeys: Array.from(hotMatchCache.keys()),
+        showingHotMatch: shouldShowHotMatch
+      });
+    }
+  }, [hoveredTerm, hotMatchModeEnabled, hotMatchCache]);
 
   // Enhanced content validation with better similarity checking
   const isContentValid = () => {
@@ -596,22 +677,17 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
     return semanticType.ui_information.color_code;
   };
 
-  // Hot Match pink color scheme (like semantic types, but pink-based)
-  const getHotMatchColor = (classification: string) => {
-    switch (classification) {
-      case 'valid':
-        return '#ec4899'; // pink-500 - lightest pink for valid terms
-      case 'review':
-        return '#db2777'; // pink-600 - medium pink for review terms
-      case 'critical':
-        return '#be185d'; // pink-700 - darker pink for critical terms
-      case 'spelling':
-        return '#f472b6'; // pink-400 - light pink for spelling
-      case 'grammar':
-        return '#9d174d'; // pink-800 - deep pink for grammar
-      default:
-        return '#ec4899'; // default to pink-500
+  // Helper function to get Hot Match semantic color
+  const getHotMatchSemanticColor = (termText: string): string => {
+    const matchData = hotMatchCache.get(termText);
+    if (matchData && matchData.semanticType) {
+      const colorConfig = SEMANTIC_COLOR_INDEX[matchData.semanticType];
+      if (colorConfig) {
+        return colorConfig.hex;
+      }
     }
+    // Fallback to pink if no semantic type found
+    return '#ec4899';
   };
 
   // Helper to convert hex color to rgba with opacity
@@ -726,9 +802,11 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
         html += `<span class="term-highlight" data-unmatched="true" style="${style}">${escaped}</span>`;
       } else {
         const color = getClassificationColor(p.classification as string);
-        // Hot Match mode: use pink colors; Semantic Types: use semantic colors; Default: use classification colors
+        // Hot Match mode: use semantic colors from SEMANTIC_COLOR_INDEX
+        // Semantic Types: use semantic type colors
+        // Default: use classification colors
         const displayColor = hotMatchModeEnabled 
-          ? getHotMatchColor(p.classification as string)
+          ? getHotMatchSemanticColor(p.text)
           : (showSemanticTypes ? getSemanticTypeColor(p.term?.semantic_type) : color);
         let underlineStyle = '';
         const hasUnmatchedOverlap = positions.some(q => q.kind === 'unmatched' && !(q.end <= p.start || q.start >= p.end));
@@ -1100,37 +1178,70 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
             </div>
           </div>
 
-          {/* Enhanced Hover Tooltip */}
-          {hoveredTerm && tooltipPosition && !clickedTerm && <div className="fixed z-50 pointer-events-auto" style={{
-          left: `${tooltipPosition.x}px`,
-          top: `${tooltipPosition.y - 10}px`,
-          transform: 'translate(-50%, -100%)'
-        }} onMouseEnter={() => {
-          setIsTooltipHovered(true);
-          if (tooltipHoverTimeoutRef.current) {
-            clearTimeout(tooltipHoverTimeoutRef.current);
-          }
-        }} onMouseLeave={() => {
-          setIsTooltipHovered(false);
-          setHoveredTerm(null);
-          setTooltipPosition(null);
-        }}>
-              <div className="tooltip-gradient-border">
-                <div className="bg-popover rounded-lg shadow-xl p-4 max-w-md">
-                <div className="space-y-3">
+          {/* Conditional Tooltip: Hot Match or Standard */}
+          {hoveredTerm && tooltipPosition && !clickedTerm && (
+            hotMatchModeEnabled && hotMatchCache.has(hoveredTerm.text) ? (
+              // Hot Match Tooltip - Uses HotMatchTooltip component
+              <div 
+                className="fixed z-50 pointer-events-auto"
+                style={{
+                  left: `${tooltipPosition.x}px`,
+                  top: `${tooltipPosition.y - 10}px`,
+                  transform: 'translate(-50%, -100%)'
+                }}
+                onMouseEnter={() => {
+                  setIsTooltipHovered(true);
+                  if (tooltipHoverTimeoutRef.current) {
+                    clearTimeout(tooltipHoverTimeoutRef.current);
+                  }
+                }}
+                onMouseLeave={() => {
+                  setIsTooltipHovered(false);
+                  setHoveredTerm(null);
+                  setTooltipPosition(null);
+                }}
+              >
+                <HotMatchTooltip
+                  term={hoveredTerm.text}
+                  hotMatchData={hotMatchCache.get(hoveredTerm.text)}
+                  projectType={selectedDomain}
+                  showSemanticColors={true}
+                >
+                  <div /> {/* Dummy child since we're rendering the tooltip directly */}
+                </HotMatchTooltip>
+              </div>
+            ) : (
+              // Standard Tooltip - Original implementation
+              <div className="fixed z-50 pointer-events-auto" style={{
+                left: `${tooltipPosition.x}px`,
+                top: `${tooltipPosition.y - 10}px`,
+                transform: 'translate(-50%, -100%)'
+              }} onMouseEnter={() => {
+                setIsTooltipHovered(true);
+                if (tooltipHoverTimeoutRef.current) {
+                  clearTimeout(tooltipHoverTimeoutRef.current);
+                }
+              }} onMouseLeave={() => {
+                setIsTooltipHovered(false);
+                setHoveredTerm(null);
+                setTooltipPosition(null);
+              }}>
+                <div className="tooltip-gradient-border">
+                  <div className="bg-popover rounded-lg shadow-xl p-4 max-w-md">
+                  <div className="space-y-3">
                   {/* Enhanced Header */}
                   <div className="flex items-center justify-between gap-2 pb-2 border-b">
                     <div className="flex items-center gap-2">
                       <span style={{
                         color: hotMatchModeEnabled 
-                          ? getHotMatchColor(hoveredTerm.classification)
+                          ? getHotMatchSemanticColor(hoveredTerm.text)
                           : (showSemanticTypes ? getSemanticTypeColor(hoveredTerm.semantic_type) : getClassificationColor(hoveredTerm.classification))
                       }}>
                         {getClassificationIcon(hoveredTerm.classification)}
                       </span>
                       <Badge style={{
                       backgroundColor: hotMatchModeEnabled 
-                        ? getHotMatchColor(hoveredTerm.classification)
+                        ? getHotMatchSemanticColor(hoveredTerm.text)
                         : (showSemanticTypes ? getSemanticTypeColor(hoveredTerm.semantic_type) : getClassificationColor(hoveredTerm.classification))
                     }} className="text-white">
                         {hoveredTerm.classification.toUpperCase()}
@@ -1210,7 +1321,9 @@ export const EnhancedLiveAnalysisPanel: React.FC<EnhancedLiveAnalysisPanelProps>
                 </div>
               </div>
               </div>
-            </div>}
+              </div>
+            )
+          )}
 
           {/* Enhanced Click Popup for Replacements */}
           {clickedTerm && clickPosition && <div className="fixed z-50 recommendation-popup" style={{

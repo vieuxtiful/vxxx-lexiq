@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Upload, FileText, Play, TrendingUp, CheckCircle, 
-  AlertCircle, BarChart3, Activity, BookOpen, Zap, ArrowLeft 
+  AlertCircle, BarChart3, Activity, BookOpen, Zap, ArrowLeft, XCircle 
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import lexiqLogo from '@/assets/lexiq-logo.png';
@@ -233,22 +233,34 @@ export function MainInterface({ onReturn }: MainInterfaceProps) {
             <Card>
               <CardContent className="pt-6">
                 <Button
-                  onClick={() => { if (!isAnalyzing) runAnalysis(); }}
+                  onClick={() => {
+                    if (isAnalyzing) {
+                      // Cancel analysis
+                      setIsAnalyzing(false);
+                      console.log('🛑 Analysis cancelled by user');
+                      toast({
+                        title: "Analysis Cancelled",
+                        description: "The QA analysis has been stopped.",
+                      });
+                    } else {
+                      runAnalysis();
+                    }
+                  }}
                   disabled={!translationFile || !glossaryFile}
-                  className={`w-full bg-primary hover:bg-primary/80 text-primary-foreground font-bold py-3 transition-none focus-visible:ring-0 active:opacity-100 ${isAnalyzing ? 'opacity-100 cursor-wait [aria-busy=true]:opacity-100 [aria-busy=true]:text-primary-foreground [aria-busy=true]:bg-primary' : ''}`}
+                  className={`w-full font-bold py-3 transition-none focus-visible:ring-0 active:opacity-100 ${isAnalyzing ? 'opacity-100 bg-destructive hover:bg-destructive/90 text-destructive-foreground cursor-pointer' : 'bg-primary hover:bg-primary/80 text-primary-foreground'}`}
                   aria-busy={isAnalyzing}
-                  style={isAnalyzing ? { transition: 'none', filter: 'none' } : { transition: 'none' }}
+                  style={{ transition: 'none', filter: 'none' }}
                 >
                   <span className="inline-flex items-center transition-none">
                     {isAnalyzing ? (
                       <>
-                        <Activity className="h-4 w-4 mr-2 animate-spin" />
-                        Analyzing...
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Cancel Analysis
                       </>
                     ) : (
                       <>
                         <Zap className="h-4 w-4 mr-2" />
-                        Start QA
+                        Analyze
                       </>
                     )}
                   </span>
