@@ -1,5 +1,5 @@
 <<<<<<< HEAD
-# LexiQ – AI‑Powered XLQA System
+# LexiQ – AI‑Powered xLQA System
 
 LexiQ is an AI‑assisted eXperiential Linguistic Quality Assurance (XLQA) interface for translators, editors, and reviewers. It provides live bilingual alignment, grammar/spelling analysis, term validation, and workflow‑friendly UX designed for focus and speed.
 
